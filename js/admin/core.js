@@ -138,6 +138,7 @@ function togglePw(btn) {
   btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   btn.innerHTML = show ? '<i class="ph ph-eye-slash"></i>' : '<i class="ph ph-eye"></i>';
 }
+window.togglePw = togglePw;
 if (typeof window.toggleTheme !== 'function') {
   window.toggleTheme = function () {
     const dark = document.documentElement.classList.toggle('dark');
