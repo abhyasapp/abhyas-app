@@ -21,7 +21,7 @@ const PSYNC = {
     this._state = state;
     const dot = document.getElementById('tb-sync-dot');
     const btn = document.getElementById('tb-sync-btn');
-    if(!dot || !btn) return;
+    if(!dot || !btn) return;   // toolbar not on this page — state still updated in _state
     const cfg = {
       idle:    {color:'var(--t3)', title:'Not synced yet this session', anim:false},
       pending: {color:'var(--amb)', title:'Sync pending…',              anim:false},
@@ -166,8 +166,18 @@ const PSYNC = {
     const p = S.prog || {};
     let sprint = '';
     try { sprint = localStorage.getItem('abhyas_sprint_start') || ''; } catch(e){}
+    
+    // Include the last 100 sessions from within the last 60 days, so
+    // sprint progress can be computed from real timestamps on any device
+    // (and after a fresh login). Older sessions stay on-device only.
+    const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
+    const recentSessions = (Array.isArray(p.sessions) ? p.sessions : [])
+      .filter(s => s && Number(s.at) >= cutoff)
+      .sort((a, b) => Number(b.at) - Number(a.at))
+      .slice(0, 100);
+    
     return {
-      prog: { total: Number(p.total) || 0, correct: Number(p.correct) || 0, sessions: [] },
+      prog: { total: Number(p.total) || 0, correct: Number(p.correct) || 0, sessions: recentSessions },
       chapStats: S.chapStats || {},
       cov: S.cov || {},
       stk: S.stk || { days: [], last: '' },
@@ -207,7 +217,11 @@ const PSYNC = {
         this._setRev(res.updatedAt);
         toast('\ud83d\udd04 Combined with your other device. Nothing was removed.');
         return this.pushNow(true);
-      } else { this._setStatus('Backup failed \u2014 will retry automatically.'); this._setState('error'); }
+      } else if(res && res.sessionInvalid){
+  this._setStatus('Session expired — please log in again.');
+  this._setState('error');
+  if(typeof AUTH !== 'undefined') AUTH._bounce();
+} else { this._setStatus('Backup failed \u2014 will retry automatically.'); this._setState('error'); }
     }catch(e){ this._setStatus('Backup failed (offline?) \u2014 will retry automatically.'); this._setState('error'); }
   },
   async pullIfEmpty(){

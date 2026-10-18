@@ -14,13 +14,17 @@ const AUTH = {
     try {
       const { res } = await AUTH._checkSessionOnce(u);
       if (!res.success) {
+        // Session is genuinely invalid (expired token, account rejected, logged out elsewhere).
+        // Fall back to offline validity if the user's local access is still usable.
         if (AUTH._isValidOffline(u)) AUTH._enter(u); else AUTH._bounce();
         return;
       }
+      // Session is valid. Enter the app even when access has expired —
+      // the user stays logged in and sees a paywall notice instead of being
+      // kicked back to the sign-in page. (Fixes: "logged out after exam".)
       const updated = AUTH._buildSession(u, res);
       _save(LS.USER, updated);
-      if (updated.access.level === 'permanent' || updated.access.level === 'trial') AUTH._enter(updated);
-      else AUTH._bounce();
+      AUTH._enter(updated);
     } catch {
       if (AUTH._isValidOffline(u)) AUTH._enter(u); else AUTH._bounce();
     }
@@ -49,20 +53,30 @@ const AUTH = {
       email: user.email || prevSession.email,
       mobile: user.mobile || prevSession.mobile,
       access,
+      needsPayment: !!res.needsPayment,   // ← new: distinguish "trial over" from "session dead"
       adminCapable: prevSession.adminCapable || !!res.adminCapable,
       lastVerified: Date.now()
     };
   },
   _bounce() {
+    // Only called for REAL session death (expired token, rejected account).
+    // Access expiry does NOT call _bounce — users stay logged in and see a paywall notice.
     const onScreen = () => { const w = document.getElementById('quiz-wrap'); return !!(w && w.style.display !== 'none'); };
     if (onScreen()) {
       if (AUTH._bounceWaiting) return;
       AUTH._bounceWaiting = true;
-      toast('Your access has changed. Finish this quiz and you will be taken to sign in.', 7000);
+      toast('Session expired. Please sign in again after finishing this quiz.', 6000);
       const t = setInterval(() => { if (!onScreen()) { clearInterval(t); window.location.href = 'index.html'; } }, 1500);
       return;
     }
     window.location.href = 'index.html';
+  },
+  _notifyPaymentNeeded() {
+    if (AUTH._paywallNotifiedAt && Date.now() - AUTH._paywallNotifiedAt < 30 * 1000) return;
+    AUTH._paywallNotifiedAt = Date.now();
+    try {
+      if (typeof toast === 'function') toast('Your access has ended. Complete payment to continue.', 8000);
+    } catch (e) {}
   },
   _resetUserScopedLocalDataIfDifferentUser(username) {
     try { if (typeof CONTENT_CRYPTO !== 'undefined') CONTENT_CRYPTO.clear(); } catch (e) {}
@@ -97,6 +111,8 @@ const AUTH = {
     if (typeof PUSH !== 'undefined') PUSH.silentRefresh();
     WEEKLY.init();
     if (typeof SB_HINTS !== 'undefined') setTimeout(() => SB_HINTS.refresh(), 200);
+    // Nudge the user toward payment instead of logging them out.
+    if (user.needsPayment) AUTH._notifyPaymentNeeded();
   },
   _updateSidebarCard(user) {
     const nameEl = document.getElementById('sb-uname');
@@ -110,6 +126,8 @@ const AUTH = {
         statusEl.textContent = '✅ Permanent access';
       } else if (a.level === 'trial') {
         statusEl.textContent = a.trialExpiresAt ? `⏳ Trial until ${new Date(a.trialExpiresAt).toLocaleString()}` : '⏳ Trial access';
+      } else if (user?.needsPayment) {
+        statusEl.textContent = '⚠️ Access expired';
       } else {
         statusEl.textContent = '—';
       }
@@ -155,10 +173,13 @@ const AUTH = {
     try {
       const { res } = await AUTH._checkSessionOnce(S.user);
       if (res.success) {
+        // Session is still valid. Even if needsPayment is now true, keep the
+        // user logged in and just update the session + notify.
         const updated = AUTH._buildSession(S.user, res);
         _save(LS.USER, updated);
-        if (updated.access.level === 'permanent' || updated.access.level === 'trial') S.user = updated;
-        else AUTH._bounce();
+        S.user = updated;
+        AUTH._updateSidebarCard(updated);
+        if (updated.needsPayment) AUTH._notifyPaymentNeeded();
       } else if (res.sessionInvalid) {
         try { localStorage.setItem('abhyas_notice', 'You were signed out because this account was used on another device, or the session expired. Please sign in again.'); } catch (e) {}
         localStorage.removeItem(LS.USER);

@@ -1,5 +1,3 @@
-cd D:\kartik1
-@'
 # Backups / temp files
 *.bak
 *.bak2
@@ -16,11 +14,10 @@ desktop.ini
 *.swp
 *.swo
 
-# Node (if you ever add packages)
+# Node (package-lock.json IS committed so CI can use `npm ci`)
 node_modules/
-package-lock.json
+coverage/
 
-# Local env (in case you add one later)
+# Local env
 .env
 .env.local
-'@ | Set-Content .gitignore -Encoding UTF8

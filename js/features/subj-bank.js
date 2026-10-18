@@ -155,8 +155,25 @@ async function _fetchSubjFileFromNetwork(ref, cacheKey){
   const query = new URLSearchParams({
     action: 'getFile', fileId: ref.fileId, username: a.username, token: a.token
   }).toString();
-  const r = await fetch(`${url}?${query}`, { redirect:'follow' });
-  if(!r.ok) throw new Error('HTTP ' + r.status);
+
+  /* FIX: never let a slow / dead endpoint block boot.
+     - 8s timeout (first-ever fetch from Apps Script legitimately takes 4-6s)
+     - returns [] on failure, never undefined — callers do qs.length */
+  const ctrl = new AbortController();
+  const _to = setTimeout(() => ctrl.abort(), 8000);
+  let r = null;
+  try {
+    r = await fetch(`${url}?${query}`, { redirect: 'follow', signal: ctrl.signal });
+  } catch (e) {
+    console.warn('[subj-bank] fetch failed/aborted — using cache', e && e.message);
+  } finally {
+    clearTimeout(_to);
+  }
+  if (!r || !r.ok) {
+    console.warn('[subj-bank] no fresh data (status=' + (r ? r.status : 'none') + ')');
+    return [];
+  }
+
   const data = await r.json();
   if(data && data.rateLimited){
     if(typeof GETFILE_GATE !== 'undefined') GETFILE_GATE.backoff(12000);
