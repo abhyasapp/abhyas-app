@@ -101,7 +101,7 @@
     return true;
   }
 
-  // ── real data sources (fixed): use S.wr / S.chapStats / S.stk.days ─
+  // ── real data sources ──────────────────────────────────────────
   function _wrongBank() {
     try { return (typeof S !== 'undefined' && S.wr) ? S.wr : []; } catch (e) { return []; }
   }
@@ -113,6 +113,40 @@
   }
   function _studyDays() {
     try { return (typeof S !== 'undefined' && S.stk && Array.isArray(S.stk.days)) ? S.stk.days : []; } catch (e) { return []; }
+  }
+
+  // ── NEW: calculate what was actually done today ──────────────────
+  function _todayStats() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const t0 = today.getTime();
+    const t1 = tomorrow.getTime();
+
+    const sessions = (typeof S !== 'undefined' && S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
+    const todaySessions = sessions.filter(s => s && Number(s.at) >= t0 && Number(s.at) < t1);
+
+    let newDone = 0, reviewDone = 0, drillDone = 0, timeDone = 0;
+    
+    todaySessions.forEach(s => {
+      const total = Number(s.total) || 0;
+      const time = Number(s.time || s.durationSec || s.duration) || Math.round(total * 0.9);
+      
+      if (s.mode === 'review') {
+        reviewDone += total;
+      } else if (s.mode === 'drill' || s.mode === 'weak') {
+        drillDone += total;
+      } else {
+        newDone += total;
+      }
+      timeDone += time;
+    });
+
+    return {
+      new: Math.round(newDone),
+      reviews: Math.round(reviewDone),
+      drill: Math.round(drillDone),
+      time: Math.round(timeDone)
+    };
   }
 
   // ── daily targets ───────────────────────────────────────────────
@@ -139,19 +173,20 @@
 
     const perMin = 0.9;
     const timeTarget = Math.round((newTarget + reviewsDue + drillTarget) * perMin);
+    
+    // Get actual completed stats instead of hardcoding to 0
+    const doneStats = _todayStats();
 
     return {
       phase,
-      new:     { done: 0, target: newTarget },
-      reviews: { done: 0, target: Math.max(10, Math.min(30, reviewsDue || 20)) },
-      drill:   { done: 0, target: drillTarget },
-      time:    { done: 0, target: timeTarget },
+      new:     { done: doneStats.new,     target: newTarget },
+      reviews: { done: doneStats.reviews, target: Math.max(10, Math.min(30, reviewsDue || 20)) },
+      drill:   { done: doneStats.drill,   target: drillTarget },
+      time:    { done: doneStats.time,    target: timeTarget },
     };
   }
 
-  // Remaining unseen questions across eligible chapters, using ChapterData
-  // and S.fcount / S.cov directly — the old version walked a non-existent
-  // window.CH and always returned 0.
+  // Remaining unseen questions across eligible chapters
   function _remainingQuestions() {
     try {
       if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return 0;
@@ -359,7 +394,7 @@
   }
   function _esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-  // ── public API (was window.SPRINT — renamed to SPRINT_PAGE) ────
+  // ── public API ─────────────────────────────────────────────────
   window.SPRINT_PAGE = {
     init() {
       if (_inited) { renderHomeStrip(); renderPage(); return; }
@@ -397,10 +432,7 @@
     },
   };
 
-  /* ── bridge: legacy HTML calls SPRINT.takeTodayOff() / SPRINT.setExamDate() etc.
-        today-plan.js owns window.SPRINT but doesn't have these methods, so we add
-        them here. Runs at parse time (right after SPRINT_PAGE exists), so any
-        click handler anywhere resolves correctly. ──────────────────────────── */
+  /* ── bridge: legacy HTML calls SPRINT.takeTodayOff() / SPRINT.setExamDate() etc. ── */
   window.SPRINT = window.SPRINT || {};
   window.SPRINT.takeTodayOff    = window.SPRINT_PAGE.takeTodayOff;
   window.SPRINT.setExamDate     = window.SPRINT_PAGE.setExamDate;

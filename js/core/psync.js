@@ -43,10 +43,6 @@ const PSYNC = {
   _beaconSync(){
     if(!S.online || S.forcedOffline || !S.user || !S.user.token) return;
     try{
-      /* v1.36: the beacon sends the same small, always-fits payload as a
-         normal save — totals, chapter stats, coverage, study days. The
-         wrong bank, bookmarks and notes stay on this device and in the
-         student's own Google Drive backup. */
       const json = JSON.stringify(this._syncPayloadForServer());
       if(json.length > this._SYNC_PAYLOAD_CEILING) return;
       const body = JSON.stringify({ action:'saveProgress', username: S.user.username, token: S.user.token, data: json, baseUpdatedAt: this._rev() });
@@ -158,18 +154,11 @@ const PSYNC = {
   _rev(){ try { return localStorage.getItem(this._REV_KEY) || ''; } catch(e){ return ''; } },
   _setRev(v){ try { if(v) localStorage.setItem(this._REV_KEY, String(v)); } catch(e){} },
 
-  /* v1.36: what travels to the server. Fixed-size, ~2 KB no matter how big
-     the wrong bank grows. The wrong bank, bookmarks, notes and full session
-     list stay on this device and travel only through the student's own
-     Google Drive backup. This removes the 45,000-character ceiling forever. */
   _syncPayloadForServer(){
     const p = S.prog || {};
     let sprint = '';
     try { sprint = localStorage.getItem('abhyas_sprint_start') || ''; } catch(e){}
     
-    // Include the last 100 sessions from within the last 60 days, so
-    // sprint progress can be computed from real timestamps on any device
-    // (and after a fresh login). Older sessions stay on-device only.
     const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
     const recentSessions = (Array.isArray(p.sessions) ? p.sessions : [])
       .filter(s => s && Number(s.at) >= cutoff)
@@ -210,18 +199,16 @@ const PSYNC = {
         this._setRev(res.updatedAt);
         this._setStatus('Last backed up: ' + new Date().toLocaleString()); this._setState('synced');
       } else if(res && res.conflict && !_isRetry){
-        /* Another device saved first. Its copy is ADDED to this device's data (nothing is removed),
-           and the combined copy is saved back. */
         const out = await this.mergeIn(res.data, 'before-sync');
         if(!out.ok){ this._setStatus('Sync paused: ' + out.error); this._setState('error'); return; }
         this._setRev(res.updatedAt);
         toast('\ud83d\udd04 Combined with your other device. Nothing was removed.');
         return this.pushNow(true);
       } else if(res && res.sessionInvalid){
-  this._setStatus('Session expired — please log in again.');
-  this._setState('error');
-  if(typeof AUTH !== 'undefined') AUTH._bounce();
-} else { this._setStatus('Backup failed \u2014 will retry automatically.'); this._setState('error'); }
+        this._setStatus('Session expired — please log in again later to sync.');
+        this._setState('error');
+        // REMOVED AUTH._bounce() here to prevent logging the user out mid-quiz if the server rejects a save
+      } else { this._setStatus('Backup failed \u2014 will retry automatically.'); this._setState('error'); }
     }catch(e){ this._setStatus('Backup failed (offline?) \u2014 will retry automatically.'); this._setState('error'); }
   },
   async pullIfEmpty(){
@@ -235,7 +222,6 @@ const PSYNC = {
     if(!S.online || !S.user || !S.user.token){ toast('Need internet to check your cloud backup'); return; }
     await this._pull(true);
   },
-  /* "Restore" now ADDS the cloud copy to this device. It never replaces or removes anything here. */
   async _pull(force){
     try{
       const r = await netFetch(APPS, {
@@ -253,13 +239,12 @@ const PSYNC = {
       const a = out.added, n = a.wr + a.bk + a.fl + a.sessions + a.notes;
       toast(n > 0 ? '\u2705 Added your saved progress from the cloud. Nothing on this device was removed.' : '\u2705 Already up to date. Nothing was removed.', 5000);
       this._setStatus('Checked cloud backup: ' + new Date().toLocaleString());
-      if(n >= 0) this.scheduleSync();     // save the combined copy back so every device gets it
+      if(n >= 0) this.scheduleSync();
     }catch(e){
       if(force) toast('Could not reach your cloud backup. Check your connection and try again.');
     }
   },
 
-  /* ── Recovery (Data > Recover): add back an earlier copy. Always additive. ── */
   async listCloudHistory(){
     const r = await netFetch(APPS, { method:'POST', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({action:'getProgressHistory', username:S.user.username, token:S.user.token}) }, 15000);

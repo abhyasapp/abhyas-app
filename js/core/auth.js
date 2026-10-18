@@ -1,34 +1,38 @@
 // js/core/auth.js — login session, offline fallback, logout, periodic recheck.
-// Same behaviour as before; only moved.
 
 const AUTH = {
   async restore() {
     const u = _load(LS.USER, null);
     if (!u || u.type !== 'user' || !u.username) { AUTH._bounce(); return; }
+    
+    // 1. OFFLINE LOGIN: If offline, skip server check and log in using local cache
     if (S.forcedOffline || !S.online) {
       if (AUTH._isValidOffline(u)) AUTH._enter(u); else AUTH._bounce();
       return;
     }
+
+    // 2. QUICK RESTORE: If verified recently (last 30s), don't spam the server
     const age = Date.now() - (Number(u.lastVerified) || 0);
     if (age >= 0 && age < 30 * 1000 && AUTH._isValidOffline(u)) { AUTH._enter(u); return; }
+
+    // 3. SERVER CHECK: Verify token with Supabase
     try {
       const { res } = await AUTH._checkSessionOnce(u);
       if (!res.success) {
-        // Session is genuinely invalid (expired token, account rejected, logged out elsewhere).
-        // Fall back to offline validity if the user's local access is still usable.
+        // If token failed, check if they still have valid local offline access
         if (AUTH._isValidOffline(u)) AUTH._enter(u); else AUTH._bounce();
         return;
       }
-      // Session is valid. Enter the app even when access has expired —
-      // the user stays logged in and sees a paywall notice instead of being
-      // kicked back to the sign-in page. (Fixes: "logged out after exam".)
+      
       const updated = AUTH._buildSession(u, res);
       _save(LS.USER, updated);
       AUTH._enter(updated);
     } catch {
+      // Fallback to local offline cache if the network drops during this check
       if (AUTH._isValidOffline(u)) AUTH._enter(u); else AUTH._bounce();
     }
   },
+
   async _checkSessionOnce(u) {
     const r = await netFetch(APPS, {
       method: 'POST', headers: { 'Content-Type': 'text/plain' },
@@ -37,12 +41,14 @@ const AUTH = {
     const res = await r.json();
     return { res };
   },
+
   _isValidOffline(u) {
     const a = u.access || {};
     if (a.level === 'permanent') return true;
     if (a.level === 'trial' && a.trialExpiresAt) return new Date(a.trialExpiresAt) > Date.now();
     return false;
   },
+
   _buildSession(prevSession, res) {
     const user = res.user || {};
     const access = computeAccessLevel(res, user);
@@ -53,14 +59,13 @@ const AUTH = {
       email: user.email || prevSession.email,
       mobile: user.mobile || prevSession.mobile,
       access,
-      needsPayment: !!res.needsPayment,   // ← new: distinguish "trial over" from "session dead"
+      needsPayment: !!res.needsPayment,
       adminCapable: prevSession.adminCapable || !!res.adminCapable,
       lastVerified: Date.now()
     };
   },
+
   _bounce() {
-    // Only called for REAL session death (expired token, rejected account).
-    // Access expiry does NOT call _bounce — users stay logged in and see a paywall notice.
     const onScreen = () => { const w = document.getElementById('quiz-wrap'); return !!(w && w.style.display !== 'none'); };
     if (onScreen()) {
       if (AUTH._bounceWaiting) return;
@@ -71,6 +76,7 @@ const AUTH = {
     }
     window.location.href = 'index.html';
   },
+
   _notifyPaymentNeeded() {
     if (AUTH._paywallNotifiedAt && Date.now() - AUTH._paywallNotifiedAt < 30 * 1000) return;
     AUTH._paywallNotifiedAt = Date.now();
@@ -78,6 +84,7 @@ const AUTH = {
       if (typeof toast === 'function') toast('Your access has ended. Complete payment to continue.', 8000);
     } catch (e) {}
   },
+
   _resetUserScopedLocalDataIfDifferentUser(username) {
     try { if (typeof CONTENT_CRYPTO !== 'undefined') CONTENT_CRYPTO.clear(); } catch (e) {}
     const lastUser = _load(LS.LAST_USER, '');
@@ -96,6 +103,7 @@ const AUTH = {
     }
     _save(LS.LAST_USER, username);
   },
+
   _enter(user) {
     S.user = user;
     AUTH._resetUserScopedLocalDataIfDifferentUser(user.username);
@@ -111,9 +119,9 @@ const AUTH = {
     if (typeof PUSH !== 'undefined') PUSH.silentRefresh();
     WEEKLY.init();
     if (typeof SB_HINTS !== 'undefined') setTimeout(() => SB_HINTS.refresh(), 200);
-    // Nudge the user toward payment instead of logging them out.
     if (user.needsPayment) AUTH._notifyPaymentNeeded();
   },
+
   _updateSidebarCard(user) {
     const nameEl = document.getElementById('sb-uname');
     const statusEl = document.getElementById('sb-ustatus');
@@ -133,6 +141,7 @@ const AUTH = {
       }
     }
   },
+
   async logout() {
     try { if (typeof CONTENT_CRYPTO !== 'undefined') CONTENT_CRYPTO.clear(); } catch (e) {}
     if (!(await ASK.confirm({ title: 'Log out?', body: 'Your progress is saved to your account.', ok: 'Log out' }))) return;
@@ -151,9 +160,11 @@ const AUTH = {
     localStorage.removeItem(LS.USER);
     window.location.href = 'index.html';
   },
+
   _revalidateTimer: null,
   _visibilityBound: false,
   RECHECK_MS: 10 * 60 * 1000,
+
   startPeriodicRecheck() {
     if (AUTH._revalidateTimer) clearInterval(AUTH._revalidateTimer);
     AUTH._revalidateTimer = setInterval(() => AUTH._periodicRecheckTick(), AUTH.RECHECK_MS);
@@ -167,14 +178,15 @@ const AUTH = {
       });
     }
   },
+
   async _periodicRecheckTick() {
     if (document.visibilityState === 'hidden') return;
+    // Do not recheck if offline, so users stay logged in offline
     if (!S.online || S.forcedOffline || !S.user) return;
+    
     try {
       const { res } = await AUTH._checkSessionOnce(S.user);
       if (res.success) {
-        // Session is still valid. Even if needsPayment is now true, keep the
-        // user logged in and just update the session + notify.
         const updated = AUTH._buildSession(S.user, res);
         _save(LS.USER, updated);
         S.user = updated;
@@ -185,6 +197,8 @@ const AUTH = {
         localStorage.removeItem(LS.USER);
         AUTH._bounce();
       }
-    } catch (e) { console.warn('[AUTH] periodic session recheck failed, will retry next interval:', e); }
+    } catch (e) { 
+      console.warn('[AUTH] periodic session recheck failed, will retry next interval:', e); 
+    }
   }
 };
