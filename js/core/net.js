@@ -94,25 +94,32 @@ async function netFetch(url, opts, timeoutMs = 20000) {
   
   if (typeof ABHYAS_CONFIG !== 'undefined' && typeof abhyasEndpointFor === 'function') {
     let action = null;
+    let bodyObj = null;
 
-    // 1. Extract action from body (POST requests)
+    // 1. Extract action + params from body (POST requests)
     if (opts && opts.body) {
       try {
-        const bodyObj = typeof opts.body === 'string' ? JSON.parse(opts.body) : opts.body;
+        bodyObj = typeof opts.body === 'string' ? JSON.parse(opts.body) : opts.body;
         if (bodyObj && bodyObj.action) action = bodyObj.action;
       } catch (e) {}
     }
 
-    // 2. Extract action from URL (GET requests)
+    // 2. Extract action + params from URL (GET requests)
     if (!action && url.indexOf('action=') !== -1) {
       try {
         const urlObj = new URL(url, window.location.origin);
         action = urlObj.searchParams.get('action');
+        if (!bodyObj) {
+          bodyObj = {};
+          for (const [k, v] of urlObj.searchParams.entries()) bodyObj[k] = v;
+        }
       } catch (e) {}
     }
 
-    // 3. Route to Supabase if it's not explicitly a Drive action
-    if (action && abhyasEndpointFor(action) === 'supabase') {
+    // 3. Route based on endpoint resolution
+    //    For getfile, abhyasEndpointFor() inspects bodyObj.fileId to
+    //    decide gas vs supabase (Storage path → supabase, Drive ID → gas).
+    if (action && abhyasEndpointFor(action, bodyObj) === 'supabase') {
       targetUrl = ABHYAS_CONFIG.SUPABASE_URL;
     }
   }
