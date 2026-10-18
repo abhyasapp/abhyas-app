@@ -300,6 +300,13 @@
     try {
       var res = await _post('login', { username: username, password: password }); // VERIFY: action name
       if (!res || !res.success) throw new Error((res && res.error) || 'Sign-in failed.');
+            // Admin-only login: server returns adminToken, no user token.
+      // Skip user session; send to admin panel.
+      if (res.isAdmin && res.adminToken && !res.token) {
+        try { localStorage.setItem('abhyas_admin_token', res.adminToken); } catch (e) {}
+        window.location.href = 'admin.html';
+        return;
+      }
       if (!res.token) throw new Error('The server did not return a session token.');
       var session = _buildSession(res, username);
       _writeSession(session);

@@ -376,12 +376,16 @@ const ADMIN = {
     if (!username || !password) return this.showErr('Enter your username and password.');
     this._gateBusy(true); this.hideErr();
     try {
-      const r = await this.post('adminLogin', { username, password }); // VERIFY: endpoint name
+            const r = await this.post('adminLogin', { username, password });
       if (!r || !r.success) throw new Error((r && r.error) || 'Sign-in failed.');
-      if (!r.token) throw new Error('The server did not return a session token.');
+      // Backend returns `adminToken` (current) and `token` (legacy alias may be absent).
+      // Username may be under r.username or r.user.username depending on backend.
+      const adminToken = r.adminToken || r.token;
+      const adminUsername = (r.user && r.user.username) || r.username || username;
+      if (!adminToken) throw new Error('The server did not return a session token.');
       const creds = {
-        user: r.username || username,
-        token: r.token,
+        user: adminUsername,
+        token: adminToken,
         expires: Date.now() + (Number(r.expiresInMs) || 86400000)
       };
       try { localStorage.setItem(LS_ADMIN, JSON.stringify(creds)); } catch (e) {}
