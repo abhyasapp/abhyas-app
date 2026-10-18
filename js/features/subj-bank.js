@@ -173,20 +173,20 @@ async function _fetchSubjFileFromNetwork(ref, cacheKey){
       r = await netFetch(_backendUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ 
-          action: actionName, 
-          fileId: ref.fileId, 
-          username: a.username, 
-          token: a.token 
+        body: JSON.stringify({
+          action: actionName,
+          fileId: ref.fileId,
+          username: a.username,
+          token: a.token
         })
       }, timeout);
     } else {
       // GAS expects GET with URL params
-      const query = new URLSearchParams({ 
-        action: actionName, 
-        fileId: ref.fileId, 
-        username: a.username, 
-        token: a.token 
+      const query = new URLSearchParams({
+        action: actionName,
+        fileId: ref.fileId,
+        username: a.username,
+        token: a.token
       }).toString();
       r = await netFetch(_backendUrl() + '?' + query, {}, timeout);
     }
@@ -194,35 +194,36 @@ async function _fetchSubjFileFromNetwork(ref, cacheKey){
     console.warn('[subj-bank] fetch failed/aborted — using cache', e && e.message);
     return [];
   }
-  
+
   if (!r || !r.ok) {
     console.warn('[subj-bank] no fresh data (status=' + (r ? r.status : 'none') + ', backend=' + (isSupa ? 'supabase' : 'gas') + ')');
     return [];
   }
 
   const data = await r.json();
-if(data && data.rateLimited){
-  if(typeof GETFILE_GATE !== 'undefined') GETFILE_GATE.backoff(12000);
-  throw new Error('The server asked us to slow down. Try again in a moment.');
-}
-if(data && data.sessionInvalid) throw new Error('Your session expired — sign in again.');
-if(data && data.needsPayment) throw new Error('Your access has ended. Complete the payment to open the written bank.');
-if(data && data.success === false) throw new Error(data.error || 'Server error');
-let payload = (data && data.result !== undefined) ? data.result : data;
-
-// ── Supabase getfile returns { success: true, content: "<JSON text>" }.
-//    Unwrap the content string so downstream code sees questions/sections.
-if(payload && typeof payload === 'object' && !Array.isArray(payload) && typeof payload.content === 'string'){
-  try {
-    payload = JSON.parse(payload.content);
-  } catch (e) {
-    console.warn('[subj-bank] content is a string but not valid JSON for', ref.fileId);
-    return [];
+  if(data && data.rateLimited){
+    if(typeof GETFILE_GATE !== 'undefined') GETFILE_GATE.backoff(12000);
+    throw new Error('The server asked us to slow down. Try again in a moment.');
   }
-}
+  if(data && data.sessionInvalid) throw new Error('Your session expired — sign in again.');
+  if(data && data.needsPayment) throw new Error('Your access has ended. Complete the payment to open the written bank.');
+  if(data && data.success === false) throw new Error(data.error || 'Server error');
+  let payload = (data && data.result !== undefined) ? data.result : data;
 
-if(typeof QDB !== 'undefined') QDB.set(cacheKey, payload).catch(() => {});
-return _normalizeSubjRaw(payload, ref.fileId, ref.chapterId, ref.name);
+  // ── Supabase getfile returns { success: true, content: "<JSON text>" }.
+  //    Unwrap the content string so downstream code sees questions/sections.
+  if(payload && typeof payload === 'object' && !Array.isArray(payload) && typeof payload.content === 'string'){
+    try {
+      payload = JSON.parse(payload.content);
+    } catch (e) {
+      console.warn('[subj-bank] content is a string but not valid JSON for', ref.fileId);
+      return [];
+    }
+  }
+
+  if(typeof QDB !== 'undefined') QDB.set(cacheKey, payload).catch(() => {});
+  return _normalizeSubjRaw(payload, ref.fileId, ref.chapterId, ref.name);
+}
 
 async function _fetchSubjFile(ref){
   if(_fetchPromises[ref.fileId]) return _fetchPromises[ref.fileId];
