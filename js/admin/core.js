@@ -336,8 +336,6 @@ const ADMIN = {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     _paintThemeColor(theme === 'dark' ? THEME_COLORS.dark : THEME_COLORS.light);
 
-    // The gate form is bound in js/admin/router.js. Focus the first field
-    // so keyboard users land in the form without clicking.
     setTimeout(() => { const el = $('ad-user'); if (el && !el.value) el.focus(); }, 60);
 
     this._trySessionUnlock();
@@ -376,10 +374,8 @@ const ADMIN = {
     if (!username || !password) return this.showErr('Enter your username and password.');
     this._gateBusy(true); this.hideErr();
     try {
-            const r = await this.post('adminLogin', { username, password });
+      const r = await this.post('adminLogin', { username, password });
       if (!r || !r.success) throw new Error((r && r.error) || 'Sign-in failed.');
-      // Backend returns `adminToken` (current) and `token` (legacy alias may be absent).
-      // Username may be under r.username or r.user.username depending on backend.
       const adminToken = r.adminToken || r.token;
       const adminUsername = (r.user && r.user.username) || r.username || username;
       if (!adminToken) throw new Error('The server did not return a session token.');
@@ -413,33 +409,60 @@ const ADMIN = {
 
   /* ── transport ── */
   async post(action, params = {}, opts = {}) {
-    if (!GAS_URL) return { success: false, error: 'Backend URL is not configured.' };
-      const body = JSON.stringify(Object.assign({
+    // Route: ported admin actions → Supabase, unported → GAS (auto-fallback).
+    // abhyasEndpointFor() from config.js decides. Default = supabase.
+    const useSupabase = (
+      typeof ABHYAS_CONFIG !== 'undefined' &&
+      typeof abhyasEndpointFor === 'function' &&
+      abhyasEndpointFor(action, params) === 'supabase' &&
+      !!ABHYAS_CONFIG.SUPABASE_URL
+    );
+    const primaryUrl = useSupabase ? ABHYAS_CONFIG.SUPABASE_URL : GAS_URL;
+    if (!primaryUrl) return { success: false, error: 'Backend URL is not configured.' };
+
+    const body = JSON.stringify(Object.assign({
       action,
-      username: this.creds ? this.creds.user : '',
-      token:    this.creds ? this.creds.token : '',
+      username:   this.creds ? this.creds.user  : '',
+      token:      this.creds ? this.creds.token : '',
       adminToken: this.creds ? this.creds.token : ''
     }, params || {}));
+
     const timeoutMs = opts.timeoutMs || 30000;
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
+    const _attempt = async (url) => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body,
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        if (!r.ok) return { success: false, error: 'The server replied with HTTP ' + r.status + '.' };
+        return await r.json();
+      } catch (e) {
+        clearTimeout(timer);
+        throw e;
+      }
+    };
+
     try {
-      const r = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body,
-        signal: ctrl.signal
-      });
-      clearTimeout(timer);
-      if (!r.ok) return { success: false, error: 'The server replied with HTTP ' + r.status + '.' };
-      const res = await r.json();
+      let res = await _attempt(primaryUrl);
+      // Fallback: Supabase says "Unknown action" → retry on GAS.
+      if (useSupabase && res && res.success === false &&
+          /unknown action/i.test(String(res.error || '')) &&
+          GAS_URL && GAS_URL !== primaryUrl) {
+        console.warn('[admin]', action, 'not on Supabase — falling back to GAS');
+        res = await _attempt(GAS_URL);
+      }
       if (res && res.sessionInvalid) {
         this._leaveAdminMode();
         return { success: false, error: 'Your session has expired. Please sign in again.' };
       }
       return res || { success: false, error: 'The server sent an empty response.' };
     } catch (e) {
-      clearTimeout(timer);
       const msg = e && e.name === 'AbortError'
         ? 'The request timed out — the server is taking too long.'
         : (e && e.message) || 'Network error.';
@@ -450,7 +473,7 @@ const ADMIN = {
   /* ── permissions ── */
   async loadPermissions() {
     try {
-      const r = await this.post('adminGetPermissions', {}); // VERIFY: endpoint name
+      const r = await this.post('adminGetPermissions', {});
       if (r && r.success) {
         this._perms = {
           role: r.role || (r.isOwner ? 'owner' : 'admin'),
@@ -459,8 +482,7 @@ const ADMIN = {
         return;
       }
     } catch (e) {}
-    // No permissions endpoint deployed — stay permissive on the UI, the
-    // backend still refuses per-action based on the token's scope.
+    // No permissions endpoint deployed — stay permissive on the UI.
     this._perms = null;
   },
 
@@ -521,13 +543,13 @@ const ADMIN = {
 
   async _refreshOne(scope) {
     switch (scope) {
-            case 'stats': {
+      case 'stats': {
         const r = await this.post('adminStats', {});
         if (!r.success) throw new Error(r.error || 'Could not load stats.');
         this.renderStats(r.stats || r);
         break;
       }
-      case 'users': {                                    // VERIFY: endpoint
+      case 'users': {
         const r = await this.post('adminListUsers', {});
         if (!r.success) throw new Error(r.error || 'Could not load students.');
         this.data.users = r.users || [];
@@ -535,7 +557,7 @@ const ADMIN = {
         this.data.usersTruncated = !!r.truncated;
         break;
       }
-      case 'payments': {                                 // VERIFY: endpoint
+      case 'payments': {
         const r = await this.post('adminListPayments', {});
         if (!r.success) throw new Error(r.error || 'Could not load payments.');
         this.data.payments = r.payments || [];
@@ -543,19 +565,19 @@ const ADMIN = {
         this.data.paymentsTruncated = !!r.truncated;
         break;
       }
-      case 'settings': {                                 // VERIFY: endpoint
+      case 'settings': {
         const r = await this.post('adminGetSettings', {});
         if (!r.success) throw new Error(r.error || 'Could not load settings.');
         this.data.settings = r.settings || {};
         break;
       }
-      case 'logs': {                                     // VERIFY: endpoint
+      case 'logs': {
         const r = await this.post('adminListLogs', {});
         if (!r.success) throw new Error(r.error || 'Could not load the log.');
         this.data.logs = r.logs || [];
         break;
       }
-      case 'admins': {                                   // VERIFY: endpoint
+      case 'admins': {
         const r = await this.post('adminListAdmins', {});
         if (!r.success) throw new Error(r.error || 'Could not load admins.');
         this.data.admins = r.admins || [];
@@ -566,7 +588,7 @@ const ADMIN = {
         }
         break;
       }
-      case 'weeklysets': {                               // VERIFY: endpoint
+      case 'weeklysets': {
         const r = await this.post('adminListWeeklySets', {});
         if (!r.success) throw new Error(r.error || 'Could not load weekly sets.');
         this.data.weeklysets = r.sets || r.weeklysets || [];
@@ -574,7 +596,7 @@ const ADMIN = {
         this.data.weeklysetsTruncated = !!r.truncated;
         break;
       }
-      case 'qreports': {                                 // VERIFY: endpoint
+      case 'qreports': {
         const r = await this.post('adminListQuestionReports', {});
         if (!r.success) throw new Error(r.error || 'Could not load reports.');
         this.data.qreports = r.reports || r.qreports || [];
@@ -589,6 +611,19 @@ const ADMIN = {
   /* ── render helpers ── */
   renderStats(s) {
     if (!s) return;
+    // Normalize Supabase shape:
+    //   { users: {total, trial, active, expired, paymentPending},
+    //     payments: {total, pending, verified, rejected} }
+    // into the flat shape this method expects.
+    if (s.users && typeof s.users === 'object') {
+      s = {
+        totalUsers:      s.users.total,
+        trialUsers:      s.users.trial,
+        activeUsers:     s.users.active,
+        expiredUsers:    s.users.expired,
+        pendingPayments: s.users.paymentPending
+      };
+    }
     this.data.stats = s;
     const set = (id, v) => { const el = $(id); if (el) el.textContent = (v == null ? '—' : v); };
     set('stat-total',    s.totalUsers);
@@ -667,7 +702,7 @@ const ADMIN = {
     if (!fileId) { box.innerHTML = '<p class="t-foot">No screenshot was attached.</p>'; return; }
     box.innerHTML = '<span class="inline-loader">Loading the screenshot</span>';
     try {
-      const r = await this.post('adminDownloadScreenshot', { url, fileId, username }); // VERIFY: response shape { base64, mimeType }
+      const r = await this.post('adminDownloadScreenshot', { url, fileId, username });
       if (!r.success) throw new Error(r.error || 'Could not load that screenshot.');
       const mime = r.mimeType || 'image/png';
       box.innerHTML = '<img src="data:' + mime + ';base64,' + r.base64 +
@@ -729,7 +764,7 @@ const ADMIN = {
     if (neu !== conf) return TOAST.show('The two new passwords do not match.', 'error');
     const btn = $('pwd-save'); if (btn) btn.classList.add('loading');
     try {
-      const r = await this.post('adminChangePassword', { currentPassword: cur, newPassword: neu }); // VERIFY: endpoint + payload
+      const r = await this.post('adminChangePassword', { currentPassword: cur, newPassword: neu });
       if (!r.success) throw new Error(r.error || 'Could not change your password.');
       if (r.token && this.creds) {
         this.creds = Object.assign({}, this.creds, { token: r.token });
