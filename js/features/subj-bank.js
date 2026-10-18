@@ -157,10 +157,10 @@ async function _fetchSubjFileFromNetwork(ref, cacheKey){
   }).toString();
 
   /* FIX: never let a slow / dead endpoint block boot.
-     - 8s timeout (first-ever fetch from Apps Script legitimately takes 4-6s)
+     - 25s timeout (GAS cold starts routinely take 10-20s; rate limits add 12s backoff)
      - returns [] on failure, never undefined — callers do qs.length */
   const ctrl = new AbortController();
-  const _to = setTimeout(() => ctrl.abort(), 8000);
+  const _to = setTimeout(() => ctrl.abort(), 25000);
   let r = null;
   try {
     r = await fetch(`${url}?${query}`, { redirect: 'follow', signal: ctrl.signal });
