@@ -65,3 +65,25 @@
   try { if (typeof togglePw !== 'undefined') window.togglePw = togglePw; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof toggleTheme !== 'undefined') window.toggleTheme = toggleTheme; } catch (e) { /* not yet defined at this point */ }
 })();
+
+/* ── togglePw — password visibility toggle ──────────────────────────
+   Admin has its own copy in js/admin/core.js. The student app
+   (index.html) needs this because the .pw-field buttons call
+   togglePw(). Without it, the eye icon does nothing. */
+if (typeof window.togglePw !== 'function') {
+  window.togglePw = function (btn) {
+    try {
+      const wrap = btn.closest('.pw-field');
+      if (!wrap) return;
+      const input = wrap.querySelector('input');
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      btn.innerHTML = show
+        ? '<i class="ph ph-eye-slash"></i>'
+        : '<i class="ph ph-eye"></i>';
+    } catch (e) {}
+  };
+}
