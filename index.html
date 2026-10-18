@@ -671,6 +671,7 @@ details.faq p{
       <button class="btn" data-on-click="APP.goUser()">Start studying</button>
       <button class="btn btn-sec" data-on-click="APP.setMode('payment')">Pay now for permanent access</button>
       <button class="btn btn-sec" data-on-click="APP.logout()">Log out</button>
+      <button class="btn btn-sec" style="color:var(--danger); border-color:var(--danger-line);" data-on-click="AUTH.logoutOtherDevices()">Log out all other devices</button>
     </div>
 
     <!-- Payment -->
@@ -721,6 +722,7 @@ details.faq p{
       <div class="banner banner-warning" id="pay-queue-note" hidden></div>
       <button class="btn" id="btn-pay" data-on-click="APP.submitPayment()">Send for verification</button>
       <button class="btn btn-sec" data-on-click="APP.logout()">Back to sign in</button>
+      <button class="btn btn-sec" style="color:var(--danger); border-color:var(--danger-line);" data-on-click="AUTH.logoutOtherDevices()">Log out all other devices</button>
     </div>
 
     <!-- Awaiting review -->
@@ -731,6 +733,7 @@ details.faq p{
         <p id="st-msg">We've got it. An admin will check it and your access opens as soon as it's approved.</p>
         <button class="btn" id="btn-recheck" data-on-click="APP.refreshAccess(false)">Check if it's approved</button>
         <button class="btn btn-sec" data-on-click="APP.logout()">Back to sign in</button>
+        <button class="btn btn-sec" style="color:var(--danger); border-color:var(--danger-line);" data-on-click="AUTH.logoutOtherDevices()">Log out all other devices</button>
       </div>
     </div>
   </div>

@@ -101,7 +101,7 @@
     return true;
   }
 
-  // ── real data sources ──────────────────────────────────────────
+  // ── real data sources ─
   function _wrongBank() {
     try { return (typeof S !== 'undefined' && S.wr) ? S.wr : []; } catch (e) { return []; }
   }
@@ -115,45 +115,36 @@
     try { return (typeof S !== 'undefined' && S.stk && Array.isArray(S.stk.days)) ? S.stk.days : []; } catch (e) { return []; }
   }
 
-  // ── NEW: calculate what was actually done today ──────────────────
+  // ── daily targets & actual progress ─────────────────────────────
   function _todayStats() {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-    const t0 = today.getTime();
-    const t1 = tomorrow.getTime();
-
-    const sessions = (typeof S !== 'undefined' && S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
-    const todaySessions = sessions.filter(s => s && Number(s.at) >= t0 && Number(s.at) < t1);
-
-    let newDone = 0, reviewDone = 0, drillDone = 0, timeDone = 0;
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+    const todayTime = todayMidnight.getTime();
+    const sessions = (typeof S !== 'undefined' && S.prog && S.prog.sessions) ? S.prog.sessions : [];
     
-    todaySessions.forEach(s => {
-      const total = Number(s.total) || 0;
-      const time = Number(s.time || s.durationSec || s.duration) || Math.round(total * 0.9);
-      
-      if (s.mode === 'review') {
-        reviewDone += total;
-      } else if (s.mode === 'drill' || s.mode === 'weak') {
-        drillDone += total;
-      } else {
-        newDone += total;
+    let newDone = 0, revDone = 0, drillDone = 0, timeDoneMins = 0;
+    
+    sessions.forEach(s => {
+      const sTime = Number(s.at || s.ts || s.date);
+      if (sTime >= todayTime) {
+        const count = Number(s.count || s.n || s.total || 1);
+        if (s.type === 'review' || s.mode === 'review' || s.scope === 'review') revDone += count;
+        else if (s.type === 'drill' || s.mode === 'drill' || s.scope === 'drill') drillDone += count;
+        else newDone += count;
+        
+        // Safely assume s.time / s.dur is in seconds, convert to minutes
+        const sec = Number(s.time || s.dur || s.duration || s.elapsed || 0);
+        timeDoneMins += Math.round(sec / 60); 
       }
-      timeDone += time;
     });
-
-    return {
-      new: Math.round(newDone),
-      reviews: Math.round(reviewDone),
-      drill: Math.round(drillDone),
-      time: Math.round(timeDone)
-    };
+    
+    return { newDone, revDone, drillDone, timeDoneMins };
   }
 
-  // ── daily targets ───────────────────────────────────────────────
   function _targets() {
     const day = _dayNum();
     const phase = _phaseOf(day);
     const daysLeft = Math.max(1, 60 - day + 1);
+    const today = _todayStats();
 
     const now = Date.now();
     let reviewsDue = _wrongBank().filter(q => {
@@ -173,20 +164,16 @@
 
     const perMin = 0.9;
     const timeTarget = Math.round((newTarget + reviewsDue + drillTarget) * perMin);
-    
-    // Get actual completed stats instead of hardcoding to 0
-    const doneStats = _todayStats();
 
     return {
       phase,
-      new:     { done: doneStats.new,     target: newTarget },
-      reviews: { done: doneStats.reviews, target: Math.max(10, Math.min(30, reviewsDue || 20)) },
-      drill:   { done: doneStats.drill,   target: drillTarget },
-      time:    { done: doneStats.time,    target: timeTarget },
+      new:     { done: today.newDone, target: newTarget },
+      reviews: { done: today.revDone, target: Math.max(10, Math.min(30, reviewsDue || 20)) },
+      drill:   { done: today.drillDone, target: drillTarget },
+      time:    { done: today.timeDoneMins, target: timeTarget },
     };
   }
 
-  // Remaining unseen questions across eligible chapters
   function _remainingQuestions() {
     try {
       if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return 0;
@@ -232,7 +219,6 @@
     return days;
   }
 
-  // ── render: Home strip ──────────────────────────────────────────
   function renderHomeStrip() {
     const el = document.getElementById('sprint-card');
     if (!el) return;
@@ -255,7 +241,6 @@
       '<div class="sp-chev"><i class="ph ph-arrow-right"></i></div>';
   }
 
-  // ── render: full sprint page ────────────────────────────────────
   function renderPage() {
     const day = _dayNum();
     const phase = _phaseOf(day);
@@ -394,7 +379,6 @@
   }
   function _esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-  // ── public API ─────────────────────────────────────────────────
   window.SPRINT_PAGE = {
     init() {
       if (_inited) { renderHomeStrip(); renderPage(); return; }
@@ -432,7 +416,6 @@
     },
   };
 
-  /* ── bridge: legacy HTML calls SPRINT.takeTodayOff() / SPRINT.setExamDate() etc. ── */
   window.SPRINT = window.SPRINT || {};
   window.SPRINT.takeTodayOff    = window.SPRINT_PAGE.takeTodayOff;
   window.SPRINT.setExamDate     = window.SPRINT_PAGE.setExamDate;
