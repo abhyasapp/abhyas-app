@@ -11,6 +11,8 @@
      • gethardquestions       — flashcard badge
      • resendverification     — email
      • verifyemail            — email
+     • getcorrections         — student correction poller
+     • reportquestion         — student reporting system
 
    Routed by fileId prefix (see abhyasEndpointFor):
      • getfile                — Storage path (weekly-sets/, subjective-content/,
@@ -51,7 +53,9 @@ const ABHYAS_CONFIG = Object.freeze({
     'getcontentkey',
     'gethardquestions',
     'resendverification',
-    'verifyemail'
+    'verifyemail',
+    'getcorrections',     // Added: routes corrections to GAS
+    'reportquestion'      // Added: routes reports to GAS (just in case)
   ]
 });
 window.ABHYAS_CONFIG = ABHYAS_CONFIG;
