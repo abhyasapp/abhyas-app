@@ -48,15 +48,21 @@ const ABHYAS_CONFIG = Object.freeze({
   // Actions that ALWAYS route to Google Apps Script.
   // getfile is handled separately (see abhyasEndpointFor) because it
   // routes by fileId prefix — some files are Storage, some are Drive.
-  DRIVE_ACTIONS: [
-    'getfiles',
-    'getcontentkey',
-    'gethardquestions',
-    'resendverification',
-    'verifyemail',
-    'getcorrections',     // Added: routes corrections to GAS
-    'reportquestion'      // Added: routes reports to GAS (just in case)
-  ]
+ DRIVE_ACTIONS: [
+  'getfiles',
+  'getcontentkey',
+  'gethardquestions',
+  'resendverification',
+  'requestpasswordreset',   // ← NEW: GAS handles this
+  'resetpassword',          // ← NEW: GAS handles this
+  'updateprofile',          // ← NEW: GAS handles this
+  'verifyemail',
+  'getcorrections',
+  'reportquestion'
+  // ⚠️ Do NOT add 'logoutotherdevices' — it belongs on Supabase
+  // ⚠️ Do NOT add 'login', 'signup', 'checksession', 'submitpayment',
+  //         'getpublicinfo' — they belong on Supabase
+]
 });
 window.ABHYAS_CONFIG = ABHYAS_CONFIG;
 

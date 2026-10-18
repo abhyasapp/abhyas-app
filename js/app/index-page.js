@@ -1,12 +1,12 @@
 // js/app/index-page.js — the login/signup/payment front door.
-// Load AFTER: config.js, text.js, dom.js, access.js, theme.js, toast.js, storage.js, state.js
+// Load AFTER: config.js, net.js, text.js, dom.js, access.js, theme.js, toast.js, storage.js, state.js
 // Load BEFORE: expose.js
 
 (function () {
   'use strict';
 
   var GAS_URL = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
-  var SESSION_KEY = 'abhyas_session';
+  var SESSION_KEY = (typeof LS !== 'undefined' && LS.USER) || 'abhyas_session';   // ── FIX 1: align with auth.js
   var COOKIE_KEY = 'abhyas_cookie_seen';
 
   var _session = null;
@@ -14,10 +14,6 @@
   var _pendingPaymentFile = null;
   var _trialTimer = null;
   var _mode = 'login';
-
-  /* ================================================================ */
-  /* Small helpers                                                     */
-  /* ================================================================ */
 
   function _get(id) { return document.getElementById(id); }
   function _show(id) { var el = _get(id); if (el) el.style.display = ''; }
@@ -59,17 +55,38 @@
   /* Transport                                                         */
   /* ================================================================ */
 
-  function _post(action, params) {
-    if (!GAS_URL) return Promise.reject(new Error('The backend address is not configured.'));
-    return fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(Object.assign({ action: action }, params || {}))
-    }).then(function (r) {
-      if (!r.ok) throw new Error('The server replied with HTTP ' + r.status + '.');
-      return r.json();
-    });
+  // ── FIX 2: route through netFetch so login/checkSession go to Supabase,
+  //    while requestPasswordReset/resetPassword/resendVerification/
+  //    updateProfile still reach GAS via DRIVE_ACTIONS.
+function _resolveEndpoint(action, params) {
+  // abhyasEndpointFor() lives in config.js and is loaded before this file.
+  // It returns 'supabase' for actions not in DRIVE_ACTIONS, 'gas' otherwise.
+  // Same routing logic netFetch uses internally, without the S.online gate.
+  if (typeof abhyasEndpointFor === 'function'
+      && typeof ABHYAS_CONFIG !== 'undefined'
+      && ABHYAS_CONFIG.SUPABASE_URL) {
+    try {
+      if (abhyasEndpointFor(action, params) === 'supabase') {
+        return ABHYAS_CONFIG.SUPABASE_URL;
+      }
+    } catch (e) { /* fall through to GAS */ }
   }
+  return GAS_URL;
+}
+
+function _post(action, params) {
+  var fullParams = Object.assign({ action: action }, params || {});
+  var url = _resolveEndpoint(action, fullParams);
+  if (!url) return Promise.reject(new Error('The backend address is not configured.'));
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(fullParams)
+  }).then(function (r) {
+    if (!r.ok) throw new Error('The server replied with HTTP ' + r.status + '.');
+    return r.json();
+  });
+}
 
   /* ================================================================ */
   /* Session storage                                                   */
@@ -80,6 +97,9 @@
       var raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return null;
       var s = JSON.parse(raw);
+      // ── FIX 3: match auth.js exactly — if no token, treat as no session.
+      //    This prevents the "half-valid session" state that produced the
+      //    "Session expired on Written tab" symptom.
       if (!s || s.type !== 'user' || !s.username || !s.token) return null;
       return s;
     } catch (e) { return null; }
@@ -97,7 +117,6 @@
     if (typeof computeAccessLevel === 'function') {
       try { return computeAccessLevel(res, user); } catch (e) {}
     }
-    // Fallback if access.js didn't load
     return {
       level: res.permanentAccess || (user && user.status === 'active') ? 'permanent'
            : res.isTrial ? 'trial'
@@ -121,6 +140,8 @@
       mobile: user.mobile || '',
       token: res.token || '',
       access: _computeAccess(res, user),
+      // ── FIX 4: include needsPayment so auth.js's _enter() shows the paywall
+      needsPayment: !!(res.needsPayment || (res.access && res.access.level === 'expired')),
       emailVerified: res.emailVerified !== false,
       adminCapable: !!res.adminCapable,
       lastVerified: Date.now()
@@ -268,10 +289,11 @@
   /* ================================================================ */
 
   async function _loadPublicInfo() {
-    if (!GAS_URL) return null;
+    // getPublicInfo exists on both backends; netFetch will route it to Supabase
+    // (not in DRIVE_ACTIONS), which is fine — the Supabase edge function has
+    // a `getpublicinfo` case that returns the same shape.
     try {
-      var r = await fetch(GAS_URL + '?action=getPublicInfo&_=' + Date.now(), { cache: 'no-store' });
-      var res = await r.json();
+      var res = await _post('getPublicInfo', {});
       if (res && res.success) {
         _publicInfo = res;
         try { localStorage.setItem('abhyas_public_info', JSON.stringify(res)); } catch (e) {}
@@ -298,10 +320,8 @@
     if (!username || !password) { _showErr('Enter your username and password.'); return; }
     _setBusy(btn, true);
     try {
-      var res = await _post('login', { username: username, password: password }); // VERIFY: action name
+      var res = await _post('login', { username: username, password: password });
       if (!res || !res.success) throw new Error((res && res.error) || 'Sign-in failed.');
-            // Admin-only login: server returns adminToken, no user token.
-      // Skip user session; send to admin panel.
       if (res.isAdmin && res.adminToken && !res.token) {
         try { localStorage.setItem('abhyas_admin_token', res.adminToken); } catch (e) {}
         window.location.href = 'admin.html';
@@ -337,7 +357,7 @@
     if (pass !== cpass) return _showErr('The two passwords do not match.');
     _setBusy(btn, true);
     try {
-      var res = await _post('signup', { // VERIFY: action name
+      var res = await _post('signup', {
         name: name, mobile: mobile, email: email,
         username: uname, password: pass
       });
@@ -362,7 +382,8 @@
     if (!ident) return _showErr('Enter your username or email.');
     _setBusy(btn, true);
     try {
-      var res = await _post('requestPasswordReset', { identifier: ident }); // VERIFY: action name
+      // GAS-only action — will route to GAS via DRIVE_ACTIONS
+      var res = await _post('requestPasswordReset', { identifier: ident });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not send the reset code.');
       if (typeof toast === 'function') toast('If that matches an account, a reset code is on its way.', 4500);
       _setMode('reset');
@@ -384,7 +405,8 @@
     if (pass.length < 8) return _showErr('Password must be at least 8 characters.');
     _setBusy(btn, true);
     try {
-      var res = await _post('resetPassword', { code: code, newPassword: pass }); // VERIFY: action name
+      // GAS-only action
+      var res = await _post('resetPassword', { code: code, newPassword: pass });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not reset the password.');
       if (typeof toast === 'function') toast('Password updated. Sign in with your new password.', 4500);
       _setMode('login');
@@ -433,15 +455,19 @@
           rd.readAsDataURL(_pendingPaymentFile);
         });
       }
-      var res = await _post('submitPayment', { // VERIFY: action name
+      // submitPayment exists on Supabase (better: it uploads to Storage and
+      // returns a signed URL) — netFetch routes it there.
+      var res = await _post('submitPayment', {
         username: _session.username,
         token: _session.token,
         txId: txn,
         remarks: rem,
+        // Supabase accepts 'screenshot' as a data URL and uploads it
+        screenshot: dataUrl,
+        // Legacy GAS field name
         screenshotDataUrl: dataUrl
       });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not send the payment.');
-      // Refresh session — access level may now be payment_pending
       try {
         var check = await _post('checkSession', { username: _session.username, token: _session.token });
         if (check && check.success) {
@@ -496,6 +522,7 @@
     var btn = _get('verify-resend');
     if (btn) _setBusy(btn, true);
     try {
+      // GAS-only action — route via DRIVE_ACTIONS
       var res = await _post('resendVerification', { username: _session.username, token: _session.token });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not send that email.');
       if (res.alreadyVerified) {
@@ -524,7 +551,8 @@
     if (!val) return _showErr('Enter your mobile number.');
     if (!/^[0-9]{7,15}$/.test(val.replace(/[^0-9]/g, ''))) return _showErr('That mobile number looks wrong.');
     try {
-      var res = await _post('updateProfile', { username: _session.username, token: _session.token, mobile: val }); // VERIFY: action name
+      // GAS-only action — route via DRIVE_ACTIONS
+      var res = await _post('updateProfile', { username: _session.username, token: _session.token, mobile: val });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not save the mobile number.');
       _session.mobile = val;
       _writeSession(_session);
