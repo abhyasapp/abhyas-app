@@ -93,6 +93,17 @@ function _parseMarks(raw) {
 }
 
 function _normalizeSubjRaw(raw, fileId, chapterId, chapterName){
+  // ── Supabase getfile response shape: { success, content: "<JSON string>" }
+  //    Unwrap it in case old cache still holds this shape.
+  if(raw && typeof raw === 'object' && !Array.isArray(raw) && typeof raw.content === 'string'){
+    try {
+      raw = JSON.parse(raw.content);
+    } catch (e) {
+      console.warn('[SUBJ] Cached content is a string but not valid JSON for', fileId);
+      return [];
+    }
+  }
+
   if(raw && typeof raw === 'object' && !Array.isArray(raw) && raw.success === false){
     console.warn('[SUBJ] Server error for', fileId, '—', raw.error);
     return [];
@@ -190,17 +201,28 @@ async function _fetchSubjFileFromNetwork(ref, cacheKey){
   }
 
   const data = await r.json();
-  if(data && data.rateLimited){
-    if(typeof GETFILE_GATE !== 'undefined') GETFILE_GATE.backoff(12000);
-    throw new Error('The server asked us to slow down. Try again in a moment.');
-  }
-  if(data && data.sessionInvalid) throw new Error('Your session expired — sign in again.');
-  if(data && data.needsPayment) throw new Error('Your access has ended. Complete the payment to open the written bank.');
-  if(data && data.success === false) throw new Error(data.error || 'Server error');
-  const payload = (data && data.result !== undefined) ? data.result : data;
-  if(typeof QDB !== 'undefined') QDB.set(cacheKey, payload).catch(() => {});
-  return _normalizeSubjRaw(payload, ref.fileId, ref.chapterId, ref.name);
+if(data && data.rateLimited){
+  if(typeof GETFILE_GATE !== 'undefined') GETFILE_GATE.backoff(12000);
+  throw new Error('The server asked us to slow down. Try again in a moment.');
 }
+if(data && data.sessionInvalid) throw new Error('Your session expired — sign in again.');
+if(data && data.needsPayment) throw new Error('Your access has ended. Complete the payment to open the written bank.');
+if(data && data.success === false) throw new Error(data.error || 'Server error');
+let payload = (data && data.result !== undefined) ? data.result : data;
+
+// ── Supabase getfile returns { success: true, content: "<JSON text>" }.
+//    Unwrap the content string so downstream code sees questions/sections.
+if(payload && typeof payload === 'object' && !Array.isArray(payload) && typeof payload.content === 'string'){
+  try {
+    payload = JSON.parse(payload.content);
+  } catch (e) {
+    console.warn('[subj-bank] content is a string but not valid JSON for', ref.fileId);
+    return [];
+  }
+}
+
+if(typeof QDB !== 'undefined') QDB.set(cacheKey, payload).catch(() => {});
+return _normalizeSubjRaw(payload, ref.fileId, ref.chapterId, ref.name);
 
 async function _fetchSubjFile(ref){
   if(_fetchPromises[ref.fileId]) return _fetchPromises[ref.fileId];
