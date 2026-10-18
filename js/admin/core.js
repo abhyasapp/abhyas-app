@@ -521,8 +521,8 @@ const ADMIN = {
 
   async _refreshOne(scope) {
     switch (scope) {
-      case 'stats': {                                    // VERIFY: endpoint
-        const r = await this.post('adminGetStats', {});
+            case 'stats': {
+        const r = await this.post('adminStats', {});
         if (!r.success) throw new Error(r.error || 'Could not load stats.');
         this.renderStats(r.stats || r);
         break;
