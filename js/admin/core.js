@@ -407,6 +407,15 @@ const ADMIN = {
     try { window.location.reload(); } catch (e) {}
   },
 
+  goToStudentApp() {
+    try { localStorage.removeItem(LS_ADMIN); } catch (e) {}
+    this.creds = null;
+    this._perms = null;
+    this._forcedPwChange = false;
+    try { window.location.href = './'; } catch (e) {}
+  },
+  
+
   /* ── transport ── */
   async post(action, params = {}, opts = {}) {
     // Route: ported admin actions → Supabase, unported → GAS (auto-fallback).
