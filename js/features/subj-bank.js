@@ -146,48 +146,46 @@ function _normalizeSubjRaw(raw, fileId, chapterId, chapterName){
 }
 
 async function _fetchSubjFileFromNetwork(ref, cacheKey){
-  /* Route by fileId prefix (same rule as config.js abhyasEndpointFor):
-     - subjective-content/..., weekly-sets/..., study-docs/... → Supabase edge fn (~0.5s)
-     - Drive IDs (1ABC...)                                    → GAS (cold start 10-20s)
-     Previously this always hit _backendUrl() (GAS only), so Supabase-stored
-     files were fetched from the wrong backend → slow timeouts + empty bank. */
-  const endpoint = (typeof abhyasEndpointFor === 'function')
-    ? abhyasEndpointFor('getfile', { fileId: ref.fileId })
-    : 'gas';
-  const isSupa = endpoint === 'supabase';
-  const url = (isSupa && typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.SUPABASE_URL)
-    ? ABHYAS_CONFIG.SUPABASE_URL
-    : _backendUrl();
-  if(!url) throw new Error('Backend URL not configured');
-
-  /* getFile needs a session in backend v1.11 (GETFILE_REQUIRES_AUTH) and is
-     rate-limited per account. Without the credentials the whole written-answer
-     bank came back "Session expired" and the app reported "no questions yet". */
   const a = _authParams();
   if(typeof GETFILE_GATE !== 'undefined') await GETFILE_GATE.take();
-  const query = new URLSearchParams({
-    action: isSupa ? 'getfile' : 'getFile',
-    fileId: ref.fileId,
-    username: a.username,
-    token: a.token
-  }).toString();
 
-  /* Never let a slow / dead endpoint block boot.
-     - Supabase edge fn: 15s (normally <1s; gives margin for cold start)
-     - GAS:              25s (cold starts 10-20s; rate limits add 12s backoff)
-     - returns [] on failure, never undefined — callers do qs.length */
-  const ctrl = new AbortController();
-  const _to = setTimeout(() => ctrl.abort(), isSupa ? 15000 : 25000);
+  const isSupa = (typeof abhyasEndpointFor === 'function')
+    ? abhyasEndpointFor('getfile', { fileId: ref.fileId }) === 'supabase'
+    : false;
+  const actionName = isSupa ? 'getfile' : 'getFile';
+  const timeout = isSupa ? 15000 : 25000;
+
   let r = null;
   try {
-    r = await fetch(`${url}?${query}`, { redirect: 'follow', signal: ctrl.signal });
+    if (isSupa) {
+      // Supabase edge fn expects POST body (avoids putting tokens in the URL)
+      r = await netFetch(_backendUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ 
+          action: actionName, 
+          fileId: ref.fileId, 
+          username: a.username, 
+          token: a.token 
+        })
+      }, timeout);
+    } else {
+      // GAS expects GET with URL params
+      const query = new URLSearchParams({ 
+        action: actionName, 
+        fileId: ref.fileId, 
+        username: a.username, 
+        token: a.token 
+      }).toString();
+      r = await netFetch(_backendUrl() + '?' + query, {}, timeout);
+    }
   } catch (e) {
     console.warn('[subj-bank] fetch failed/aborted — using cache', e && e.message);
-  } finally {
-    clearTimeout(_to);
+    return [];
   }
+  
   if (!r || !r.ok) {
-    console.warn('[subj-bank] no fresh data (status=' + (r ? r.status : 'none') + ', backend=' + endpoint + ')');
+    console.warn('[subj-bank] no fresh data (status=' + (r ? r.status : 'none') + ', backend=' + (isSupa ? 'supabase' : 'gas') + ')');
     return [];
   }
 
