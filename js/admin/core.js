@@ -414,10 +414,11 @@ const ADMIN = {
   /* ── transport ── */
   async post(action, params = {}, opts = {}) {
     if (!GAS_URL) return { success: false, error: 'Backend URL is not configured.' };
-    const body = JSON.stringify(Object.assign({
+      const body = JSON.stringify(Object.assign({
       action,
       username: this.creds ? this.creds.user : '',
-      token:    this.creds ? this.creds.token : ''
+      token:    this.creds ? this.creds.token : '',
+      adminToken: this.creds ? this.creds.token : ''
     }, params || {}));
     const timeoutMs = opts.timeoutMs || 30000;
     const ctrl = new AbortController();
