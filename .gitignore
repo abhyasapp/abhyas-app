@@ -1,0 +1,26 @@
+cd D:\kartik1
+@'
+# Backups / temp files
+*.bak
+*.bak2
+user.html.backup
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (if you ever add packages)
+node_modules/
+package-lock.json
+
+# Local env (in case you add one later)
+.env
+.env.local
+'@ | Set-Content .gitignore -Encoding UTF8

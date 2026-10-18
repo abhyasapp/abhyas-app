@@ -1,0 +1,1475 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://*.supabase.co https://script.googleusercontent.com https://accounts.google.com https://*.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; frame-src https://accounts.google.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="theme-color" content="#F6F7F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1213" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Abhyas Admin">
+<meta name="format-detection" content="telephone=no">
+<meta name="robots" content="noindex,nofollow">
+<script src="js/core/config.js"></script>
+<script src="js/core/actions.js"></script>
+<title>Abhyas Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="tools/vendor/fonts/fonts.css">
+<link rel="stylesheet" href="tools/vendor/phosphor/phosphor-regular.css">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   Abhyas Admin — self-contained design system + page styles.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root{
+  color-scheme:light;
+  --bg:#F6F7F6;--bg-grouped:#EFF1F0;--surface:#FFFFFF;--surface-2:#FFFFFF;
+  --scrim:rgba(20,23,26,.42);--sep:#E4E6E4;--sep-strong:#D3D7D4;
+  --ink:#14171A;--ink-2:#565B5F;--ink-3:#83888C;--ink-4:#AFB4B6;--on-accent:#FFFFFF;
+  --accent:#1E7A4C;--accent-hover:#196741;--accent-pressed:#145536;--accent-soft:#E3F1EA;--accent-rgb:30,122,76;
+  --success:#1E7A4C;--success-soft:#E3F1EA;
+  --warning:#9A5A0B;--warning-soft:#FAEFE0;
+  --danger:#B2372B;--danger-soft:#FBE8E6;
+  --info:#23619F;--info-soft:#E8F0FA;
+  --focus:#1E7A4C;--selection:rgba(30,122,76,.18);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+  --fs-display:1.75rem;--fs-t1:1.3125rem;--fs-t2:1.0625rem;--fs-t3:.9375rem;--fs-body:.875rem;
+  --fs-callout:.8125rem;--fs-foot:.75rem;--fs-cap:.6875rem;
+  --sp-1:.25rem;--sp-2:.5rem;--sp-3:.75rem;--sp-4:1rem;--sp-5:1.25rem;--sp-6:1.5rem;
+  --sp-8:2rem;--sp-10:2.5rem;--sp-12:3rem;--sp-16:4rem;
+  --r-control:8px;--r-input:10px;--r-card:14px;--r-panel:16px;--r-sheet:22px;--r-full:999px;
+  --sh-1:0 1px 2px rgba(20,23,26,.05),0 1px 1px rgba(20,23,26,.03);
+  --sh-2:0 4px 16px rgba(20,23,26,.08),0 1px 2px rgba(20,23,26,.05);
+  --sh-modal:0 24px 64px rgba(20,23,26,.22),0 4px 16px rgba(20,23,26,.10);
+  --dur-fast:150ms;--dur-base:220ms;--dur-slow:320ms;
+  --ease:cubic-bezier(.4,0,.2,1);--ease-out:cubic-bezier(0,0,.2,1);--ease-spring:cubic-bezier(.32,1.35,.5,1);
+  --rail-w:250px;--rail-compact:72px;--topbar-h:54px;--content-max:1220px;
+  --safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+  --z-sticky:10;--z-dropdown:200;--z-popover:300;--z-sheet:400;--z-modal:500;--z-palette:600;--z-toast:700;--z-gate:800;
+}
+.dark{
+  color-scheme:dark;
+  --bg:#0F1213;--bg-grouped:#171A1C;--surface:#1A1E20;--surface-2:#22272A;--scrim:rgba(0,0,0,.58);
+  --sep:rgba(255,255,255,.08);--sep-strong:rgba(255,255,255,.15);
+  --ink:#EFF2F1;--ink-2:#9BA1A3;--ink-3:#8E9498;--ink-4:#4D5254;--on-accent:#05120C;
+  --accent:#41C98A;--accent-hover:#5BD49C;--accent-pressed:#31AA73;--accent-soft:rgba(65,201,138,.15);--accent-rgb:65,201,138;
+  --success:#41C98A;--success-soft:rgba(65,201,138,.15);
+  --warning:#E3A751;--warning-soft:rgba(227,167,81,.15);
+  --danger:#F4837B;--danger-soft:rgba(240,104,95,.15);
+  --info:#5FAEE8;--info-soft:rgba(95,174,232,.15);
+  --focus:#41C98A;--selection:rgba(65,201,138,.25);
+  --sh-1:0 1px 2px rgba(0,0,0,.4);--sh-2:0 6px 20px rgba(0,0,0,.45);--sh-modal:0 28px 72px rgba(0,0,0,.62);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{height:100%;-webkit-text-size-adjust:100%}
+body{font-family:var(--font);font-size:var(--fs-body);line-height:1.5;font-weight:450;
+  background:var(--bg);color:var(--ink);overflow-x:hidden;
+  min-height:100vh;min-height:100dvh;overscroll-behavior-y:none;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-control)}
+img,svg,video{display:block;max-width:100%}
+h1,h2,h3,h4{color:var(--ink);line-height:1.25;font-weight:600}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+ul,ol{list-style:none}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+::selection{background:var(--selection)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--sep-strong);border-radius:5px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-4);background-clip:padding-box}
+hr{border:none;border-top:1px solid var(--sep);margin:var(--sp-4) 0}
+code,kbd,pre{font-family:var(--mono);font-size:.9em}
+b,strong{font-weight:600}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+.t-t1{font-size:var(--fs-t1);font-weight:700;letter-spacing:-.017em;line-height:1.2}
+.t-t2{font-size:var(--fs-t2);font-weight:650;line-height:1.28}
+.t-t3{font-size:var(--fs-t3);font-weight:600;line-height:1.35}
+.t-body{font-size:var(--fs-body)}
+.t-callout{font-size:var(--fs-callout);color:var(--ink-2);line-height:1.5}
+.t-foot{font-size:var(--fs-foot);color:var(--ink-3);line-height:1.45}
+.t-cap{font-size:var(--fs-cap);color:var(--ink-3);font-weight:550}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-2)}
+.dim{color:var(--ink-3)}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skip-link{position:absolute;top:-100px;left:var(--sp-4);z-index:var(--z-toast);
+  background:var(--accent);color:var(--on-accent);padding:var(--sp-2) var(--sp-4);
+  border-radius:var(--r-input);font-weight:600;font-size:var(--fs-callout);transition:top var(--dur-fast) var(--ease)}
+.skip-link:focus{top:var(--sp-2);text-decoration:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
+  height:36px;padding:0 var(--sp-4);border-radius:var(--r-input);border:1px solid transparent;
+  font-size:var(--fs-callout);font-weight:600;line-height:1;white-space:nowrap;user-select:none;
+  transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),
+             color var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease),opacity var(--dur-fast) var(--ease);}
+.btn i{font-size:1.05em}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-primary:hover:not(:disabled){background:var(--accent-hover)}
+.btn-primary:active:not(:disabled){background:var(--accent-pressed)}
+.btn-secondary{background:var(--surface);color:var(--ink);border-color:var(--sep-strong)}
+.btn-secondary:hover:not(:disabled){background:var(--bg-grouped)}
+.btn-quiet{background:var(--bg-grouped);color:var(--ink-2)}
+.btn-quiet:hover:not(:disabled){background:var(--sep);color:var(--ink)}
+.btn-tertiary{background:transparent;color:var(--accent)}
+.btn-tertiary:hover:not(:disabled){background:var(--accent-soft)}
+.btn-danger{background:var(--danger-soft);color:var(--danger)}
+.btn-danger:hover:not(:disabled){background:var(--danger);color:#fff}
+.btn-sm{height:30px;padding:0 var(--sp-3);font-size:var(--fs-foot);border-radius:var(--r-control)}
+.btn-lg{height:44px;padding:0 var(--sp-6);font-size:var(--fs-body)}
+.btn-block{width:100%}
+.btn.loading{color:transparent!important;pointer-events:none;position:relative}
+.btn.loading::after{content:'';position:absolute;inset:0;margin:auto;width:15px;height:15px;
+  border:2px solid var(--ink-3);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+.btn-primary.loading::after{border-color:var(--on-accent);border-top-color:transparent}
+@keyframes spin{to{transform:rotate(360deg)}}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+  border-radius:var(--r-input);background:transparent;color:var(--ink-2);flex-shrink:0;font-size:1.05rem;
+  transition:background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease)}
+.icon-btn:hover{background:var(--bg-grouped);color:var(--ink)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn.danger:hover{background:var(--danger-soft);color:var(--danger)}
+.icon-btn:disabled{opacity:.4;cursor:not-allowed}
+.icon-btn.sm{width:30px;height:30px;font-size:.95rem}
+.row-actions{display:inline-flex;gap:2px;justify-content:flex-end}
+.field{display:flex;flex-direction:column;gap:var(--sp-1);margin-bottom:var(--sp-4)}
+.field:last-child{margin-bottom:0}
+.field > label,.field-label{font-size:var(--fs-foot);font-weight:600;color:var(--ink-2)}
+.field-hint{font-size:var(--fs-cap);color:var(--ink-3);line-height:1.45}
+.field-error{font-size:var(--fs-cap);color:var(--danger);display:flex;align-items:center;gap:.3rem}
+.input,.select,.textarea{width:100%;height:38px;padding:0 var(--sp-3);
+  background:var(--surface);border:1px solid var(--sep-strong);border-radius:var(--r-input);
+  color:var(--ink);font-size:var(--fs-body);
+  transition:border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
+.textarea{height:auto;min-height:90px;padding:var(--sp-2) var(--sp-3);resize:vertical;line-height:1.55}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.input::placeholder,.textarea::placeholder{color:var(--ink-4)}
+.input.invalid,.textarea.invalid{border-color:var(--danger)}
+.input[type=date],.input[type=datetime-local],.input[type=time]{padding-right:var(--sp-2)}
+.select{cursor:pointer;appearance:none;padding-right:var(--sp-8);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2383888C' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right var(--sp-3) center}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)}
+@media (max-width:540px){.field-row{grid-template-columns:1fr}}
+input[type=checkbox],input[type=radio]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.pw-field{position:relative;display:flex}
+.pw-field .input{padding-right:2.5rem}
+.pw-field button{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;border-radius:var(--r-control);color:var(--ink-3)}
+.pw-field button:hover{background:var(--bg-grouped);color:var(--ink)}
+.file-drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:var(--sp-1);background:var(--bg-grouped);border:1.5px dashed var(--sep-strong);
+  border-radius:var(--r-card);padding:var(--sp-6) var(--sp-4);cursor:pointer;text-align:center;
+  transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+.file-drop:hover,.file-drop:focus-within{border-color:var(--accent);background:var(--accent-soft)}
+.file-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.file-drop .fd-icon{font-size:1.5rem;color:var(--ink-3)}
+.file-drop .fd-main{font-size:var(--fs-callout);font-weight:600;color:var(--ink)}
+.file-drop .fd-sub{font-size:var(--fs-cap);color:var(--ink-3)}
+.segmented{display:inline-flex;padding:3px;background:var(--bg-grouped);border-radius:var(--r-input);gap:2px}
+.segmented button{padding:var(--sp-1) var(--sp-3);border-radius:calc(var(--r-input) - 3px);
+  font-size:var(--fs-foot);font-weight:600;color:var(--ink-2);
+  transition:background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease)}
+.segmented button.active{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
+.badge{display:inline-flex;align-items:center;gap:.35rem;padding:.18rem .5rem;border-radius:var(--r-full);
+  font-size:var(--fs-cap);font-weight:600;line-height:1.35;white-space:nowrap;
+  background:var(--bg-grouped);color:var(--ink-2)}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.badge.flat::before{display:none}
+.badge.flat{padding:.18rem .45rem}
+.badge-accent{background:var(--accent-soft);color:var(--accent)}
+.badge-success{background:var(--success-soft);color:var(--success)}
+.badge-warning{background:var(--warning-soft);color:var(--warning)}
+.badge-danger{background:var(--danger-soft);color:var(--danger)}
+.badge-info{background:var(--info-soft);color:var(--info)}
+.st-trial,.st-pending,.st-payment_pending,.st-pending_review,.st-open,.st-scheduled,.st-ungraded
+  {background:var(--warning-soft);color:var(--warning)}
+.st-active,.st-verified,.st-graded,.st-resolved,.st-live,.st-permanent
+  {background:var(--success-soft);color:var(--success)}
+.st-expired,.st-rejected{background:var(--danger-soft);color:var(--danger)}
+.st-dismissed,.st-archived,.st-none{background:var(--bg-grouped);color:var(--ink-3)}
+.avatar{width:28px;height:28px;border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent);
+  display:inline-flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;
+  letter-spacing:.3px;flex-shrink:0}
+.avatar.lg{width:46px;height:46px;font-size:1rem}
+.panel{background:var(--surface);border:1px solid var(--sep);border-radius:var(--r-panel);
+  padding:var(--sp-5);margin-bottom:var(--sp-4)}
+.panel.flush{padding:0;overflow:hidden}
+.panel-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-4)}
+.panel-hd h3{font-size:var(--fs-t3);font-weight:600;display:flex;align-items:center;gap:var(--sp-2)}
+.panel-hd .sub{font-size:var(--fs-foot);color:var(--ink-3);margin-top:3px;line-height:1.45}
+.panel-hd .acts{display:flex;align-items:center;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.panel > p.lead{font-size:var(--fs-callout);color:var(--ink-2);margin-bottom:var(--sp-4);line-height:1.55;max-width:68ch}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) 0;border-top:1px solid var(--sep)}
+.rows > .row:first-child{border-top:none}
+.row-main{flex:1;min-width:0}
+.row-title{font-size:var(--fs-callout);font-weight:600;color:var(--ink);display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.row-sub{font-size:var(--fs-cap);color:var(--ink-3);margin-top:2px}
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-3) var(--sp-4)}
+.dl div{min-width:0}
+.dl dt{font-size:var(--fs-cap);color:var(--ink-3);font-weight:550;margin-bottom:2px}
+.dl dd{font-size:var(--fs-callout);color:var(--ink);font-weight:500;overflow-wrap:anywhere}
+#shell{display:flex;min-height:100vh;min-height:100dvh}
+#app{display:none}
+#app.on{display:block}
+#rail{width:var(--rail-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--sep);
+  display:flex;flex-direction:column;padding:var(--sp-3);position:sticky;top:0;height:100vh;height:100dvh;
+  overflow-y:auto;overscroll-behavior:contain;transition:width var(--dur-base) var(--ease)}
+#rail-brand{display:flex;align-items:center;gap:var(--sp-2);
+  padding:var(--sp-2) var(--sp-2) var(--sp-4);font-weight:650;font-size:var(--fs-t3);color:var(--ink)}
+#rail-brand img{width:26px;height:26px;border-radius:7px;flex-shrink:0}
+#rail-brand .sub{display:block;font-size:var(--fs-cap);color:var(--ink-3);font-weight:500;margin-top:1px}
+.rail-group{font-size:var(--fs-cap);font-weight:600;color:var(--ink-4);padding:var(--sp-4) var(--sp-2) var(--sp-1)}
+.rail-item{display:flex;align-items:center;gap:var(--sp-2);width:100%;text-align:left;
+  padding:var(--sp-2);border-radius:var(--r-input);margin-bottom:1px;position:relative;
+  font-size:var(--fs-callout);font-weight:550;color:var(--ink-2);
+  transition:background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease)}
+.rail-item i{font-size:1.1rem;width:20px;text-align:center;flex-shrink:0}
+.rail-item:hover{background:var(--bg-grouped);color:var(--ink)}
+.rail-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.rail-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:.625rem;font-weight:700;
+  min-width:18px;height:18px;border-radius:var(--r-full);
+  display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.rail-foot{margin-top:auto;padding-top:var(--sp-3);border-top:1px solid var(--sep)}
+.rail-version{text-align:center;font-size:var(--fs-cap);color:var(--ink-4);padding-top:var(--sp-2)}
+@media (max-width:1100px){
+  #rail{width:var(--rail-compact);align-items:center}
+  #rail-brand span,.rail-group,.rail-item span,.rail-foot span,.rail-version{display:none}
+  #rail-brand{justify-content:center;padding-left:0;padding-right:0}
+  .rail-item{justify-content:center}
+  .rail-item .rail-badge{position:absolute;top:0;right:2px;margin-left:0}
+  .rail-foot{width:100%}
+}
+@media (max-width:820px){
+  #rail{position:fixed;inset:0 auto 0 0;z-index:var(--z-sheet);width:284px;align-items:stretch;
+    transform:translateX(-102%);box-shadow:var(--sh-modal);
+    padding-top:calc(var(--sp-3) + var(--safe-t));
+    transition:transform var(--dur-base) var(--ease-out)}
+  #rail.open{transform:translateX(0)}
+  #rail-brand span,.rail-group,.rail-item span,.rail-foot span,.rail-version{display:block}
+  #rail-brand{justify-content:flex-start}
+  .rail-item{justify-content:flex-start}
+  .rail-item .rail-badge{position:static;margin-left:auto}
+}
+#rail-scrim{display:none;position:fixed;inset:0;z-index:calc(var(--z-sheet) - 1);background:var(--scrim);backdrop-filter:blur(3px)}
+#rail-scrim.show{display:block;animation:fade-in var(--dur-fast) var(--ease)}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+#main-col{flex:1;min-width:0;display:flex;flex-direction:column}
+#topbar{height:var(--topbar-h);flex-shrink:0;position:sticky;top:0;z-index:var(--z-sticky);
+  display:flex;align-items:center;gap:var(--sp-2);padding:0 var(--sp-5);
+  background:color-mix(in srgb,var(--bg) 86%,transparent);
+  backdrop-filter:blur(18px) saturate(1.5);border-bottom:1px solid var(--sep)}
+@media (max-width:640px){#topbar{padding:0 var(--sp-3)}}
+#rail-toggle{display:none}
+@media (max-width:820px){#rail-toggle{display:inline-flex}}
+#crumb{font-size:var(--fs-callout);font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1}
+#search-pill{display:flex;align-items:center;gap:var(--sp-2);height:32px;padding:0 var(--sp-2) 0 var(--sp-3);
+  background:var(--bg-grouped);border-radius:var(--r-input);color:var(--ink-3);
+  font-size:var(--fs-foot);margin-left:var(--sp-4);min-width:200px;
+  transition:background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease)}
+#search-pill:hover{background:var(--sep);color:var(--ink-2)}
+#search-pill .grow{flex:1;text-align:left}
+kbd{font-family:var(--mono);font-size:.625rem;background:var(--surface);
+  border:1px solid var(--sep-strong);border-radius:5px;padding:2px 5px;color:var(--ink-3);line-height:1}
+@media (max-width:820px){#search-pill{min-width:0;padding:0 var(--sp-2);margin-left:auto}#search-pill .grow,#search-pill kbd{display:none}}
+#topbar-actions{margin-left:auto;display:flex;align-items:center;gap:2px}
+#sync-note{font-size:var(--fs-cap);color:var(--ink-3);margin-right:var(--sp-2);white-space:nowrap}
+#offline-pill{display:none;align-items:center;gap:6px;height:26px;padding:0 var(--sp-3);
+  background:var(--warning-soft);color:var(--warning);border-radius:var(--r-full);
+  font-size:var(--fs-cap);font-weight:600;white-space:nowrap;margin-right:var(--sp-2)}
+#offline-pill.show{display:inline-flex}
+@media (max-width:900px){#sync-note{display:none}}
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);min-width:232px;
+  background:var(--surface-2);border:1px solid var(--sep);border-radius:var(--r-card);
+  box-shadow:var(--sh-modal);padding:var(--sp-1);z-index:var(--z-dropdown);display:none}
+.menu.show{display:block;animation:menu-in var(--dur-fast) var(--ease-out)}
+@keyframes menu-in{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+.menu-head{padding:var(--sp-3) var(--sp-3) var(--sp-2);border-bottom:1px solid var(--sep);margin-bottom:var(--sp-1)}
+.menu-item{display:flex;align-items:center;gap:var(--sp-3);width:100%;text-align:left;
+  padding:var(--sp-2) var(--sp-3);border-radius:var(--r-control);
+  font-size:var(--fs-callout);color:var(--ink);font-weight:500}
+.menu-item i{font-size:1rem;color:var(--ink-3);width:18px;text-align:center}
+.menu-item:hover{background:var(--bg-grouped)}
+.menu-item .kb{margin-left:auto}
+.menu-item.danger{color:var(--danger)}
+.menu-item.danger i{color:var(--danger)}
+.menu-item.danger:hover{background:var(--danger-soft)}
+.menu-sep{height:1px;background:var(--sep);margin:var(--sp-1) 0}
+#content{flex:1;padding:var(--sp-5) var(--sp-5) var(--sp-12)}
+@media (max-width:640px){#content{padding:var(--sp-3) var(--sp-3) calc(var(--sp-10) + var(--safe-b))}}
+.inner{max-width:var(--content-max);margin:0 auto}
+.page-head{margin-bottom:var(--sp-5);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap}
+.page-head h1{font-size:var(--fs-t1);font-weight:700;letter-spacing:-.017em}
+.page-head p{font-size:var(--fs-callout);color:var(--ink-2);margin-top:3px;max-width:66ch}
+.page-head .acts{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.view{display:none}
+.view.on{display:block}
+.view.on.animate{animation:view-in var(--dur-base) var(--ease-out)}
+@keyframes view-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3);margin:var(--sp-8) 0 var(--sp-3)}
+.section-head:first-child{margin-top:0}
+.section-head h2{font-size:var(--fs-t3);font-weight:600}
+.section-head .hint{font-size:var(--fs-foot);color:var(--ink-3)}
+.toolbar{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;margin-bottom:var(--sp-3)}
+.toolbar .input,.toolbar .select{height:34px;width:auto}
+.toolbar .search{flex:1;min-width:190px;max-width:380px;padding-left:2rem;background-repeat:no-repeat;background-position:.6rem center;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2383888C' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E")}
+.toolbar .spacer{margin-left:auto}
+.toolbar label.inline{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-foot);color:var(--ink-2);white-space:nowrap}
+.toolbar label.inline .input{width:auto;min-width:0}
+.table-wrap{background:var(--surface);border:1px solid var(--sep);border-radius:var(--r-panel);overflow:hidden;overflow:clip}
+table{width:100%;border-collapse:collapse;font-size:var(--fs-callout)}
+th{position:sticky;top:var(--topbar-h);z-index:1;background:var(--bg-grouped);
+  text-align:left;padding:var(--sp-3) var(--sp-4);
+  font-size:var(--fs-cap);font-weight:600;color:var(--ink-3);
+  border-bottom:1px solid var(--sep);user-select:none;white-space:nowrap}
+th.sortable{cursor:pointer}
+th.sortable:hover{color:var(--ink)}
+th .sort-ic{margin-left:3px;opacity:0;font-size:.75em}
+th.sorted{color:var(--ink)}
+th.sorted .sort-ic{opacity:1;color:var(--accent)}
+td{padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--sep);vertical-align:middle;color:var(--ink)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:background var(--dur-fast) var(--ease)}
+tbody tr:hover td{background:var(--bg-grouped)}
+tbody tr.selected td{background:var(--accent-soft)}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cell-user{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+.cell-user .nm{font-weight:600;color:var(--ink)}
+.cell-user .un{font-size:var(--fs-cap);color:var(--ink-3);font-family:var(--mono)}
+@media (max-width:900px){
+  .table-wrap{border:none;background:transparent;border-radius:0;overflow:visible}
+  table,tbody,tr,td{display:block}
+  thead{display:none}
+  tbody tr{background:var(--surface);border:1px solid var(--sep);border-radius:var(--r-card);
+    padding:var(--sp-3) var(--sp-4);margin-bottom:var(--sp-2);position:relative}
+  tbody tr:hover td,tbody tr.selected td{background:transparent}
+  tbody tr.selected{border-color:var(--accent);background:var(--accent-soft)}
+  td{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);border:none;padding:var(--sp-1) 0;text-align:right}
+  td::before{content:attr(data-label);font-size:var(--fs-cap);font-weight:600;color:var(--ink-3);text-align:left;flex-shrink:0}
+  td.td-check{position:absolute;top:var(--sp-3);right:var(--sp-3);padding:0;width:auto}
+  td.td-check::before{display:none}
+  td.td-user{justify-content:flex-start;text-align:left;padding-right:2rem;padding-bottom:var(--sp-2)}
+  td.td-user::before{display:none}
+  td.td-actions{justify-content:flex-end;padding-top:var(--sp-2);margin-top:var(--sp-2);border-top:1px solid var(--sep)}
+  td.td-actions::before{display:none}
+}
+.bulk-bar{display:none;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
+  padding:var(--sp-2) var(--sp-3);margin-bottom:var(--sp-3);
+  background:var(--accent-soft);border:1px solid rgba(var(--accent-rgb),.28);
+  border-radius:var(--r-input);font-size:var(--fs-foot);color:var(--ink)}
+.bulk-bar.show{display:flex;animation:bar-in var(--dur-fast) var(--ease-out)}
+.bulk-bar .count{font-weight:650}
+@keyframes bar-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.pagination{display:flex;align-items:center;justify-content:center;gap:var(--sp-1);margin-top:var(--sp-4);flex-wrap:wrap}
+.pagination button{min-width:32px;height:32px;border-radius:var(--r-control);padding:0 var(--sp-2);
+  font-size:var(--fs-foot);font-weight:600;color:var(--ink-2);
+  transition:background var(--dur-fast) var(--ease)}
+.pagination button:hover:not(:disabled){background:var(--bg-grouped);color:var(--ink)}
+.pagination button:disabled{opacity:.3;cursor:not-allowed}
+.pagination button.active{background:var(--accent);color:var(--on-accent)}
+.pagination .gap{color:var(--ink-4);padding:0 2px}
+.pagination .info{font-size:var(--fs-cap);color:var(--ink-3);margin-left:var(--sp-2)}
+.queue{display:flex;flex-direction:column;background:var(--surface);
+  border:1px solid var(--sep);border-radius:var(--r-panel);overflow:hidden}
+.queue-row{display:flex;align-items:center;gap:var(--sp-4);width:100%;text-align:left;
+  padding:var(--sp-4) var(--sp-5);border-top:1px solid var(--sep);
+  transition:background var(--dur-fast) var(--ease)}
+.queue-row:first-child{border-top:none}
+.queue-row:hover{background:var(--bg-grouped)}
+.queue-row:focus-visible{outline-offset:-2px}
+.q-icon{width:38px;height:38px;border-radius:var(--r-input);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;
+  background:var(--bg-grouped);color:var(--ink-3)}
+.queue-row.urgent .q-icon{background:var(--warning-soft);color:var(--warning)}
+.queue-row.alert .q-icon{background:var(--danger-soft);color:var(--danger)}
+.queue-row.money .q-icon{background:var(--accent-soft);color:var(--accent)}
+.q-body{flex:1;min-width:0}
+.q-title{font-size:var(--fs-t3);font-weight:600;color:var(--ink)}
+.q-sub{font-size:var(--fs-foot);color:var(--ink-3);margin-top:1px}
+.q-count{font-family:var(--mono);font-size:1.3rem;font-weight:700;color:var(--ink);
+  min-width:2.4ch;text-align:right;font-variant-numeric:tabular-nums}
+.queue-row.clear .q-count{color:var(--ink-4);font-weight:500}
+.q-chev{color:var(--ink-4);font-size:1rem;flex-shrink:0}
+@media (max-width:560px){
+  .queue-row{padding:var(--sp-3) var(--sp-4);gap:var(--sp-3)}
+  .q-icon{width:34px;height:34px}
+  .q-title{font-size:var(--fs-callout)}
+}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3)}
+@media (max-width:900px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.metric{background:var(--surface);border:1px solid var(--sep);border-radius:var(--r-card);
+  padding:var(--sp-4);text-align:left;
+  transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+.metric:hover{border-color:var(--sep-strong);background:var(--bg-grouped)}
+.metric .v{font-family:var(--mono);font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.metric .l{font-size:var(--fs-cap);color:var(--ink-3);font-weight:600;margin-top:4px}
+.metric.on{border-color:var(--accent);background:var(--accent-soft)}
+.metric.on .l{color:var(--accent)}
+#palette{display:none;position:fixed;inset:0;z-index:var(--z-palette);
+  background:var(--scrim);backdrop-filter:blur(8px);
+  align-items:flex-start;justify-content:center;padding:10vh var(--sp-4) var(--sp-4)}
+#palette.show{display:flex}
+.palette-box{width:100%;max-width:600px;background:var(--surface-2);
+  border:1px solid var(--sep);border-radius:var(--r-sheet);
+  box-shadow:var(--sh-modal);overflow:hidden;animation:palette-in var(--dur-base) var(--ease-spring)}
+@keyframes palette-in{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+.palette-input{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-4);border-bottom:1px solid var(--sep)}
+.palette-input i{color:var(--ink-3);font-size:1.1rem}
+.palette-input input{flex:1;background:none;border:none;outline:none;font-size:var(--fs-t3);font-weight:450;color:var(--ink)}
+.palette-input input::placeholder{color:var(--ink-4);font-weight:450}
+.palette-list{max-height:52vh;overflow-y:auto;padding:var(--sp-2) 0}
+.palette-group{font-size:var(--fs-cap);font-weight:600;color:var(--ink-4);padding:var(--sp-2) var(--sp-4) var(--sp-1)}
+.palette-item{display:flex;align-items:center;gap:var(--sp-3);width:100%;text-align:left;
+  padding:var(--sp-2) var(--sp-4);font-size:var(--fs-callout);color:var(--ink)}
+.palette-item i{color:var(--ink-3);width:18px;text-align:center;flex-shrink:0;font-size:1rem}
+.palette-item.sel{background:var(--accent-soft)}
+.palette-item.sel i{color:var(--accent)}
+.palette-item .p-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.palette-item .p-sub{font-size:var(--fs-cap);color:var(--ink-3);font-family:var(--mono);flex-shrink:0;max-width:44%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.palette-foot{display:flex;gap:var(--sp-4);padding:var(--sp-2) var(--sp-4);border-top:1px solid var(--sep);font-size:var(--fs-cap);color:var(--ink-3);flex-wrap:wrap}
+.palette-foot span{display:flex;align-items:center;gap:4px}
+@media (max-width:560px){#palette{padding-top:6vh}.palette-foot{display:none}}
+.overlay{display:none;position:fixed;inset:0;z-index:var(--z-modal);
+  background:var(--scrim);backdrop-filter:blur(5px);
+  align-items:center;justify-content:center;padding:var(--sp-4)}
+.overlay.show{display:flex}
+.dialog{width:100%;max-width:440px;max-height:88vh;display:flex;flex-direction:column;
+  background:var(--surface-2);border:1px solid var(--sep);border-radius:var(--r-sheet);
+  box-shadow:var(--sh-modal);animation:dialog-in var(--dur-base) var(--ease-spring);overflow:hidden}
+.dialog.wide{max-width:680px}
+@keyframes dialog-in{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+.dialog-hd{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  padding:var(--sp-4) var(--sp-5);border-bottom:1px solid var(--sep);flex-shrink:0}
+.dialog-hd h3{font-size:var(--fs-t3);font-weight:650}
+.dialog-hd.danger h3{color:var(--danger)}
+.dialog-body{padding:var(--sp-5);overflow-y:auto;flex:1}
+.dialog-foot{display:flex;gap:var(--sp-2);padding:var(--sp-4) var(--sp-5);border-top:1px solid var(--sep);flex-shrink:0}
+.dialog-foot .btn{flex:1}
+@media (max-width:640px){
+  .overlay{align-items:flex-end;padding:0}
+  .dialog{max-width:none;max-height:90vh;border-radius:var(--r-sheet) var(--r-sheet) 0 0;border-bottom:none;
+    animation:sheet-in var(--dur-base) var(--ease-out)}
+  .dialog::before{content:'';display:block;width:38px;height:4px;border-radius:var(--r-full);background:var(--sep-strong);margin:var(--sp-2) auto 0;flex-shrink:0}
+  .dialog-foot{padding-bottom:calc(var(--sp-4) + var(--safe-b))}
+  @keyframes sheet-in{from{transform:translateY(100%)}to{transform:translateY(0)}}
+}
+#toasts{position:fixed;bottom:var(--sp-6);left:50%;transform:translateX(-50%);
+  z-index:10030;display:flex;flex-direction:column;align-items:center;gap:var(--sp-2);
+  pointer-events:none;width:calc(100vw - 2rem);max-width:400px}
+@media (max-width:820px){#toasts{bottom:calc(var(--sp-4) + var(--safe-b))}}
+.toast{display:flex;align-items:flex-start;gap:var(--sp-2);width:100%;
+  background:var(--ink);color:var(--bg);border-radius:var(--r-input);
+  padding:var(--sp-3) var(--sp-4);font-size:var(--fs-callout);font-weight:500;line-height:1.45;
+  box-shadow:var(--sh-2);pointer-events:auto;animation:toast-in var(--dur-base) var(--ease-spring)}
+.dark .toast{background:var(--surface-2);border:1px solid var(--sep-strong);color:var(--ink)}
+.toast i{flex-shrink:0;font-size:1.05rem;margin-top:1px}
+.toast.success i{color:#41C98A}
+.toast.error i{color:#F0685F}
+.toast.warning i{color:#E3A751}
+.toast.out{animation:toast-out var(--dur-fast) var(--ease) forwards}
+@keyframes toast-in{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes toast-out{to{opacity:0;transform:translateY(-6px)}}
+.empty{text-align:center;padding:var(--sp-12) var(--sp-4)}
+.empty i{font-size:1.75rem;color:var(--ink-4)}
+.empty .t{font-size:var(--fs-t3);font-weight:600;color:var(--ink);margin-top:var(--sp-3)}
+.empty .d{font-size:var(--fs-callout);color:var(--ink-3);margin:4px auto 0;max-width:38ch;line-height:1.5}
+.empty .a{margin-top:var(--sp-4);display:flex;gap:var(--sp-2);justify-content:center;flex-wrap:wrap}
+td .empty{padding:var(--sp-10) var(--sp-4)}
+.skeleton{background:var(--bg-grouped);border-radius:var(--r-control);height:14px;position:relative;overflow:hidden}
+.skeleton::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:shimmer 1.3s ease infinite}
+.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent)}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.skeleton + .skeleton{margin-top:var(--sp-2)}
+.sk-40{width:40%}.sk-60{width:60%}.sk-80{width:80%}.sk-100{width:100%}
+.sk-block{background:var(--surface);border:1px solid var(--sep);border-radius:var(--r-card);padding:var(--sp-4);margin-bottom:var(--sp-2)}
+.inline-loader{display:inline-flex;align-items:center;gap:var(--sp-2);color:var(--ink-3);font-size:var(--fs-foot)}
+.inline-loader::before{content:'';width:13px;height:13px;border:2px solid var(--sep-strong);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite}
+.banner{display:flex;align-items:flex-start;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-input);font-size:var(--fs-foot);margin-bottom:var(--sp-3);line-height:1.5}
+.banner i{flex-shrink:0;margin-top:1px;font-size:1rem}
+.banner-warning{background:var(--warning-soft);color:var(--warning)}
+.banner-danger{background:var(--danger-soft);color:var(--danger)}
+.qr-opts{margin-top:var(--sp-2);display:grid;gap:4px}
+.qr-opt{padding:6px 10px;border:1px solid var(--sep);border-radius:var(--r-control);font-size:var(--fs-callout);color:var(--ink)}
+.qr-opt.is-correct{border-color:var(--success);background:var(--success-soft)}
+.qr-opt.is-picked{border-color:var(--warning)}
+.qr-tag{margin-left:6px;font-size:var(--fs-cap);font-weight:700;color:var(--ink)}
+.t-cap a,.t-foot a{text-decoration:underline;text-underline-offset:2px}
+.banner-info{background:var(--info-soft);color:var(--info)}
+.banner-accent{background:var(--accent-soft);color:var(--accent)}
+#busy{position:fixed;top:0;left:0;right:0;height:2px;z-index:var(--z-toast);
+  background:transparent;pointer-events:none;opacity:0;transition:opacity var(--dur-fast) var(--ease)}
+#busy.on{opacity:1}
+#busy::after{content:'';display:block;height:100%;width:38%;background:var(--accent);
+  animation:sweep 1.05s var(--ease) infinite}
+@keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(365%)}}
+.tabbar{display:flex;gap:var(--sp-5);border-bottom:1px solid var(--sep);margin-bottom:var(--sp-5);overflow-x:auto;scrollbar-width:none}
+.tabbar::-webkit-scrollbar{display:none}
+.tabbar button{position:relative;padding:var(--sp-2) 0 var(--sp-3);font-size:var(--fs-callout);font-weight:600;
+  color:var(--ink-3);display:flex;align-items:center;gap:var(--sp-2);white-space:nowrap;
+  transition:color var(--dur-fast) var(--ease)}
+.tabbar button:hover{color:var(--ink-2)}
+.tabbar button.active{color:var(--ink)}
+.tabbar button.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);border-radius:2px}
+.tab-count{background:var(--warning-soft);color:var(--warning);font-size:.625rem;font-weight:700;
+  padding:1px 6px;border-radius:var(--r-full)}
+#gate{position:fixed;inset:0;z-index:var(--z-gate);display:flex;align-items:center;justify-content:center;
+  background:var(--bg);padding:var(--sp-4)}
+.gate-card{width:100%;max-width:392px;background:var(--surface);
+  border:1px solid var(--sep);border-radius:var(--r-sheet);
+  padding:var(--sp-8) var(--sp-6);box-shadow:var(--sh-2);animation:gate-in var(--dur-slow) var(--ease-out)}
+@keyframes gate-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.gate-card img.mark{width:52px;height:52px;margin:0 auto var(--sp-4);border-radius:13px}
+.gate-card h1{font-size:var(--fs-t1);font-weight:700;letter-spacing:-.017em;text-align:center}
+.gate-card .gsub{font-size:var(--fs-callout);color:var(--ink-2);text-align:center;margin:4px 0 var(--sp-6)}
+.gate-err{display:none;align-items:flex-start;gap:var(--sp-2);
+  background:var(--danger-soft);color:var(--danger);
+  border-radius:var(--r-input);padding:var(--sp-3);font-size:var(--fs-foot);margin-bottom:var(--sp-4);line-height:1.45}
+.gate-err.show{display:flex}
+.gate-alt{text-align:center;margin-top:var(--sp-5);font-size:var(--fs-foot);color:var(--ink-3)}
+.gate-busy{display:none;justify-content:center;padding:var(--sp-6) 0}
+html.session-bridge .gate-busy,#gate.busy .gate-busy{display:flex}
+html.session-bridge #gate-form,
+html.session-bridge .gsub,
+html.session-bridge .gate-alt,
+#gate.busy #gate-form,
+#gate.busy .gsub,
+#gate.busy .gate-alt{visibility:hidden}
+.perm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:var(--sp-4)}
+.perm-group-t{font-size:var(--fs-cap);font-weight:650;color:var(--ink-3);margin-bottom:var(--sp-1)}
+.perm-row{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) var(--sp-2);
+  border-radius:var(--r-control);cursor:pointer;font-size:var(--fs-foot);color:var(--ink-2);min-height:30px}
+.perm-row:hover{background:var(--bg-grouped);color:var(--ink)}
+.perm-pill{display:inline-flex;align-items:center;font-size:var(--fs-cap);font-weight:550;
+  background:var(--bg-grouped);border-radius:var(--r-full);padding:2px 8px;color:var(--ink-2)}
+.perm-pill.more{background:transparent;border:1px dashed var(--sep-strong);color:var(--ink-3)}
+.admin-perms{display:none;margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--sep)}
+.admin-perms.show{display:block;animation:view-in var(--dur-fast) var(--ease-out)}
+.picker{position:relative}
+.picker-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:var(--z-dropdown);
+  background:var(--surface-2);border:1px solid var(--sep);border-radius:var(--r-card);
+  box-shadow:var(--sh-2);max-height:264px;overflow-y:auto;display:none;padding:var(--sp-1)}
+.picker-list.show{display:block}
+.picker-item{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);width:100%;text-align:left;
+  padding:var(--sp-2) var(--sp-2);border-radius:var(--r-control);font-size:var(--fs-callout)}
+.picker-item:hover,.picker-item.sel{background:var(--bg-grouped)}
+.picker-item .nm{font-weight:600;color:var(--ink)}
+.picker-item .un{font-family:var(--mono);font-size:var(--fs-cap);color:var(--ink-3)}
+.picker-empty{padding:var(--sp-4);text-align:center;color:var(--ink-3);font-size:var(--fs-foot)}
+.sub-card{background:var(--surface);border:1px solid var(--sep);border-radius:var(--r-card);
+  padding:var(--sp-4);margin-bottom:var(--sp-2)}
+.sub-card.graded{background:var(--bg-grouped)}
+.sub-top{display:flex;justify-content:space-between;gap:var(--sp-3);align-items:flex-start;flex-wrap:wrap}
+.sub-user{font-weight:600;font-size:var(--fs-callout);display:flex;align-items:center;gap:var(--sp-2)}
+.sub-meta{font-size:var(--fs-cap);color:var(--ink-3);display:flex;flex-wrap:wrap;gap:var(--sp-3);margin-top:3px}
+.sub-q{background:var(--bg-grouped);border-radius:var(--r-control);padding:var(--sp-3);
+  margin-top:var(--sp-3);font-size:var(--fs-foot);line-height:1.6;white-space:pre-wrap;
+  max-height:130px;overflow:auto;color:var(--ink-2)}
+.sub-acts{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;margin-top:var(--sp-3)}
+.grade-input{width:5.2rem;height:32px;text-align:center;font-family:var(--mono);font-weight:600}
+.feedback-input{flex:1;min-width:180px;height:32px}
+.sub-score{font-size:var(--fs-callout);color:var(--success);font-weight:700;font-family:var(--mono)}
+.sub-feedback{font-size:var(--fs-foot);color:var(--ink-2);margin-top:var(--sp-2);padding-left:var(--sp-3);border-left:2px solid var(--sep-strong)}
+.sp-row{display:grid;grid-template-columns:28px 1fr 190px 76px 32px;gap:var(--sp-2);align-items:center;
+  background:var(--surface);border:1px solid var(--sep);border-left:3px solid var(--success);
+  padding:var(--sp-2) var(--sp-3);border-radius:var(--r-control)}
+.sp-row.mid{border-left-color:var(--warning)}
+.sp-row.low{border-left-color:var(--danger)}
+.sp-row.dropped{opacity:.4}
+.sp-row .select,.sp-row .input{height:30px;font-size:var(--fs-foot)}
+.sp-row .n{font-family:var(--mono);font-size:var(--fs-cap);color:var(--ink-3);text-align:center}
+.sp-row .q{font-size:var(--fs-foot);line-height:1.5}
+@media (max-width:760px){
+  .sp-row{grid-template-columns:28px 1fr 32px;grid-template-areas:'n q x' '. s s' '. m m';row-gap:var(--sp-2)}
+  .sp-row .n{grid-area:n}.sp-row .q{grid-area:q}
+  .sp-row .select{grid-area:s}.sp-row .input{grid-area:m}
+  .sp-row .icon-btn{grid-area:x}
+}
+.qotd-head{background:var(--surface);border:1px solid var(--sep);border-radius:var(--r-panel);padding:var(--sp-5);margin-bottom:var(--sp-4)}
+.qotd-text{font-size:var(--fs-callout);line-height:1.65;color:var(--ink);background:var(--bg-grouped);
+  border-radius:var(--r-control);padding:var(--sp-3);margin-top:var(--sp-3);white-space:pre-wrap}
+.qotd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3);margin-top:var(--sp-4)}
+.qotd-stats div{text-align:left}
+.qotd-stats strong{display:block;font-family:var(--mono);font-size:var(--fs-t2);font-weight:700;color:var(--ink)}
+.qotd-stats span{font-size:var(--fs-cap);color:var(--ink-3);font-weight:550}
+.maint{display:flex;align-items:flex-end;gap:var(--sp-3);flex-wrap:wrap;padding:var(--sp-4) 0;border-top:1px solid var(--sep)}
+.maint:first-of-type{border-top:none;padding-top:0}
+.maint .info{flex:1;min-width:210px}
+.maint .t{font-size:var(--fs-callout);font-weight:600;color:var(--ink)}
+.maint .d{font-size:var(--fs-foot);color:var(--ink-3);margin-top:2px;line-height:1.45;max-width:56ch}
+.maint .num{width:96px}
+.maint .field{margin-bottom:0}
+@media (max-width:620px){.maint{align-items:stretch}.maint .btn{width:100%}.maint .num{width:100%}}
+.miss{background:var(--surface);border:1px solid var(--sep);border-radius:var(--r-card);padding:var(--sp-4)}
+.miss-top{display:flex;justify-content:space-between;gap:var(--sp-4);align-items:flex-start}
+.miss-q{font-size:var(--fs-callout);line-height:1.55;flex:1;min-width:0}
+.miss-rate{text-align:right;flex-shrink:0}
+.miss-rate .v{font-family:var(--mono);font-weight:700;color:var(--danger);font-size:var(--fs-t3)}
+.miss-rate .l{font-size:var(--fs-cap);color:var(--ink-3)}
+.miss-tags{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-top:var(--sp-2)}
+.miss-meta{font-size:var(--fs-cap);color:var(--ink-3);margin-top:var(--sp-2);display:flex;flex-wrap:wrap;gap:var(--sp-3)}
+.log{display:flex;gap:var(--sp-4);padding:var(--sp-3) 0;border-top:1px solid var(--sep);font-size:var(--fs-callout)}
+.log:first-child{border-top:none}
+.log time{font-family:var(--mono);font-size:var(--fs-cap);color:var(--ink-3);width:74px;flex-shrink:0;padding-top:2px}
+.log .act{font-weight:600;color:var(--ink)}
+.log .who{color:var(--ink-2)}
+.log .det{color:var(--ink-3);font-size:var(--fs-foot);margin-top:2px}
+.dist{display:grid;grid-template-columns:58px 1fr 40px;gap:var(--sp-2);align-items:center;font-size:var(--fs-foot);margin-bottom:3px}
+.dist .rg{color:var(--ink-3);font-family:var(--mono)}
+.dist .track{height:6px;background:var(--bg-grouped);border-radius:3px;overflow:hidden}
+.dist .fill{height:100%;background:var(--accent);border-radius:3px}
+.dist .ct{text-align:right;font-family:var(--mono)}
+.copy-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:6px;color:var(--ink-3);font-size:.8rem;vertical-align:middle}
+.copy-btn:hover{background:var(--bg-grouped);color:var(--ink)}
+.flex{display:flex}.col{flex-direction:column}.center{align-items:center}
+.between{justify-content:space-between}.wrap{flex-wrap:wrap}.grow{flex:1;min-width:0}
+.g1{gap:var(--sp-1)}.g2{gap:var(--sp-2)}.g3{gap:var(--sp-3)}.g4{gap:var(--sp-4)}
+.mt2{margin-top:var(--sp-2)}.mt3{margin-top:var(--sp-3)}.mt4{margin-top:var(--sp-4)}
+.mb2{margin-bottom:var(--sp-2)}.mb3{margin-bottom:var(--sp-3)}.mb4{margin-bottom:var(--sp-4)}
+.stack2{display:flex;flex-direction:column;gap:var(--sp-2)}
+.stack3{display:flex;flex-direction:column;gap:var(--sp-3)}
+.right{text-align:right}
+.hidden,[hidden]{display:none!important}
+@media (pointer:coarse){
+  .input,.select,.textarea,input,select,textarea,.grade-input,.feedback-input{font-size:16px}
+}
+button,a,label,summary,input[type=checkbox],input[type=radio]{touch-action:manipulation}
+.dialog-body,.palette-list,.picker-list,#rail,.sub-q,.table-wrap{overscroll-behavior:contain}
+@media (max-width:640px){
+  .panel{padding:var(--sp-4);border-radius:var(--r-card)}
+  .page-head{margin-bottom:var(--sp-4)}
+  .section-head{margin:var(--sp-6) 0 var(--sp-2)}
+  .sub-card{padding:var(--sp-3)}
+  .toolbar{gap:var(--sp-1)}
+  .toolbar .search{min-width:140px}
+}
+#ov-confirm,#ov-pwd,#ov-review,#ov-user,#ov-sheet{ z-index:10020; }
+</style>
+<style id="patch-114">
+:root:not(.dark){--ink-3:#5E6963;--ink-4:#7A857F;--accent-ink:#176B42}
+</style>
+<style id="patch-v3">
+/* ═══════════════════════════════════════════════════════════════════════
+   patch-v3 — align admin with user.html v2 (iOS-tier)
+   • Radii bumped to match the student side
+   • 0.5px hairlines on cards, tables, dialogs, panels
+   • Button heights raised to 44/36/50
+   • Form fields min-height 44
+   Everything overrides earlier rules by cascade order (no !important needed).
+   ═══════════════════════════════════════════════════════════════════════ */
+:root{
+  --hairline-w:0.5px;
+  --r-control:10px;
+  --r-input:12px;
+  --r-card:16px;
+  --r-panel:20px;
+}
+/* Button heights — larger tap targets */
+.btn{height:auto;min-height:44px;padding:0 var(--sp-4)}
+.btn-sm{height:auto;min-height:36px;padding:0 var(--sp-3)}
+.btn-lg{height:auto;min-height:50px;padding:0 var(--sp-6)}
+.icon-btn{width:36px;height:36px;font-size:1.05rem}
+.icon-btn.sm{width:32px;height:32px;font-size:.95rem}
+/* Form fields */
+.input,.select,.textarea{height:auto;min-height:44px;padding:var(--sp-2) var(--sp-3)}
+.textarea{min-height:96px}
+.toolbar .input,.toolbar .select{min-height:36px}
+.pw-field button{width:32px;height:32px}
+.pw-field .input{padding-right:2.6rem}
+/* Hairline borders on surface components */
+.panel,
+.table-wrap,
+.dialog,
+.menu,
+.palette-box,
+.banner,
+.file-drop,
+.input,
+.select,
+.textarea,
+.bulk-bar,
+.metric,
+.queue,
+.sub-card,
+.sp-row,
+.miss,
+.log,
+.maint,
+.marquee-bar,
+.card,
+.gate-card,
+.picker-list,
+#search-pill,
+#offline-pill{border-width:var(--hairline-w)}
+th,td{border-bottom-width:var(--hairline-w)}
+.row,
+.log,
+.maint,
+.queue-row{border-top-width:var(--hairline-w)}
+#rail{border-right-width:var(--hairline-w)}
+#topbar{border-bottom-width:var(--hairline-w)}
+.dialog-hd{border-bottom-width:var(--hairline-w)}
+.dialog-foot{border-top-width:var(--hairline-w)}
+.menu-head{border-bottom-width:var(--hairline-w)}
+.menu-sep{height:var(--hairline-w)}
+.rail-foot{border-top-width:var(--hairline-w)}
+.admin-perms{border-top-width:var(--hairline-w)}
+.sub-feedback{border-left-width:var(--hairline-w)}
+.segmented{border-width:var(--hairline-w)}
+/* Keep mobile card semantics consistent */
+@media (max-width:900px){
+  tbody tr{border-width:var(--hairline-w)}
+  tbody tr.selected{border-color:var(--accent)}
+}
+</style>
+</head>
+<body>
+
+<a href="#content" class="skip-link">Skip to content</a>
+<div id="busy" role="progressbar" aria-label="Loading" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════ SIGN IN ═══════════════════════════ -->
+<div id="gate">
+  <div class="gate-card">
+    <img class="mark" src="icon-192.png" alt="">
+    <h1>Abhyas Admin</h1>
+    <p class="gsub">Sign in to manage students, payments and grading.</p>
+
+    <div class="gate-err" id="gate-err" role="alert" aria-live="assertive"><i class="ph ph-warning-circle"></i><span id="gate-err-text"></span></div>
+
+    <div class="gate-busy" id="gate-busy" role="status" aria-live="polite">
+      <span class="inline-loader">Checking your access…</span>
+    </div>
+
+    <form id="gate-form" autocomplete="on" novalidate>
+      <div class="field">
+        <label for="ad-user">Admin username</label>
+        <input class="input" type="text" id="ad-user" placeholder="admin" autocomplete="username" autocapitalize="none" spellcheck="false" enterkeyhint="next">
+      </div>
+      <div class="field">
+        <label for="ad-pass">Password</label>
+        <div class="pw-field">
+          <input class="input" type="password" id="ad-pass" placeholder="Your password" autocomplete="current-password" enterkeyhint="go">
+          <button type="button" data-on-click="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" id="btn-login" type="submit">Sign in</button>
+    </form>
+
+    <div class="gate-alt"><a href="#" data-on-click="event.preventDefault();ADMIN._leaveAdminMode()">Back to the student app</a></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ COMMAND PALETTE ═══════════════════════ -->
+<div id="palette" role="dialog" aria-modal="true" aria-label="Search and commands">
+  <div class="palette-box">
+    <div class="palette-input">
+      <i class="ph ph-magnifying-glass"></i>
+      <input type="text" id="palette-q" placeholder="Search users, payments, or run a command" autocomplete="off" spellcheck="false" aria-controls="palette-list" aria-autocomplete="list">
+    </div>
+    <div class="palette-list" id="palette-list" role="listbox" aria-label="Results"></div>
+    <div class="palette-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> Move</span>
+      <span><kbd>↵</kbd> Open</span>
+      <span><kbd>Esc</kbd> Close</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ APP ═══════════════════════════════ -->
+<div id="app">
+<div id="shell">
+
+  <div id="rail-scrim" data-on-click="UI.railClose()"></div>
+
+  <nav id="rail" aria-label="Sections">
+    <div id="rail-brand">
+      <img src="icon-192.png" alt="">
+      <span>Abhyas<small class="sub">Admin console</small></span>
+    </div>
+
+    <div id="rail-nav"></div>
+
+    <div class="rail-foot">
+      <button class="rail-item" id="rail-switch" aria-labelledby="rail-switch-label" data-on-click="ADMIN._leaveAdminMode()"><i class="ph ph-arrow-square-out"></i><span id="rail-switch-label">Student app</span></button>
+      <div class="rail-version" id="rail-version">Abhyas V1</div>
+    </div>
+  </nav>
+
+  <div id="main-col">
+    <header id="topbar">
+      <button class="icon-btn" id="rail-toggle" data-on-click="UI.railOpen()" aria-label="Open navigation"><i class="ph ph-list"></i></button>
+      <div id="crumb">Today</div>
+
+      <button id="search-pill" data-on-click="PALETTE.open()" aria-label="Search (Control K)">
+        <i class="ph ph-magnifying-glass"></i>
+        <span class="grow">Search or run a command</span>
+        <kbd id="kbd-hint">Ctrl K</kbd>
+      </button>
+
+      <div id="topbar-actions">
+        <span id="offline-pill" role="status"><i class="ph ph-wifi-slash"></i> Offline</span>
+        <span id="sync-note" aria-live="polite"></span>
+        <button class="icon-btn" data-on-click="ADMIN.refresh()" title="Refresh data (Ctrl R)" aria-label="Refresh data"><i class="ph ph-arrow-clockwise"></i></button>
+        <button class="icon-btn" data-on-click="toggleTheme()" title="Switch theme" aria-label="Switch theme"><i class="ph ph-circle-half"></i></button>
+        <div class="menu-wrap">
+          <button class="icon-btn" id="account-btn" data-on-click="UI.toggleMenu(event)" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">
+            <span class="avatar" id="account-avatar">AD</span>
+          </button>
+          <div class="menu" id="account-menu" role="menu">
+            <div class="menu-head">
+              <div class="t-callout" style="font-weight:600" id="account-name">admin</div>
+              <div class="t-cap" id="account-role">Signed in</div>
+            </div>
+            <button class="menu-item" role="menuitem" data-on-click="UI.closeMenu();UI.nav('settings')"><i class="ph ph-gear"></i>Settings</button>
+            <button class="menu-item" role="menuitem" data-on-click="UI.closeMenu();ADMIN.changePassword()"><i class="ph ph-key"></i>Change password</button>
+            <button class="menu-item" role="menuitem" data-on-click="UI.closeMenu();PALETTE.open()"><i class="ph ph-magnifying-glass"></i>Search<kbd class="kb">Ctrl K</kbd></button>
+            <div class="menu-sep"></div>
+            <div class="menu-head" style="border:none;margin:0;padding-top:0">
+              <div class="t-cap" id="backend-version">Backend —</div>
+            </div>
+            <button class="menu-item danger" role="menuitem" data-on-click="UI.closeMenu();ADMIN.logout()"><i class="ph ph-sign-out"></i>Sign out</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="content" tabindex="-1">
+    <div class="inner">
+
+      <!-- ═══════════════════════════ TODAY ═══════════════════════════ -->
+      <section class="view on" id="view-today" aria-label="Today">
+        <div class="page-head">
+          <div>
+            <h1>Today</h1>
+            <p id="today-date">—</p>
+          </div>
+          <div class="acts">
+            <button class="btn btn-secondary btn-sm" data-on-click="ADMIN.refresh()"><i class="ph ph-arrow-clockwise"></i> Refresh</button>
+          </div>
+        </div>
+
+        <div class="queue" id="queue" role="list"></div>
+
+        <div class="section-head">
+          <h2>Trials ending soon</h2>
+          <div class="flex center g2">
+            <select class="select" id="exp-hours" data-on-change="EXPIRING.load()" aria-label="Trial expiry window" style="height:30px;font-size:var(--fs-foot)">
+              <option value="6">Next 6 hours</option>
+              <option value="24" selected>Next 24 hours</option>
+              <option value="72">Next 3 days</option>
+              <option value="168">Next 7 days</option>
+            </select>
+            <button class="icon-btn sm" data-on-click="EXPIRING.load()" aria-label="Reload trials"><i class="ph ph-arrow-clockwise"></i></button>
+          </div>
+        </div>
+        <div class="panel" id="expiring-panel">
+          <div id="expiring-list"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div></div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════ INSIGHTS ═══════════════════════════ -->
+      <section class="view" id="view-dashboard" aria-label="Insights">
+        <div class="page-head">
+          <div>
+            <h1>Insights</h1>
+            <p>Where students stand, and which questions are hurting them most.</p>
+          </div>
+          <div class="acts">
+            <button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="ADMIN.exportUsers()"><i class="ph ph-download-simple"></i> Students CSV</button>
+            <button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="ADMIN.exportPayments()"><i class="ph ph-download-simple"></i> Payments CSV</button>
+          </div>
+        </div>
+
+        <div class="section-head"><h2>Accounts</h2><span class="hint">Tap a figure to filter the list</span></div>
+        <div class="metrics mb4">
+          <button class="metric" data-on-click="UI.nav('users')"><div class="v" id="st-users">0</div><div class="l">All students</div></button>
+          <button class="metric" data-on-click="USERS.filterBy('trial')"><div class="v" id="st-trial">0</div><div class="l">On trial</div></button>
+          <button class="metric" data-on-click="USERS.filterBy('active')"><div class="v" id="st-active">0</div><div class="l">Paid</div></button>
+          <button class="metric" data-on-click="USERS.filterBy('expired')"><div class="v" id="st-expired">0</div><div class="l">Expired</div></button>
+        </div>
+
+        <div class="section-head"><h2>Payments</h2></div>
+        <div class="metrics mb4">
+          <button class="metric" data-on-click="PAYMENTS.filterBy('pending')"><div class="v" id="st-pending">0</div><div class="l">Awaiting review</div></button>
+          <button class="metric" data-on-click="UI.nav('payments')"><div class="v" id="st-payments">0</div><div class="l">Submitted</div></button>
+          <button class="metric" data-on-click="PAYMENTS.filterBy('verified')"><div class="v" id="st-verified">0</div><div class="l">Verified</div></button>
+          <button class="metric" data-on-click="PAYMENTS.filterBy('rejected')"><div class="v" id="st-rejected">0</div><div class="l">Rejected</div></button>
+        </div>
+
+        <div class="section-head"><h2>Growth</h2><span class="hint">Last 30 days, Nepal time</span></div>
+        <div class="panel" id="trend-panel"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div></div>
+
+        <div class="section-head"><h2>Most-missed questions</h2><span class="hint">Across every student's recent attempts</span></div>
+        <div class="panel">
+          <div class="toolbar">
+            <select class="select" id="miss-level" aria-label="Level"><option value="">All levels</option></select>
+            <select class="select" id="miss-chapter" aria-label="Chapter"><option value="">All chapters</option></select>
+            <label class="inline">From <input class="input" type="date" id="miss-from"></label>
+            <label class="inline">To <input class="input" type="date" id="miss-to"></label>
+            <label class="inline">Min attempts <input class="input" type="number" id="miss-min" value="3" min="1" style="width:4.5rem"></label>
+            <select class="select" id="miss-limit" aria-label="How many">
+              <option value="20">Top 20</option><option value="50">Top 50</option><option value="100">Top 100</option>
+            </select>
+            <button class="btn btn-primary btn-sm" data-on-click="MISSED.load()"><i class="ph ph-funnel"></i> Apply</button>
+            <button class="btn btn-quiet btn-sm" data-on-click="MISSED.clearFilters()">Reset</button>
+            <button class="btn btn-quiet btn-sm spacer" data-perm="exports" data-on-click="MISSED.exportCSV()"><i class="ph ph-download-simple"></i> CSV</button>
+          </div>
+          <div id="missed-list" class="stack2"></div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════ STUDENTS ═══════════════════════════ -->
+      <section class="view" id="view-users" aria-label="Students">
+        <div class="page-head">
+          <div><h1>Students</h1><p>Every registered account, with access and payment state.</p></div>
+          <div class="acts"><button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="ADMIN.exportUsers()"><i class="ph ph-download-simple"></i> Export CSV</button></div>
+        </div>
+        <div class="toolbar">
+          <input class="input search" type="search" id="u-search" placeholder="Search name, username, email or mobile" data-on-input="USERS.debouncedFilter()" aria-label="Search students">
+          <select class="select" id="u-filter" data-on-change="USERS.filter()" aria-label="Filter by status">
+            <option value="all">All statuses</option>
+            <option value="trial">Trial</option>
+            <option value="active">Paid</option>
+            <option value="expired">Expired</option>
+            <option value="payment_pending">Awaiting review</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <span class="spacer t-cap" id="u-result-count" role="status" aria-live="polite"></span>
+        </div>
+        <div id="u-trunc"></div>
+        <div class="bulk-bar" id="u-bulk" role="region" aria-live="polite">
+          <span class="count" id="u-bulk-count">0 selected</span>
+          <button class="btn btn-primary btn-sm" data-perm="users_bulk" data-on-click="USERS.bulkGrantAccess('permanent')"><i class="ph ph-infinity"></i> Grant permanent</button>
+          <button class="btn btn-secondary btn-sm" data-perm="users_bulk" data-on-click="USERS.bulkGrantAccess('year')"><i class="ph ph-calendar"></i> Grant 1 year</button>
+          <button class="btn btn-danger btn-sm" data-perm="users_bulk" data-on-click="USERS.bulkDelete()"><i class="ph ph-trash"></i> Delete</button>
+          <button class="btn btn-quiet btn-sm spacer" data-on-click="USERS.clearSelection()">Clear</button>
+        </div>
+        <div class="table-wrap">
+          <table id="users-tbl">
+            <thead><tr>
+              <th style="width:40px"><input type="checkbox" id="u-chk-all" data-on-change="USERS.toggleAll()" aria-label="Select all students on this page"></th>
+              <th class="sortable" data-on-click="USERS.sort('name')" data-k="name">Student<i class="ph ph-caret-up sort-ic"></i></th>
+              <th>Contact</th>
+              <th class="sortable" data-on-click="USERS.sort('status')" data-k="status">Status<i class="ph ph-caret-up sort-ic"></i></th>
+              <th class="sortable" data-on-click="USERS.sort('createdAt')" data-k="createdAt">Joined<i class="ph ph-caret-up sort-ic"></i></th>
+              <th>Access</th>
+              <th style="text-align:right">Actions</th>
+            </tr></thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="u-pg"></div>
+      </section>
+
+      <!-- ═══════════════════════════ PAYMENTS ═══════════════════════════ -->
+      <section class="view" id="view-payments" aria-label="Payments">
+        <div class="page-head">
+          <div><h1>Payments</h1><p>Verify or reject transfers students have submitted.</p></div>
+          <div class="acts"><button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="ADMIN.exportPayments()"><i class="ph ph-download-simple"></i> Export CSV</button></div>
+        </div>
+        <div class="toolbar">
+          <input class="input search" type="search" id="p-search" placeholder="Search username or transaction ID" data-on-input="PAYMENTS.debouncedFilter()" aria-label="Search payments">
+          <select class="select" id="p-filter" data-on-change="PAYMENTS.filter()" aria-label="Filter by status">
+            <option value="all">All statuses</option>
+            <option value="pending">Awaiting review</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <span class="spacer t-cap" id="p-result-count" role="status" aria-live="polite"></span>
+        </div>
+        <div id="p-trunc"></div>
+        <div class="bulk-bar" id="p-bulk" role="region" aria-live="polite">
+          <span class="count" id="p-bulk-count">0 selected</span>
+          <button class="btn btn-primary btn-sm" data-perm="payments_bulk" data-on-click="PAYMENTS.bulkVerify()"><i class="ph ph-check"></i> Verify</button>
+          <button class="btn btn-danger btn-sm" data-perm="payments_bulk" data-on-click="PAYMENTS.bulkReject()"><i class="ph ph-x"></i> Reject</button>
+          <button class="btn btn-quiet btn-sm spacer" data-on-click="PAYMENTS.clearSelection()">Clear</button>
+        </div>
+        <div class="table-wrap">
+          <table id="payments-tbl">
+            <thead><tr>
+              <th style="width:40px"><input type="checkbox" id="p-chk-all" data-on-change="PAYMENTS.toggleAll()" aria-label="Select all payments on this page"></th>
+              <th class="sortable" data-on-click="PAYMENTS.sort('username')" data-k="username">Student<i class="ph ph-caret-up sort-ic"></i></th>
+              <th>Transaction</th>
+              <th>Amount</th>
+              <th class="sortable" data-on-click="PAYMENTS.sort('status')" data-k="status">Status<i class="ph ph-caret-up sort-ic"></i></th>
+              <th class="sortable" data-on-click="PAYMENTS.sort('submittedAt')" data-k="submittedAt">Submitted<i class="ph ph-caret-up sort-ic"></i></th>
+              <th style="text-align:right">Actions</th>
+            </tr></thead>
+            <tbody id="payments-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="p-pg"></div>
+      </section>
+
+      <!-- ═══════════════════════════ ADMINS ═══════════════════════════ -->
+      <section class="view" id="view-admins" aria-label="Admins">
+        <div class="page-head">
+          <div><h1>Admins</h1><p>Give trusted people access to parts of this console. Only the owner can change this list.</p></div>
+          <div class="acts"><button class="btn btn-secondary btn-sm" id="btn-add-admin" data-on-click="ADMINS.openPromote()"><i class="ph ph-user-plus"></i> Add admin</button></div>
+        </div>
+        <div class="panel"><div id="admins-list"></div></div>
+      </section>
+
+      <!-- ═══════════════════════════ WEEKLY SETS ═══════════════════════════ -->
+      <section class="view" id="view-weeklysets" aria-label="Weekly sets">
+        <div class="page-head">
+          <div><h1>Weekly sets</h1><p>Upload a question set now; it unlocks for students at the time you choose.</p></div>
+          <div class="acts"><button class="btn btn-primary btn-sm" data-perm="weeklysets_manage" data-on-click="WEEKLYSETS.openCreate()"><i class="ph ph-plus"></i> New set</button></div>
+        </div>
+        <div id="ws-trunc"></div>
+        <div class="panel" id="ws-panel"><div id="weeklysets-list" class="stack2"></div></div>
+      </section>
+
+      <!-- ═══════════════════════════ STUDY PDFs ═══════════════════════════ -->
+      <section class="view" id="view-studydocs" aria-label="Study PDFs">
+        <div class="page-head">
+          <div><h1>Study PDFs</h1><p>Model answers, notes and past papers for students to read in the app. Only paid students can open them.</p></div>
+          <div class="acts"><button class="btn btn-primary btn-sm" data-perm="studydocs_manage" data-on-click="STUDYDOCS.openUpload()"><i class="ph ph-upload-simple"></i> Upload PDF</button></div>
+        </div>
+        <div class="panel"><div id="studydocs-list" class="stack2"></div></div>
+      </section>
+
+      <!-- ═══════════════════════════ REPORTS ═══════════════════════════ -->
+      <section class="view" id="view-qreports" aria-label="Question reports">
+        <div class="page-head">
+          <div><h1>Reports</h1><p>Questions students have flagged as wrong, unclear or broken.</p></div>
+          <div class="acts"><button class="btn btn-secondary btn-sm" data-perm="qreports_manage" data-on-click="QREPORTS.refreshFile()"><i class="ph ph-arrows-clockwise"></i> Refresh a file</button><button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="QREPORTS.exportCSV()"><i class="ph ph-download-simple"></i> Export CSV</button></div>
+        </div>
+        <div class="toolbar">
+          <input class="input search" type="search" id="qreports-search" placeholder="Search question, reporter or note" data-on-input="QREPORTS.debouncedFilter()" aria-label="Search reports">
+          <select class="select" id="qreports-filter" data-on-change="QREPORTS.setFilter(this.value)" aria-label="Status">
+            <option value="open">Open</option><option value="resolved">Resolved</option>
+            <option value="dismissed">Dismissed</option><option value="all">All</option>
+          </select>
+          <select class="select" id="qreports-chapter-filter" data-on-change="QREPORTS.setChapterFilter(this.value)" aria-label="Chapter"><option value="all">All chapters</option></select>
+          <select class="select" id="qreports-reason-filter" data-on-change="QREPORTS.setReasonFilter(this.value)" aria-label="Reason">
+            <option value="all">All reasons</option>
+            <option value="wrong_answer">Wrong answer</option>
+            <option value="unclear">Unclear wording</option>
+            <option value="typo">Typo or formatting</option>
+            <option value="incomplete">Incomplete question</option>
+            <option value="image_problem">Image or table problem</option>
+            <option value="other">Other</option>
+          </select>
+          <button class="btn btn-quiet btn-sm spacer" data-on-click="QREPORTS.load()"><i class="ph ph-arrow-clockwise"></i> Reload</button>
+        </div>
+        <div id="qr-trunc"></div>
+        <div id="qreports-list" class="stack2"></div>
+        <div class="pagination" id="qr-pg"></div>
+      </section>
+
+      <!-- ═══════════════════════════ GRADING ═══════════════════════════ -->
+      <section class="view" id="view-subjective" aria-label="Grading">
+        <div class="page-head">
+          <div><h1>Grading</h1><p>Score written answers and add questions to the subjective bank.</p></div>
+        </div>
+        <div class="tabbar" role="tablist">
+          <button class="active" data-tab="qotd" role="tab" aria-selected="true" aria-controls="subj-panel-qotd" data-on-click="SUBJ_TABS.go('qotd')">Question of the day <span class="tab-count" id="tab-count-qotd" hidden>0</span></button>
+          <button data-tab="hourly" role="tab" aria-selected="false" aria-controls="subj-panel-hourly" data-on-click="SUBJ_TABS.go('hourly')">Hourly <span class="tab-count" id="tab-count-hourly" hidden>0</span></button>
+          <button data-tab="exam" role="tab" aria-selected="false" aria-controls="subj-panel-exam" data-on-click="SUBJ_TABS.go('exam')">Exam papers <span class="tab-count" id="tab-count-exam" hidden>0</span></button>
+          <button data-tab="add" role="tab" aria-selected="false" aria-controls="subj-panel-add" data-on-click="SUBJ_TABS.go('add')">Add questions</button>
+        </div>
+
+        <div id="subj-panel-qotd" role="tabpanel">
+          <div class="toolbar">
+            <button class="icon-btn sm" data-on-click="SUBJ_QOTD.shiftDate(-1)" aria-label="Previous day" title="Previous day"><i class="ph ph-caret-left"></i></button>
+            <label class="inline">Date <input class="input" type="date" id="qotd-date" data-on-change="SUBJ_QOTD.render()"></label>
+            <button class="icon-btn sm" data-on-click="SUBJ_QOTD.shiftDate(1)" aria-label="Next day" title="Next day"><i class="ph ph-caret-right"></i></button>
+            <button class="btn btn-quiet btn-sm" data-on-click="SUBJ_QOTD.goToday()">Today</button>
+            <select class="select" id="qotd-status" data-on-change="SUBJ_QOTD.render()" aria-label="Status">
+              <option value="all">All</option><option value="pending">Ungraded</option><option value="graded">Graded</option>
+            </select>
+            <button class="btn btn-quiet btn-sm spacer" data-on-click="SUBJ_QOTD.load(true)"><i class="ph ph-arrow-clockwise"></i> Reload</button>
+          </div>
+          <div id="qotd-banner"></div>
+          <div id="qotd-list" class="stack2"></div>
+        </div>
+
+        <div id="subj-panel-hourly" role="tabpanel" hidden>
+          <div class="toolbar">
+            <input class="input search" type="search" id="hourly-search" placeholder="Search by username" data-on-input="SUBJ_HOURLY.render()" aria-label="Search hourly submissions">
+            <select class="select" id="hourly-status" data-on-change="SUBJ_HOURLY.render()" aria-label="Status">
+              <option value="all">All</option>
+              <option value="pending">Ungraded</option>
+              <option value="graded">Graded</option>
+            </select>
+            <button class="btn btn-quiet btn-sm spacer" data-on-click="SUBJ_HOURLY.load(true)"><i class="ph ph-arrow-clockwise"></i> Reload</button>
+          </div>
+          <div id="hourly-list" class="stack2"></div>
+        </div>
+
+        <div id="subj-panel-exam" role="tabpanel" hidden>
+          <div class="toolbar">
+            <input class="input search" type="search" id="exam-search" placeholder="Search by username" data-on-input="SUBJ_EXAM.render()" aria-label="Search submissions">
+            <select class="select" id="exam-status" data-on-change="SUBJ_EXAM.render()" aria-label="Status">
+              <option value="all">All</option><option value="pending">Ungraded</option><option value="graded">Graded</option>
+            </select>
+            <button class="btn btn-quiet btn-sm spacer" data-on-click="SUBJ_EXAM.load(true)"><i class="ph ph-arrow-clockwise"></i> Reload</button>
+          </div>
+          <div id="exam-list" class="stack2"></div>
+        </div>
+
+        <div id="subj-panel-add" role="tabpanel" hidden>
+          <div class="panel">
+            <div class="panel-hd">
+              <div>
+                <h3>Paste questions</h3>
+                <div class="sub">Paste raw text from a PDF, Word file or WhatsApp. Each line that starts with a number, <span class="mono">Qn.</span> or a bullet becomes one question.</div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="sp-raw" class="sr-only">Raw question text</label>
+              <textarea class="textarea mono" id="sp-raw" style="min-height:150px;font-size:var(--fs-foot)" placeholder="1. Explain factors influencing bridge type selection in Nepal. [5]&#10;2. Design a two-way slab for 5m x 4m, LL 200 kg/m2. [10]"></textarea>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="sp-target">Chapter file</label>
+                <select class="select" id="sp-target" data-on-change="SUBJADMIN._onChapterChange(this.value)"><option value="">Choose a chapter</option></select>
+                <span class="field-hint">Read from <span class="mono">subjective-data.js</span>.</span>
+              </div>
+              <div class="field">
+                <label for="sp-section">Section</label>
+                <select class="select" id="sp-section" data-on-change="SUBJADMIN._onSectionChange(this.value)">
+                  <option value="">Default bucket</option>
+                  <option value="__NEW__">Create a new section</option>
+                </select>
+                <input class="input mt2 hidden" type="text" id="sp-section-new" placeholder="e.g. 1.3 Retaining walls">
+              </div>
+            </div>
+            <div class="flex g2 wrap center">
+              <button class="btn btn-secondary" data-on-click="SUBJADMIN.parse()"><i class="ph ph-magnifying-glass"></i> Preview</button>
+              <button class="btn btn-primary" id="sp-commit" disabled data-on-click="SUBJADMIN.commit()"><i class="ph ph-check"></i> Add to file</button>
+              <button class="btn btn-quiet" data-on-click="SUBJADMIN.clear()">Clear</button>
+              <span class="t-cap spacer" id="sp-status" aria-live="polite"></span>
+            </div>
+            <div id="sp-preview" class="stack2 mt4"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd">
+              <div>
+                <h3>Upload a new chapter file</h3>
+                <div class="sub">Shape: <span class="mono" style="font-size:var(--fs-cap)">{ "group":"…", "sections":[ {"section":"…","questions":[{"q":"…","marks":5}] } ] }</span>. Paste the returned file ID into <span class="mono">subjective-data.js</span>.</div>
+              </div>
+            </div>
+            <label class="file-drop" for="subj-upload-file">
+              <input type="file" id="subj-upload-file" accept="application/json,.json" data-on-change="SUBJ_UPLOAD.onFile(this)">
+              <i class="ph ph-file-arrow-up fd-icon"></i>
+              <span class="fd-main" id="subj-upload-name">Choose a JSON file</span>
+              <span class="fd-sub">Up to 5 MB</span>
+            </label>
+            <div class="flex g2 mt3">
+              <button class="btn btn-primary" data-on-click="SUBJ_UPLOAD.upload()"><i class="ph ph-cloud-arrow-up"></i> Upload to Drive</button>
+              <button class="btn btn-quiet" data-on-click="SUBJ_UPLOAD.clear()">Clear</button>
+            </div>
+            <div id="subj-upload-result" class="mt3"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════ ACTIVITY ═══════════════════════════ -->
+      <section class="view" id="view-logs" aria-label="Activity">
+        <div class="page-head"><div><h1>Activity</h1><p>Every action taken in this console.</p></div></div>
+        <div class="toolbar">
+          <input class="input search" type="search" id="l-search" placeholder="Search action, admin or target" data-on-input="LOGS.debounced()" aria-label="Search activity">
+          <select class="select" id="l-filter" data-on-change="LOGS.filter()" aria-label="Filter by action">
+            <option value="all">All actions</option>
+            <option value="login">Sign in</option>
+            <option value="verify">Payment verified</option>
+            <option value="reject">Payment rejected</option>
+            <option value="delete_user">Student deleted</option>
+            <option value="grant">Access granted</option>
+            <option value="weekly set">Weekly set</option>
+            <option value="subjective">Grading</option>
+            <option value="promote">Admin promoted</option>
+            <option value="admin">Admin actions</option>
+            <option value="import">Import</option>
+          </select>
+        </div>
+        <div class="panel"><div id="logs-list"></div></div>
+        <div class="pagination" id="l-pg"></div>
+      </section>
+
+      <!-- ═══════════════════════════ DATA & UPKEEP ═══════════════════════════ -->
+      <section class="view" id="view-data" aria-label="Data and upkeep">
+        <div class="page-head"><div><h1>Data &amp; upkeep</h1><p>Import student progress, prune backups, trim logs and lock down old screenshots.</p></div></div>
+
+        <div class="panel">
+          <div class="panel-hd"><div><h3>Import student progress</h3><div class="sub">Preview first — it reports exactly what would change without touching anything.</div></div></div>
+          <label class="file-drop" for="imp-file">
+            <input type="file" id="imp-file" accept="application/json,.json" data-on-change="IMPORT.onFilePicked()">
+            <i class="ph ph-file-arrow-up fd-icon"></i>
+            <span class="fd-main" id="imp-file-name">Drop a .json export here, or choose a file</span>
+            <span class="fd-sub">Exported from a student's device</span>
+          </label>
+          <div class="field mt4">
+            <label for="imp-json">Or paste the JSON</label>
+            <textarea class="textarea mono" id="imp-json" style="min-height:96px;font-size:var(--fs-foot)" placeholder='{"records":[{"username":"alice","data":{}}]}'></textarea>
+          </div>
+          <div class="field">
+            <label for="imp-mode">What to do</label>
+            <select class="select" id="imp-mode">
+              <option value="preview">Preview only — change nothing</option>
+              <option value="merge">Merge into existing progress</option>
+              <option value="replace">Replace existing progress (backed up first)</option>
+            </select>
+          </div>
+          <div class="flex g2">
+            <button class="btn btn-primary" data-on-click="IMPORT.run()"><i class="ph ph-play"></i> Run</button>
+            <button class="btn btn-quiet" data-on-click="IMPORT.clear()">Clear</button>
+          </div>
+          <div id="imp-result" class="mt3"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-hd">
+            <div><h3>Upkeep</h3><div class="sub">These delete data. Each one asks before it runs.</div></div>
+          </div>
+          <div class="maint">
+            <div class="info"><div class="t">Prune old progress backups</div><div class="d">Deletes backup rows older than the cutoff. Newer ones stay.</div></div>
+            <div class="field num"><label for="maint-backup-days">Keep days</label><input class="input" type="number" id="maint-backup-days" value="30" min="1" max="3650"></div>
+            <button class="btn btn-secondary" data-on-click="MAINTENANCE.pruneOldBackups()">Prune</button>
+          </div>
+          <div class="maint">
+            <div class="info"><div class="t">Delete all progress backups</div><div class="d">Removes every pre-replace snapshot. This cannot be undone.</div></div>
+            <button class="btn btn-danger" data-on-click="MAINTENANCE.clearAllBackups()">Delete all</button>
+          </div>
+          <div class="maint">
+            <div class="info"><div class="t">Trim activity log</div><div class="d">Keeps the most recent rows and deletes the rest.</div></div>
+            <div class="field num"><label for="maint-logs-keep">Keep rows</label><input class="input" type="number" id="maint-logs-keep" value="5000" min="100" max="100000"></div>
+            <button class="btn btn-secondary" data-on-click="MAINTENANCE.trimLogs()">Trim</button>
+          </div>
+          <div class="maint">
+            <div class="info"><div class="t">Make old payment screenshots private</div><div class="d">Screenshots before v1.02 were shared with anyone holding the link. This pulls each one back to private; this console can still open them.</div></div>
+            <button class="btn btn-secondary" data-on-click="MAINTENANCE.revokeScreenshotSharing()">Make private</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════ SETTINGS ═══════════════════════════ -->
+      <section class="view" id="view-settings" aria-label="Settings">
+        <div class="page-head"><div><h1>Settings</h1><p>What students see on the payment screen, and how long the free trial runs.</p></div></div>
+
+        <div class="panel">
+          <div class="panel-hd"><div><h3>Payment</h3></div></div>
+          <div class="field-row">
+            <div class="field"><label for="set-name">App name</label><input class="input" type="text" id="set-name" placeholder="Abhyas"></div>
+            <div class="field"><label for="set-amount">Amount (Rs)</label><input class="input" type="number" id="set-amount" inputmode="numeric" placeholder="100" min="1"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="set-phone">Contact phone</label><input class="input" type="tel" id="set-phone" inputmode="tel" placeholder="9863200285"></div>
+            <div class="field"><label for="set-trial">Free trial (hours)</label><input class="input" type="number" id="set-trial" inputmode="numeric" placeholder="24" min="1"></div>
+          </div>
+          <div class="field">
+            <span class="field-label">Payment QR code</span>
+            <div class="flex g3 center wrap">
+              <img id="set-qr-preview" alt="Current payment QR code" hidden style="width:88px;height:88px;object-fit:contain;border-radius:var(--r-control);border:1px solid var(--sep);background:#fff;padding:4px">
+              <div class="grow">
+                <label class="file-drop" for="set-qr-file" style="padding:var(--sp-4)">
+                  <input type="file" id="set-qr-file" accept="image/*" data-on-change="SETTINGS.onQrFile(event)">
+                  <i class="ph ph-qr-code fd-icon"></i>
+                  <span class="fd-main">Replace QR image</span>
+                  <span class="fd-sub" id="set-qr-status">No QR uploaded yet</span>
+                </label>
+              </div>
+            </div>
+            <input type="hidden" id="set-qr">
+          </div>
+          <div class="field">
+            <label for="set-eta">Typical approval time <span class="dim">(optional)</span></label>
+            <input class="input" type="text" id="set-eta" placeholder="within 12 hours">
+            <span class="field-hint">Shown to students after they send a payment.</span>
+          </div>
+          <div class="field">
+            <label for="set-announce">Announcement banner <span class="dim">(optional)</span></label>
+            <textarea class="textarea" id="set-announce" style="min-height:64px" placeholder="For example: The next weekly test opens on Wednesday at 8 am."></textarea>
+            <span class="field-hint">Shown at the top of every student's Home screen until you clear it. Keep it short.</span>
+          </div>
+          <div class="field">
+            <label for="set-inst">Instructions shown to students</label>
+            <textarea class="textarea" id="set-inst" placeholder="Scan the QR code, then submit your transaction ID."></textarea>
+          </div>
+          <div class="flex g2 mt4 wrap">
+            <button class="btn btn-primary" id="btn-save-settings" data-perm="settings_manage" data-on-click="SETTINGS.save()"><i class="ph ph-check"></i> Save changes</button>
+            <button class="btn btn-quiet" data-on-click="SETTINGS.load()">Discard</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-hd"><div><h3>Your account</h3><div class="sub" id="settings-account-line">—</div></div></div>
+          <button class="btn btn-secondary" data-on-click="ADMIN.changePassword()"><i class="ph ph-key"></i> Change password</button>
+        </div>
+
+        <div class="panel" id="lks-panel">
+          <div class="panel-hd"><div><h3>Loksewa mark scheme</h3></div></div>
+          <p class="t-foot mb3">How the <b>daily paper</b> is built and how <b>marks by group</b> are shown on the results of the weekly test, the daily paper and the hourly 50. Enter the groups and their marks from the PSC syllabus. Each group draws its questions from the chapters you tick, taking turns between chapters. If nothing is saved, the daily paper is 25 General Knowledge + 50 Level 7 Civil Engineering.</p>
+          <div id="lks-rows"></div>
+          <div class="flex between center wrap g2 mt2">
+            <button class="btn btn-quiet btn-sm" data-on-click="LKS_ADMIN.addRow()"><i class="ph ph-plus"></i> Add a group</button>
+            <span class="t-callout" id="lks-total" aria-live="polite"></span>
+          </div>
+          <div class="flex g2 mt4 wrap">
+            <button class="btn btn-primary" id="lks-save" data-perm="settings_manage" data-on-click="LKS_ADMIN.save()"><i class="ph ph-check"></i> Save mark scheme</button>
+            <button class="btn btn-quiet" data-perm="settings_manage" data-on-click="LKS_ADMIN.useDefault()">Go back to the default (topic-wise)</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+    </main>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════ DIALOGS ═══════════════════════════ -->
+<div class="overlay" id="ov-review" role="dialog" aria-modal="true" aria-labelledby="tt-review" data-on-click="event.target===this&&MODAL.close('review')">
+  <div class="dialog">
+    <div class="dialog-hd"><h3 id="tt-review">Review payment</h3><button class="icon-btn" data-on-click="MODAL.close('review')" aria-label="Close"><i class="ph ph-x"></i></button></div>
+    <div class="dialog-body" id="bd-review"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-user" role="dialog" aria-modal="true" aria-labelledby="tt-user" data-on-click="event.target===this&&MODAL.close('user')">
+  <div class="dialog wide">
+    <div class="dialog-hd"><h3 id="tt-user">Student</h3><button class="icon-btn" data-on-click="MODAL.close('user')" aria-label="Close"><i class="ph ph-x"></i></button></div>
+    <div class="dialog-body" id="bd-user"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-sheet" role="dialog" aria-modal="true" aria-labelledby="tt-sheet" data-on-click="event.target===this&&MODAL.close('sheet')">
+  <div class="dialog wide">
+    <div class="dialog-hd"><h3 id="tt-sheet">Details</h3><button class="icon-btn" data-on-click="MODAL.close('sheet')" aria-label="Close"><i class="ph ph-x"></i></button></div>
+    <div class="dialog-body" id="bd-sheet"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-confirm" role="dialog" aria-modal="true" aria-labelledby="tt-confirm" data-on-click="event.target===this&&CONFIRM._no()">
+  <div class="dialog" style="max-width:400px">
+    <div class="dialog-hd"><h3 id="tt-confirm">Confirm</h3><button class="icon-btn" data-on-click="CONFIRM._no()" aria-label="Close"><i class="ph ph-x"></i></button></div>
+    <div class="dialog-body" id="bd-confirm"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-pwd" role="dialog" aria-modal="true" aria-labelledby="tt-pwd" data-on-click="event.target===this&&MODAL.close('pwd')">
+  <div class="dialog">
+    <div class="dialog-hd"><h3 id="tt-pwd">Change password</h3><button class="icon-btn" id="pwd-close" data-on-click="MODAL.close('pwd')" aria-label="Close"><i class="ph ph-x"></i></button></div>
+    <div class="dialog-body">
+      <div class="banner banner-warning" id="pwd-forced-note" hidden><i class="ph ph-warning"></i><span>This account is still on the default password. Set a new one to continue.</span></div>
+      <div class="field"><label for="pwd-current">Current password</label>
+        <div class="pw-field"><input class="input" type="password" id="pwd-current" autocomplete="current-password"><button type="button" data-on-click="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
+      </div>
+      <div class="field"><label for="pwd-new">New password</label>
+        <div class="pw-field"><input class="input" type="password" id="pwd-new" placeholder="At least 6 characters" autocomplete="new-password"><button type="button" data-on-click="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
+      </div>
+      <div class="field"><label for="pwd-confirm">Repeat new password</label>
+        <div class="pw-field"><input class="input" type="password" id="pwd-confirm" autocomplete="new-password"><button type="button" data-on-click="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" id="pwd-cancel" data-on-click="MODAL.close('pwd')">Cancel</button>
+      <button class="btn btn-primary" id="pwd-save" data-on-click="ADMIN.doChangePassword()">Save password</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCRIPTS — admin console load order.
+     Load order matters. Do not add/remove without a specific reason.
+     NOTE: logs.js loads before users.js because USERS.renderPage calls
+     paintSort and PAGINATION.render from logs.js.
+     ═══════════════════════════════════════════════════════════════════════ -->
+
+<!-- core utilities (admin-nav loads immediately after text so esc is defined) -->
+<script src="js/core/text.js"></script>
+<script src="js/core/admin-nav.js"></script>
+<script src="js/core/dom.js"></script>
+<script src="js/core/access.js"></script>
+<script src="js/core/theme.js"></script>
+<script src="js/core/crash-report.js"></script>
+<script src="js/core/net.js"></script>
+<script src="js/core/constants.js"></script>
+<script src="js/core/format.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/state.js"></script>
+<script src="js/core/question.js"></script>
+<script src="js/core/toast.js"></script>
+<script src="js/core/modal.js"></script>
+<script src="js/core/auth.js"></script>
+<script src="js/core/progress.js"></script>
+<script src="js/core/insights.js"></script>
+<script src="js/core/sync.js"></script>
+<script src="js/core/study-docs.js"></script>
+<script src="js/core/loksewa.js"></script>
+<script src="js/core/perf.js"></script>
+<script src="js/core/float-space.js"></script>
+<script src="js/core/scope.js"></script>
+<script src="js/core/subjective-api.js"></script>
+<script src="js/core/psync.js"></script>
+
+<!-- report + data (chapters-loader injects ChapterData from CDN) -->
+<script src="js/report/report-shared.js"></script>
+<script src="js/data/chapters-loader.js"></script>
+<script src="js/data/subjective_chapters.js"></script>
+<script src="js/data/subjective-data.js"></script>
+
+<!-- PDF engine (before pdf-viewer and admin foundation) -->
+<script src="tools/vendor/pdfjs/pdf.min.js"></script>
+<script src="tools/vendor/pdf-lib/pdf-lib.min.js"></script>
+<script src="js/features/pdf-viewer.js"></script>
+<script src="js/admin/core.js"></script>
+<script src="js/admin/subj-smart.js"></script>
+
+<!-- admin features — logs.js BEFORE users.js -->
+<script src="js/admin/features/logs.js"></script>
+<script src="js/admin/features/today.js"></script>
+<script src="js/admin/features/users.js"></script>
+<script src="js/admin/features/admins.js"></script>
+<script src="js/admin/features/palette.js"></script>
+<script src="js/admin/features/expiring.js"></script>
+
+<script src="js/admin/features/dashboard.js"></script>
+<script src="js/admin/features/weeklysets.js"></script>
+<script src="js/admin/features/studydocs.js"></script>
+<script src="js/admin/features/subjective-store.js"></script>
+<script src="js/admin/features/subjective-grade-card.js"></script>
+<script src="js/admin/features/subjective-qotd.js"></script>
+<script src="js/admin/features/subjective-exam.js"></script>
+
+<script src="js/admin/features/subjective-hourly.js"></script>
+<script src="js/admin/features/subjective-pdf.js"></script>
+<script src="js/admin/features/subjective-import.js"></script>
+<script src="js/admin/features/data.js"></script>
+<script src="js/admin/features/settings.js"></script>
+
+<script src="js/admin/features/payments.js"></script>
+<script src="js/admin/router.js"></script>
+
+<!-- reports screen -->
+<script src="js/report/adminreport.js"></script>
+
+<!-- final exposure pass -->
+<script src="js/core/expose.js"></script>
+</body>
+</html>
+<!-- abhyas-hourly-challenge-v1 -->
+<!-- abhyas-hourly-sprint-loader-v2 -->

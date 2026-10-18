@@ -1,0 +1,71 @@
+{
+  "name": "Abhyas — Loksewa Civil Engineering Exam Prep",
+  "short_name": "Abhyas",
+  "description": "Offline-first Nepal Engineering & PSC exam prep — practice Loksewa Civil Engineering and General Knowledge questions online or fully offline.",
+  "lang": "en-NP",
+  "dir": "ltr",
+  "scope": "./",
+  "start_url": "./index.html",
+  "id": "./",
+
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+
+  "theme_color": "#F2F4F3",
+  "background_color": "#F2F4F3",
+
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
+
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open your study dashboard",
+      "url": "./user.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Offline Cache",
+      "short_name": "Cache",
+      "description": "Manage cached question sets for offline study",
+      "url": "./user.html#offline",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Daily Question",
+      "short_name": "Daily Q",
+      "description": "Open today's subjective question",
+      "url": "./user.html#subjective",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

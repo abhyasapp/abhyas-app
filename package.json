@@ -1,0 +1,13 @@
+{
+  "name": "abhyas",
+  "version": "1.46.0",
+  "private": true,
+  "description": "Abhyas: Loksewa Civil Engineering exam prep (static PWA + Apps Script backend)",
+  "scripts": {
+    "serve": "npx --yes serve -l 5500 .",
+    "check-syntax": "node --check js/app.js && node --check sw.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
