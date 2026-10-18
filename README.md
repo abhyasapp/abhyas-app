@@ -63,6 +63,7 @@ npm test             # vitest run
 npm run test:cov     # with coverage
 npm run lint         # ESLint (lenient on purpose — see eslint.config.js)
 npm run check-syntax # node --check on every first-party file
+npm run audit:buttons # boots every page, checks each button has a working handler (~45 s)
 npm run audit        # duplicate symbols, orphan files, unused vendor files (report only)
 ```
 

@@ -24,3 +24,5 @@ jobs:
         run: npm run lint
       - name: Unit + integrity tests
         run: npm test
+      - name: Button audit (every button wired, no dead handlers)
+        run: npm run audit:buttons

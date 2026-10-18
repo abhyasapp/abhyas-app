@@ -199,7 +199,7 @@ const MISSED = {
     }
   },
   exportCSV(){
-    if (!this.lastResults.length) return TOAST.show('Load the list first', 'warning');
+    if (!this.lastResults || !this.lastResults.length) return TOAST.show('Load the list first', 'warning');
     ADMIN.downloadCSV(ADMIN.toCSV(
       ['UID','Level','Chapter','Wrong','Total','Wrong %','Accuracy %','Students'],
       this.lastResults.map(r => [r.uid, r.level || '', r.chapter || '', r.wrong, r.total, r.wrongRate, r.accuracy, r.uniqueStudents])

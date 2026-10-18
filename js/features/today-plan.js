@@ -228,6 +228,18 @@ window.TODAY_PLAN = {
       '</button>';
   },
 
+  /* The Home "Continue <chapter>" chip (see _renderResume) calls this. It was
+     documented but missing, so the chip threw and did nothing. */
+  resume(){
+    const ctx = this._resumeCtx();
+    if (!ctx) { toast('Nothing to continue yet \u2014 pick a chapter to start.'); return; }
+    const ref = ChapterData.allFileRefs().find(r => r.fid === ctx.fid);
+    if (!ref) { toast('That chapter is not available right now.'); return; }
+    QUIZ.load(ref.fid, ref.key, 'flashcard',
+      ChapterData.chapterName(ref.lv, ref.ch) + ' \u2014 ' + ref.book,
+      { lv: ref.lv, ch: ref.ch, book: ref.book, sub: ref.subtopic, fid: ref.fid });
+  },
+
   /* v1.47 — Home no longer has a "Today's plan" card. #today-body is still
      present inside the hidden source block, but nothing appends it to a
      visible card any more. Clear it and drop the cached plan so we don't
