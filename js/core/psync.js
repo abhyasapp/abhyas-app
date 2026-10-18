@@ -1,14 +1,4 @@
-/* js/core/psync.js — PSYNC (progress sync) + the cross-tab storage listener.
-   MUST LOAD AFTER: js/core/constants.js, storage.js, state.js, sync.js
-     (LS is read at load time by the cross-tab listener's WATCH set;
-      S, _load and the sync.js helpers are referenced only at call time.)
-
-   Moved verbatim from the ORIGINAL 01-state-storage-helpers.js (the
-   `const PSYNC = { … };` object and the two lifecycle listeners that sit
-   immediately after it) and from 03-cache-data-reset-network.js (the
-   crossTabSync IIFE at the bottom of that file).
-
-   PSYNC is defined HERE and ONLY HERE. No other file may redeclare it. */
+/* js/core/psync.js — PSYNC (progress sync) + the cross-tab storage listener. */
 
 const PSYNC = {
   _timer: null,
@@ -21,7 +11,7 @@ const PSYNC = {
     this._state = state;
     const dot = document.getElementById('tb-sync-dot');
     const btn = document.getElementById('tb-sync-btn');
-    if(!dot || !btn) return;   // toolbar not on this page — state still updated in _state
+    if(!dot || !btn) return;
     const cfg = {
       idle:    {color:'var(--t3)', title:'Not synced yet this session', anim:false},
       pending: {color:'var(--amb)', title:'Sync pending…',              anim:false},
@@ -43,10 +33,6 @@ const PSYNC = {
   _beaconSync(){
     if(!S.online || S.forcedOffline || !S.user || !S.user.token) return;
     try{
-      /* v1.36: the beacon sends the same small, always-fits payload as a
-         normal save — totals, chapter stats, coverage, study days. The
-         wrong bank, bookmarks and notes stay on this device and in the
-         student's own Google Drive backup. */
       const json = JSON.stringify(this._syncPayloadForServer());
       if(json.length > this._SYNC_PAYLOAD_CEILING) return;
       const body = JSON.stringify({ action:'saveProgress', username: S.user.username, token: S.user.token, data: json, baseUpdatedAt: this._rev() });
@@ -62,8 +48,6 @@ const PSYNC = {
   _SYNC_PAYLOAD_CEILING: 44000,
   _SNAP_KEY: 'abhyas_presync_backup',
 
-  /* The COMPLETE state of this device. Nothing here is ever cut down: merges start from this,
-     and the cloud copy is made from it (compressed when large). */
   _fullLocal(){
     let qnotes = {};
     try { const raw = localStorage.getItem('abhyas_qnotes'); qnotes = raw ? JSON.parse(raw) : {}; } catch(e){ qnotes = {}; }
@@ -81,8 +65,6 @@ const PSYNC = {
     return { wr:(d.wr||[]).length, bk:(d.bk||[]).length, fl:(d.fl||[]).length, sessions:((d.prog&&d.prog.sessions)||[]).length, notes:Object.keys(d.qnotes||{}).length };
   },
 
-  /* A merge only ever ADDS. This is the last line of defence: if a merged result is ever smaller than what
-     this device already had, it is thrown away and nothing is changed. */
   _mergeKeepsEverything(local, merged){
     const a = this._counts(local), b = this._counts(merged);
     return b.wr >= a.wr && b.bk >= a.bk && b.fl >= a.fl && b.notes >= a.notes && b.sessions >= Math.min(a.sessions, 50)
@@ -90,31 +72,28 @@ const PSYNC = {
       && (Number(merged.prog.correct)||0) >= (Number((local.prog||{}).correct)||0);
   },
 
-  /* Rolling safety copies (the last 3) of this device's data taken just before any sync changes it,
-     so any sync can be undone from Data > Recover. They belong to the signed-in student only. */
   _snapshot(reason){
     try {
       const full = this._fullLocal();
       const c = this._counts(full);
-      if(!c.wr && !c.bk && !c.fl && !c.sessions && !c.notes) return false;       // nothing worth keeping
+      if(!c.wr && !c.bk && !c.fl && !c.sessions && !c.notes) return false;
       const user = (S.user && S.user.username) ? String(S.user.username).toLowerCase() : '';
       let list = []; try { list = JSON.parse(localStorage.getItem(this._SNAP_KEY) || '[]'); } catch(e){ list = []; }
       if(!Array.isArray(list)) list = [];
       const json = JSON.stringify(full);
-      if(list[0] && list[0].user === user && JSON.stringify(list[0].data) === json) return true;   // unchanged since last copy
+      if(list[0] && list[0].user === user && JSON.stringify(list[0].data) === json) return true;
       list.unshift({ at: Date.now(), reason: String(reason||'sync'), user, counts: c, data: full });
       for(let keep = Math.min(list.length, 3); keep >= 1; keep--){
-        try { localStorage.setItem(this._SNAP_KEY, JSON.stringify(list.slice(0, keep))); return true; } catch(e){ /* storage full: keep fewer */ }
+        try { localStorage.setItem(this._SNAP_KEY, JSON.stringify(list.slice(0, keep))); return true; } catch(e){ }
       }
     } catch(e){}
-    return false;     /* merging is additive, so it is still safe to carry on without a snapshot */
+    return false;
   },
   listSnapshots(){
     const user = (S.user && S.user.username) ? String(S.user.username).toLowerCase() : '';
     try { return (JSON.parse(localStorage.getItem(this._SNAP_KEY) || '[]') || []).filter(x => x && x.user === user); } catch(e){ return []; }
   },
 
-  /* Write a merged result into the app and onto the device. */
   _applyMergedObject(m){
     S.prog = m.prog; if(typeof migrateSessionScopes === 'function') migrateSessionScopes(); _save(LS.PROG, S.prog);
     S.chapStats = m.chapStats; _save(LS.CHAPSTATS, S.chapStats);
@@ -135,16 +114,12 @@ const PSYNC = {
     if(typeof HOME!=='undefined' && HOME.updateBadges) HOME.updateBadges();
   },
 
-  /* Add another copy (cloud, other device, snapshot) to this device's data. Returns { ok, added } and
-     never removes anything. `remote` may be an object, a JSON string or a compressed "gz1:" string. */
   async mergeIn(remote, reason){
     let r = remote;
     try { if(typeof r === 'string') r = await syncDecode(r); } catch(e){ return { ok:false, error:'That copy could not be read.' }; }
     if(!r || typeof r !== 'object') return { ok:false, error:'That copy is empty.' };
     const local = this._fullLocal();
     const merged = mergeSyncData(local, r);
-    /* A reset made on another device legitimately makes this device's copy smaller. The safety copy is taken
-       first (so Data > Recover can bring it back); every other merge must still only ever add. */
     const resetsChanged = JSON.stringify(merged.resets || {}) !== JSON.stringify(local.resets || {});
     if(!resetsChanged && !this._mergeKeepsEverything(local, merged)) return { ok:false, error:'The merge was cancelled because it would have removed data. Nothing was changed.' };
     this._snapshot(reason || 'before-merge');
@@ -158,18 +133,11 @@ const PSYNC = {
   _rev(){ try { return localStorage.getItem(this._REV_KEY) || ''; } catch(e){ return ''; } },
   _setRev(v){ try { if(v) localStorage.setItem(this._REV_KEY, String(v)); } catch(e){} },
 
-  /* v1.36: what travels to the server. Fixed-size, ~2 KB no matter how big
-     the wrong bank grows. The wrong bank, bookmarks, notes and full session
-     list stay on this device and travel only through the student's own
-     Google Drive backup. This removes the 45,000-character ceiling forever. */
   _syncPayloadForServer(){
     const p = S.prog || {};
     let sprint = '';
     try { sprint = localStorage.getItem('abhyas_sprint_start') || ''; } catch(e){}
     
-    // Include the last 100 sessions from within the last 60 days, so
-    // sprint progress can be computed from real timestamps on any device
-    // (and after a fresh login). Older sessions stay on-device only.
     const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
     const recentSessions = (Array.isArray(p.sessions) ? p.sessions : [])
       .filter(s => s && Number(s.at) >= cutoff)
@@ -210,19 +178,23 @@ const PSYNC = {
         this._setRev(res.updatedAt);
         this._setStatus('Last backed up: ' + new Date().toLocaleString()); this._setState('synced');
       } else if(res && res.conflict && !_isRetry){
-        /* Another device saved first. Its copy is ADDED to this device's data (nothing is removed),
-           and the combined copy is saved back. */
         const out = await this.mergeIn(res.data, 'before-sync');
         if(!out.ok){ this._setStatus('Sync paused: ' + out.error); this._setState('error'); return; }
         this._setRev(res.updatedAt);
         toast('\ud83d\udd04 Combined with your other device. Nothing was removed.');
         return this.pushNow(true);
       } else if(res && res.sessionInvalid){
-  this._setStatus('Session expired — please log in again.');
-  this._setState('error');
-  if(typeof AUTH !== 'undefined') AUTH._bounce();
-} else { this._setStatus('Backup failed \u2014 will retry automatically.'); this._setState('error'); }
-    }catch(e){ this._setStatus('Backup failed (offline?) \u2014 will retry automatically.'); this._setState('error'); }
+        this._setStatus('Session expired — please log in again.');
+        this._setState('error');
+        // Removed AUTH._bounce() to prevent mid-quiz logout loop
+      } else { 
+        this._setStatus('Backup failed \u2014 will retry automatically.'); 
+        this._setState('error'); 
+      }
+    }catch(e){ 
+      this._setStatus('Backup failed (offline?) \u2014 will retry automatically.'); 
+      this._setState('error'); 
+    }
   },
   async pullIfEmpty(){
     if(!S.online || !S.user || !S.user.token) return;
@@ -235,7 +207,6 @@ const PSYNC = {
     if(!S.online || !S.user || !S.user.token){ toast('Need internet to check your cloud backup'); return; }
     await this._pull(true);
   },
-  /* "Restore" now ADDS the cloud copy to this device. It never replaces or removes anything here. */
   async _pull(force){
     try{
       const r = await netFetch(APPS, {
@@ -253,13 +224,12 @@ const PSYNC = {
       const a = out.added, n = a.wr + a.bk + a.fl + a.sessions + a.notes;
       toast(n > 0 ? '\u2705 Added your saved progress from the cloud. Nothing on this device was removed.' : '\u2705 Already up to date. Nothing was removed.', 5000);
       this._setStatus('Checked cloud backup: ' + new Date().toLocaleString());
-      if(n >= 0) this.scheduleSync();     // save the combined copy back so every device gets it
+      if(n >= 0) this.scheduleSync(); 
     }catch(e){
       if(force) toast('Could not reach your cloud backup. Check your connection and try again.');
     }
   },
 
-  /* ── Recovery (Data > Recover): add back an earlier copy. Always additive. ── */
   async listCloudHistory(){
     const r = await netFetch(APPS, { method:'POST', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({action:'getProgressHistory', username:S.user.username, token:S.user.token}) }, 15000);

@@ -1546,6 +1546,8 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
           <button class="tb-menu-item" role="menuitem" type="button" data-keep-open data-on-click="UI.theme()"><i class="ph ph-circle-half"></i><span>Light or dark</span></button>
           <button class="tb-menu-item" role="menuitem" type="button" data-on-click="PWA.toggleFullscreen()"><i class="ph ph-corners-out"></i><span>Full screen</span></button>
           <button class="tb-menu-item" role="menuitem" type="button" id="installBtn" data-on-click="PWA.install()" style="display:none"><i class="ph ph-device-mobile"></i><span>Install the app</span></button>
+          <!-- NEW: Logout other devices in top menu -->
+          <button class="tb-menu-item danger" role="menuitem" type="button" data-on-click="AUTH.logoutOtherDevices()"><i class="ph ph-devices"></i><span>Log out other devices</span></button>
           <button class="tb-menu-item danger" role="menuitem" type="button" data-on-click="AUTH.logout()"><i class="ph ph-sign-out"></i><span>Sign out</span></button>
         </div>
       </div>
@@ -2072,6 +2074,16 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
                 <button class="btn btn-quiet" data-on-click="DATA.restoreCloud()"><i class="ph ph-cloud-arrow-down"></i> Add missing from cloud</button>
               </div>
             </div>
+            
+            <!-- NEW: Security Card (Logout other devices) -->
+            <div class="card">
+              <div class="card-hd"><h3>Security</h3><span class="ctag tr">Careful</span></div>
+              <p class="t-callout mb3">If you've signed in on another device or a shared computer, you can sign out of all other sessions. Your current session will remain active.</p>
+              <div class="bg">
+                <button class="btn btn-r" data-on-click="AUTH.logoutOtherDevices()"><i class="ph ph-devices"></i> Log out of all other devices</button>
+              </div>
+            </div>
+
             <div class="card">
               <div class="card-hd"><h3>Backup to your own Drive</h3><span class="ctag tp">Optional</span></div>
               <p class="t-callout mb3">Keep a second copy in your own Google Drive, separate from the Abhyas server. Each backup is saved as its own version and the newest 5 are kept. Restoring <b>adds</b> a copy's data to this device; nothing on this device is removed.</p>

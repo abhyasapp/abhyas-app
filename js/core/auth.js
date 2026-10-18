@@ -1,5 +1,4 @@
 // js/core/auth.js — login session, offline fallback, logout, periodic recheck.
-// Same behaviour as before; only moved.
 
 const AUTH = {
   async restore() {
@@ -53,14 +52,12 @@ const AUTH = {
       email: user.email || prevSession.email,
       mobile: user.mobile || prevSession.mobile,
       access,
-      needsPayment: !!res.needsPayment,   // ← new: distinguish "trial over" from "session dead"
+      needsPayment: !!res.needsPayment,
       adminCapable: prevSession.adminCapable || !!res.adminCapable,
       lastVerified: Date.now()
     };
   },
   _bounce() {
-    // Only called for REAL session death (expired token, rejected account).
-    // Access expiry does NOT call _bounce — users stay logged in and see a paywall notice.
     const onScreen = () => { const w = document.getElementById('quiz-wrap'); return !!(w && w.style.display !== 'none'); };
     if (onScreen()) {
       if (AUTH._bounceWaiting) return;
@@ -111,7 +108,6 @@ const AUTH = {
     if (typeof PUSH !== 'undefined') PUSH.silentRefresh();
     WEEKLY.init();
     if (typeof SB_HINTS !== 'undefined') setTimeout(() => SB_HINTS.refresh(), 200);
-    // Nudge the user toward payment instead of logging them out.
     if (user.needsPayment) AUTH._notifyPaymentNeeded();
   },
   _updateSidebarCard(user) {
@@ -151,6 +147,37 @@ const AUTH = {
     localStorage.removeItem(LS.USER);
     window.location.href = 'index.html';
   },
+  
+  // NEW: Logout from all other devices
+  async logoutOtherDevices() {
+    if (!(await ASK.confirm({ title: 'Log out other devices?', body: 'This will sign you out of Abhyas on all other devices and browsers. You will remain logged in here.', ok: 'Log out others' }))) return;
+    
+    try {
+      if (typeof supabase !== 'undefined' && supabase.auth) {
+        // Supabase's native method to invalidate all other refresh tokens
+        const { error } = await supabase.auth.signOut({ scope: 'others' });
+        if (error) throw error;
+        if (typeof toast === 'function') toast('Successfully logged out of all other devices.', 4000);
+      } else {
+        // Fallback for GAS (if your backend supports a similar endpoint)
+        const r = await netFetch(APPS, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'logoutOtherDevices', token: S.user.token, username: S.user.username })
+        }, 10000);
+        const res = await r.json();
+        if (res && res.success) {
+          if (typeof toast === 'function') toast('Successfully logged out of all other devices.', 4000);
+        } else {
+          throw new Error((res && res.error) || 'Failed to logout other devices.');
+        }
+      }
+    } catch (err) {
+      console.error('[AUTH.logoutOtherDevices]', err);
+      if (typeof toast === 'function') toast('Failed to log out other devices. Please try again.', 5000);
+    }
+  },
+
   _revalidateTimer: null,
   _visibilityBound: false,
   RECHECK_MS: 10 * 60 * 1000,
@@ -173,8 +200,6 @@ const AUTH = {
     try {
       const { res } = await AUTH._checkSessionOnce(S.user);
       if (res.success) {
-        // Session is still valid. Even if needsPayment is now true, keep the
-        // user logged in and just update the session + notify.
         const updated = AUTH._buildSession(S.user, res);
         _save(LS.USER, updated);
         S.user = updated;

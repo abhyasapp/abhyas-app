@@ -101,7 +101,7 @@
     return true;
   }
 
-  // ── real data sources (fixed): use S.wr / S.chapStats / S.stk.days ─
+  // ── real data sources ─
   function _wrongBank() {
     try { return (typeof S !== 'undefined' && S.wr) ? S.wr : []; } catch (e) { return []; }
   }
@@ -115,11 +115,36 @@
     try { return (typeof S !== 'undefined' && S.stk && Array.isArray(S.stk.days)) ? S.stk.days : []; } catch (e) { return []; }
   }
 
-  // ── daily targets ───────────────────────────────────────────────
+  // ── daily targets & actual progress ─────────────────────────────
+  function _todayStats() {
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+    const todayTime = todayMidnight.getTime();
+    const sessions = (typeof S !== 'undefined' && S.prog && S.prog.sessions) ? S.prog.sessions : [];
+    
+    let newDone = 0, revDone = 0, drillDone = 0, timeDoneMins = 0;
+    
+    sessions.forEach(s => {
+      const sTime = Number(s.at || s.ts || s.date);
+      if (sTime >= todayTime) {
+        const count = Number(s.count || s.n || s.total || 1);
+        if (s.type === 'review' || s.mode === 'review' || s.scope === 'review') revDone += count;
+        else if (s.type === 'drill' || s.mode === 'drill' || s.scope === 'drill') drillDone += count;
+        else newDone += count;
+        
+        // Safely assume s.time / s.dur is in seconds, convert to minutes
+        const sec = Number(s.time || s.dur || s.duration || s.elapsed || 0);
+        timeDoneMins += Math.round(sec / 60); 
+      }
+    });
+    
+    return { newDone, revDone, drillDone, timeDoneMins };
+  }
+
   function _targets() {
     const day = _dayNum();
     const phase = _phaseOf(day);
     const daysLeft = Math.max(1, 60 - day + 1);
+    const today = _todayStats();
 
     const now = Date.now();
     let reviewsDue = _wrongBank().filter(q => {
@@ -142,16 +167,13 @@
 
     return {
       phase,
-      new:     { done: 0, target: newTarget },
-      reviews: { done: 0, target: Math.max(10, Math.min(30, reviewsDue || 20)) },
-      drill:   { done: 0, target: drillTarget },
-      time:    { done: 0, target: timeTarget },
+      new:     { done: today.newDone, target: newTarget },
+      reviews: { done: today.revDone, target: Math.max(10, Math.min(30, reviewsDue || 20)) },
+      drill:   { done: today.drillDone, target: drillTarget },
+      time:    { done: today.timeDoneMins, target: timeTarget },
     };
   }
 
-  // Remaining unseen questions across eligible chapters, using ChapterData
-  // and S.fcount / S.cov directly — the old version walked a non-existent
-  // window.CH and always returned 0.
   function _remainingQuestions() {
     try {
       if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return 0;
@@ -197,7 +219,6 @@
     return days;
   }
 
-  // ── render: Home strip ──────────────────────────────────────────
   function renderHomeStrip() {
     const el = document.getElementById('sprint-card');
     if (!el) return;
@@ -220,7 +241,6 @@
       '<div class="sp-chev"><i class="ph ph-arrow-right"></i></div>';
   }
 
-  // ── render: full sprint page ────────────────────────────────────
   function renderPage() {
     const day = _dayNum();
     const phase = _phaseOf(day);
@@ -359,7 +379,6 @@
   }
   function _esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-  // ── public API (was window.SPRINT — renamed to SPRINT_PAGE) ────
   window.SPRINT_PAGE = {
     init() {
       if (_inited) { renderHomeStrip(); renderPage(); return; }
@@ -397,10 +416,6 @@
     },
   };
 
-  /* ── bridge: legacy HTML calls SPRINT.takeTodayOff() / SPRINT.setExamDate() etc.
-        today-plan.js owns window.SPRINT but doesn't have these methods, so we add
-        them here. Runs at parse time (right after SPRINT_PAGE exists), so any
-        click handler anywhere resolves correctly. ──────────────────────────── */
   window.SPRINT = window.SPRINT || {};
   window.SPRINT.takeTodayOff    = window.SPRINT_PAGE.takeTodayOff;
   window.SPRINT.setExamDate     = window.SPRINT_PAGE.setExamDate;
