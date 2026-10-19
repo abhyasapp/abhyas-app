@@ -49,7 +49,7 @@ const PSYNC = {
   _SNAP_KEY: 'abhyas_presync_backup',
 
   _fullLocal(){
-    let qnotes = {};
+    let qnotes;
     try { const raw = localStorage.getItem('abhyas_qnotes'); qnotes = raw ? JSON.parse(raw) : {}; } catch(e){ qnotes = {}; }
     if (!qnotes || typeof qnotes !== 'object' || Array.isArray(qnotes)) qnotes = {};
     let sprint = '';

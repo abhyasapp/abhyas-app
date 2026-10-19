@@ -24,6 +24,7 @@
   function _compile(code) {
     let fn = _cache.get(code);
     if (fn) return fn;
+    // eslint-disable-next-line no-new-func -- the data-on-* dispatcher is the single intended use (see README roadmap #5)
     try { fn = new Function('event', code); }
     catch (e) {
       console.error('[actions] Failed to compile:', code, e);

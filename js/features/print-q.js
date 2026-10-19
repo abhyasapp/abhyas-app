@@ -12,7 +12,7 @@ window.PRINT_Q = {
     if(!ref){ toast('That chapter is not registered.'); return; }
 
     toast('Preparing the sheet…', 2500);
-    let qs = [];
+    let qs;
     try {
       const raw = await QUIZ._fetch(ref.fid, ref.key);
       qs = normQ(raw, ref.fid);

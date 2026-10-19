@@ -8,7 +8,7 @@
 //   4. js/core/study-docs.js  (STUDYDOC_LABELS / subjChapterName)
 //   5. js/core/admin-nav.js   (ADMIN_NAV)
 //   6. THIS FILE              ($ / $$ / ADMIN / MODAL / …)
-//   7. js/app/01-…04 shims    (loads js/admin/features/*)
+//   7. js/admin/features/*       (loaded directly by admin.html)
 //
 // Any shared helper that also lives in js/core/* is declared only if not
 // already present, so this file is robust to admin.html dropping one of

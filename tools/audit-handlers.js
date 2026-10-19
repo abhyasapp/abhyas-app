@@ -17,7 +17,6 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const HTML_FILES = ['index.html', 'user.html', 'admin.html'];
-const JS_DIRS = ['js'];
 const EXPOSE_PATH = path.join(ROOT, 'js', 'core', 'expose.js');
 
 // Never treat these as app-level globals even if they appear in a handler.

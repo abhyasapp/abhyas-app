@@ -121,7 +121,7 @@ window.WRONGBY = {
     const ref = this._ref(fid);
     if (!ref){ toast('That chapter is not available.'); return; }
     QUIZ._showLoader('Finding similar questions…');
-    let pool = [];
+    let pool;
     try {
       const raw = await QUIZ._fetch(ref.fid, ref.key);
       pool = normQ(raw, ref.fid);

@@ -208,7 +208,7 @@ const WEEKLY = {
 
   async _startOnServer(s) {
     if (!S.online || S.forcedOffline || !S.user || !S.user.token) return 'go';
-    let res = null;
+    let res;
     try {
       const r = await netFetch(APPS, {
         method:'POST', headers:{'Content-Type':'text/plain'},

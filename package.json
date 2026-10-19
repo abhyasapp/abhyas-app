@@ -1,6 +1,6 @@
 {
   "name": "abhyas",
-  "version": "1.47.0",
+  "version": "1.48.0",
   "private": true,
   "description": "Abhyas: Loksewa Civil Engineering exam prep (static PWA + Apps Script backend)",
   "scripts": {
@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "verify": "npm run check-syntax && npm run lint && npm test",
-    "audit:buttons": "node tools/audit-buttons.mjs"
+    "audit:buttons": "node tools/audit-buttons.mjs",
+    "sync-shell": "node tools/sync-shell.mjs"
   },
   "engines": {
     "node": ">=20.11"

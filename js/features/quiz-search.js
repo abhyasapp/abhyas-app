@@ -134,7 +134,7 @@ window.QSEARCH = {
       ? ChapterData.allFileRefs().find(r => r.fid === fid) : null;
     if (!ref){ QUIZ.startWith([q], 'flashcard', 'Search result', null); return; }
     (async () => {
-      let pool = [];
+      let pool;
       try { const raw = await QUIZ._fetch(ref.fid, ref.key); pool = normQ(raw, ref.fid); }
       catch(e){ pool = [q]; }
       const i = pool.findIndex(x => x.uid === q.uid);

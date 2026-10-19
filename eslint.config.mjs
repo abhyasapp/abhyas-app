@@ -17,7 +17,11 @@ export default [
     rules: {
       'no-undef': 'off',
       'no-unused-vars': 'off',
-      'no-empty': 'off',            // ~300 intentional `catch (e) {}` — see README roadmap
+      'no-empty': ['warn', { allowEmptyCatch: true }], // empty catch blocks are tolerated; other empty blocks are not
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',       // the one intended use is annotated in js/core/actions.js
+      'no-unreachable': 'error',
       'no-redeclare': 'off',        // shared globals are re-declared by design
       'no-inner-declarations': 'off',
       'no-prototype-builtins': 'off',

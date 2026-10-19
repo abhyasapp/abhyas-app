@@ -133,7 +133,7 @@ async function netFetch(url, opts, timeoutMs = 20000) {
     return res;
   } catch (err) {
     clearTimeout(timer);
-    if (err.name === 'AbortError') throw new Error('Request timed out — the server is taking too long. Try again or check your connection.');
+    if (err.name === 'AbortError') throw new Error('Request timed out — the server is taking too long. Try again or check your connection.', { cause: err });
     throw err;
   }
 }
@@ -143,7 +143,7 @@ const NETCHECK = {
   async ping() {
     if (S.forcedOffline) return S.online;
     const wasOnline = S.online;
-    let ok = false;
+    let ok;
     
     try {
       // 1. Try Supabase (Primary)

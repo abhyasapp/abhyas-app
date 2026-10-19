@@ -56,6 +56,10 @@ window.PUSH = {
       if (typeof toast === 'function') toast('Push notifications are not configured yet.');
       return;
     }
+    if (typeof Notification === 'undefined') {
+      if (typeof toast === 'function') toast('This browser does not support notifications. On iPhone, add Abhyas to your Home Screen first.', 5000);
+      return;
+    }
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
@@ -112,7 +116,8 @@ window.PUSH = {
   refreshButtonUI() {
     const btn = document.getElementById('push-enable-btn');
     if (!btn) return;
-    if (Notification.permission === 'granted' && this._token) {
+    const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted'; // iOS Safari (non-PWA) has no Notification API
+    if (granted && this._token) {
       btn.innerHTML = '<i class="ph ph-bell-slash"></i> Turn off notifications';
       btn.onclick = () => this.disable();
     } else {

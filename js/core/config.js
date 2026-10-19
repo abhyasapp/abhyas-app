@@ -22,7 +22,7 @@
                                  → Apps Script (client should prefer CDN)
    ═══════════════════════════════════════════════════════════════════════ */
 
-const APP_VERSION = '1.47.0';
+const APP_VERSION = '1.48.0';
 window.APP_VERSION = APP_VERSION;
 
 const ABHYAS_CONFIG = Object.freeze({

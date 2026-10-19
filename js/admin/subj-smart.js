@@ -90,7 +90,7 @@ function _splitRawTextIntoQuestions(raw){
   let buf = '';
   const flush = () => { const t = buf.trim(); if(t.length >= 15) out.push(t); buf = ''; };
   for(const line of lines){
-    const isStart = /^(\d+[\.\)]|Q\d*[\.\)]|[-•*])\s+\S/.test(line);
+    const isStart = /^(\d+[.)]|Q\d*[.)]|[-•*])\s+\S/.test(line);
     if(isStart){ flush(); buf = line; }
     else if(/^(Section|Chapter|Group|Marks|Note|Section[- ]?[A-Z])\b/i.test(line)){ flush(); }
     else if(buf){ buf += ' ' + line; }
@@ -101,8 +101,8 @@ function _splitRawTextIntoQuestions(raw){
 }
 
 function _extractMarks(text){
-  const m1 = text.match(/\[([\d\.\+ ]+)\]/);
-  const m2 = text.match(/\(([\d\.\+ ]+)\)\s*marks?/i);
+  const m1 = text.match(/\[([\d.+ ]+)\]/);
+  const m2 = text.match(/\(([\d.+ ]+)\)\s*marks?/i);
   const m3 = text.match(/(\d+)\s*marks?/i);
   const raw = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]);
   if(!raw) return 10;
@@ -120,10 +120,10 @@ window.SUBJ_SMART = {
       const marks = _extractMarks(text);
       const cleaned = text
         .replace(/\[[^\]]+\]/g, '')
-        .replace(/\([^\)]+\)\s*marks?/gi, '')
+        .replace(/\([^)]+\)\s*marks?/gi, '')
         .replace(/\d+\s*marks?/gi, '')
-        .replace(/^\d+[\.\)]\s*/, '')
-        .replace(/^Q\d*[\.\)]\s*/i, '')
+        .replace(/^\d+[.)]\s*/, '')
+        .replace(/^Q\d*[.)]\s*/i, '')
         .replace(/^[-•*]\s*/, '')
         .trim();
       const guess = _classifyQuestion(cleaned);

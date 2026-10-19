@@ -48,7 +48,9 @@ if(typeof COV !== 'undefined' && (!S.cov || !Object.keys(S.cov).length)) COV.reb
     }
 
     if(!S.profile.id){
-      S.profile.id = 'ha-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2,9);
+      S.profile.id = 'ha-' + (window.crypto && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 11));
       _save(LS.PROFILE, S.profile);
     }
 

@@ -7,7 +7,10 @@ function esc(s) {
 }
 
 function escAttrJs(s) {
-  const js = String(s == null ? '' : s).replace(/[\\'"]/g, c => '\\' + c);
+  const js = String(s == null ? '' : s)
+    .replace(/[\\'"]/g, c => '\\' + c)
+    .replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+    .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029'); // would end the JS string
   return js.replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));

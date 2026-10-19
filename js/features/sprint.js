@@ -358,8 +358,7 @@
         if (d.studied) { cls.push('full'); done++; possible++; }
         else if (d.rest) { cls.push('rest'); }
         else if (d.off)  { cls.push('off'); }
-        else if (d.future) {}
-        else { possible++; }
+        else if (!d.future) { possible++; } // future days don't count yet
         return '<div class="' + cls.join(' ') + '">' +
           '<div class="day-lbl">' + d.lbl + '</div>' +
           '<div class="day-dot"></div>' +

@@ -11,9 +11,9 @@ const PSY = {
       const items = Object.entries(names).map(([k,n])=>{
         const fc = ChapterData.fileCount(lv,k);
         return `<div class="ch-item" tabindex="0" role="button" data-on-click="this.querySelector('input').click()" data-on-keydown="ACT.enterOrSpace(event)&&this.querySelector('input').click()">
-          <input type="checkbox" value="${k}" data-lv="${lv}" ${fc?'':'disabled'} data-on-click="event.stopPropagation();PSY._info()">
-          <div class="ch-num">${k}</div>
-          <div class="ch-name">${n}${fc?'':' <span style=\"color:var(--t3)\">(no files)</span>'}</div>
+          <input type="checkbox" value="${esc(k)}" data-lv="${esc(lv)}" ${fc?'':'disabled'} data-on-click="event.stopPropagation();PSY._info()">
+          <div class="ch-num">${esc(k)}</div>
+          <div class="ch-name">${esc(n)}${fc?'':' <span style="color:var(--t3)">(no files)</span>'}</div>
           <div class="ch-cnt">${fc}f</div>
         </div>`;
       }).join('');

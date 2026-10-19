@@ -1,15 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════════════
    report/userreport.js — the student side of the reporting system.
 
-   Loaded by user.html AFTER js/app/user-page.js. Classic script, no
+   Loaded by user.html after the core scripts. Classic script, no
    modules. Exposes window.USER_REPORT and installs compatibility shims
    on QUIZ so callers that still say QUIZ._reportX keep working.
 
    Absorbs:
      • QUIZ._openReport / _submitReport / _queueReport / flushReports
-       (from js/app/objective.js)
-     • the CORRECTIONS poller (from js/app/user-page.js) — now
-       USER_REPORT.checkCorrections()
+     • the CORRECTIONS poller — now USER_REPORT.checkCorrections()
+       (both used to live in the old js/app/ loader shims, since removed)
 
    Uses from report-shared.js:  reportSection, reportQueueAdd,
      reportQueueRemove, REPORT_QUEUE_KEY, REPORT_REASON_LABELS,

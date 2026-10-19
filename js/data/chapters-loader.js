@@ -115,7 +115,7 @@ if (cache) {
 
 /* ── 2. Cold path: no usable cache — fetch, run, cache ────────────── */
 if (!hasGlobals()) {
-  var src = null;
+  var src;
   try {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', urlWithBust(), false);

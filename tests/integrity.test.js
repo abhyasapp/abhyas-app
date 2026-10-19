@@ -26,6 +26,10 @@ describe('service worker precache list', () => {
     const missing = entries.filter((e) => e !== './' && !exists(e));
     expect(missing).toEqual([]);
   });
+  it('covers every local script/style of index.html and user.html (run `npm run sync-shell`)', async () => {
+    const { missingFromShell } = await import('../tools/sync-shell.mjs');
+    expect(missingFromShell()).toEqual([]);
+  });
   it('never precaches admin.html (it must not be served from cache)', () => {
     expect(entries.some((e) => e.includes('admin.html'))).toBe(false);
   });

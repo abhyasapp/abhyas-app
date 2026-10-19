@@ -31,7 +31,7 @@ There is no build step: the app is static files (plain browser scripts, no bundl
 | `js/admin/` | Admin features: users, payments, weekly sets, subjective grading, logs |
 | `js/report/` | User and admin reports |
 | `js/data/` | Loaders/indexes for chapter and question data |
-| `js/app/` | Page entry points; the numbered `0x-*.js` files are legacy loader shims |
+| `js/app/` | Page entry point for the landing page (`index-page.js`); the old `document.write` loader shims were removed |
 | `tools/` | `audit.mjs`, `audit-handlers.js`, `check-syntax.mjs`, and self-hosted `vendor/` libraries |
 | `tests/` | Vitest unit + repo-integrity tests |
 
@@ -54,14 +54,15 @@ The server code is **not** in this repo.
 - **Releasing:** bump the version in all three places — `js/core/config.js`,
   `js/core/version.js`, `package.json` (a test fails if they differ). The service
   worker cache name is derived from it, which is how clients pick up new files.
-  Add new shell files to the `SHELL` list in `sw.js` (a test checks every entry exists).
+  Add new shell files to the `SHELL` list in `sw.js`: run `npm run sync-shell` (a test fails if a script or
+  stylesheet loaded by `index.html`/`user.html` is not precached, or if a listed file does not exist).
 
 ## Testing
 
 ```bash
 npm test             # vitest run
 npm run test:cov     # with coverage
-npm run lint         # ESLint (lenient on purpose — see eslint.config.js)
+npm run lint         # ESLint (lenient on purpose — see eslint.config.mjs; no-eval / no-new-func are errors)
 npm run check-syntax # node --check on every first-party file
 npm run audit:buttons # boots every page, checks each button has a working handler (~45 s)
 npm run audit        # duplicate symbols, orphan files, unused vendor files (report only)
@@ -73,8 +74,8 @@ Scripts are plain globals, so tests load them with `tests/helpers/load-globals.j
 ## Roadmap (suggested)
 
 1. Tests for progress sync (`js/core/psync.js`), scoring and the quiz engine.
-2. Replace the ~300 empty `catch {}` blocks with a tiny `warn()` helper (lint rule `no-empty` is off for now).
-3. Remove `document.write` shims in `js/app/` and load scripts directly from the HTML.
+2. Replace the ~300 empty `catch {}` blocks with a tiny `warn()` helper (`no-empty` now flags empty non-catch blocks; empty catches are still allowed).
+3. ~~Remove `document.write` shims in `js/app/`~~ (done in 1.48.0).
 4. Move inline CSS/JS out of `user.html` / `admin.html`; then drop `'unsafe-inline'` from the CSP.
 5. Replace the `new Function` dispatcher with `addEventListener`-based delegation; then drop `'unsafe-eval'`.
 6. Add a licence once you decide how the code may be used.

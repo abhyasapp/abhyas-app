@@ -18,6 +18,22 @@ Apps Script), which must:
 Never commit a Supabase `service_role` key, private keys, or passwords.
 `npm test` fails if it finds one.
 
+## Server-side expectations (Supabase Edge Function)
+
+The function should, and the current `index.ts` (v1.61) does:
+
+- hash passwords with PBKDF2-SHA256 at >= 600,000 iterations (old hashes upgrade on login);
+- rate-limit `login`, `adminlogin`, `signup` and `googlelogin` (table `rate_limits`);
+- accept only hashed session tokens, and never return raw database error messages;
+- restrict CORS to the app origins (`ALLOWED_ORIGINS`);
+- refuse student reads of the `subjective` and `payments` buckets through `getfile`;
+- validate upload paths as `<username>/<plain-file>.<ext>` and name files with a CSPRNG;
+- on Google sign-in to an account whose e-mail was never verified, reset that account's password and
+  sessions (stops pre-registration takeover).
+
+Note: `getcontentkey` returns the content decryption key to trial accounts unless
+`CONTENT_KEY_TRIAL=false` is set, so trial sign-up is the effective gate for "paid" content.
+
 ## Known hardening work
 
 - The CSP still allows `'unsafe-inline'` and `'unsafe-eval'` in `script-src`

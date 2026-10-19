@@ -72,7 +72,7 @@ window.MISCONCEPTIONS = {
   start(){
     const items = this.list();
     if (!items.length) return;
-    QUIZ.startWith(items.slice(), 'flashcard', '\U0001F3AF Misconceptions', null);
+    QUIZ.startWith(items.slice(), 'flashcard', '\u{1F3AF} Misconceptions', null);
   }
 };
 
@@ -126,7 +126,7 @@ window.RECOVERY = {
       if (all.length >= 15) break;
     }
     if (!all.length) { QUIZ.daily(); return; }
-    QUIZ.startWith(shuf(all).slice(0, 5), 'flashcard', '\U0001F44B Back gently', null);
+    QUIZ.startWith(shuf(all).slice(0, 5), 'flashcard', '\u{1F44B} Back gently', null);
     this.markActive();
   },
   _strongFiles(){

@@ -166,7 +166,7 @@ async function _fetchSubjFileFromNetwork(ref, cacheKey){
   const actionName = isSupa ? 'getfile' : 'getFile';
   const timeout = isSupa ? 15000 : 25000;
 
-  let r = null;
+  let r;
   try {
     if (isSupa) {
       // Supabase edge fn expects POST body (avoids putting tokens in the URL)

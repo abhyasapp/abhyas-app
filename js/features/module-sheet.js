@@ -53,5 +53,3 @@ window.MODAL = window.MODAL || {
   },
   closeAll() { this.close(); }
 };
-
-window.MODAL = window.MODAL;

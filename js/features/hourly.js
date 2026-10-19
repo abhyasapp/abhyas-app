@@ -666,7 +666,7 @@ window.HOURLY = {
   // ── diagnostics / escape hatches ────────────────────────────────────
   async diagnose(){
     const lv = this.level;
-    let online = false, forced = false, hasUser = false, hasToken = false, user = null;
+    let online = false, forced = false, hasUser = false, hasToken = false, user;
     try {
       online = !!S.online; forced = !!S.forcedOffline;
       user = (S && S.user) || null;

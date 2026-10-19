@@ -41,7 +41,7 @@ const QUIZ = {
       }
       let data;
       try{ data = JSON.parse(text); }
-      catch(pe){ throw new Error('Could not parse server response. The file may be corrupted or the server returned an unexpected format.'); }
+      catch(pe){ throw new Error('Could not parse server response. The file may be corrupted or the server returned an unexpected format.', { cause: pe }); }
       if(data && data.rateLimited && attempt < 4){
         const waitSec = Math.min(20, Math.max(3, Number(data.retryAfterSec) || 6));
         if(typeof GETFILE_GATE !== 'undefined') GETFILE_GATE.backoff(waitSec * 1000 + 500);
@@ -142,7 +142,7 @@ const QUIZ = {
     }
     let data;
     try{ data = JSON.parse(text); }
-    catch(pe){ throw new Error('Could not parse server response. The server returned an unexpected format.'); }
+    catch(pe){ throw new Error('Could not parse server response. The server returned an unexpected format.', { cause: pe }); }
     if(!data || typeof data !== 'object') throw new Error('Server returned an unexpected answer.');
     if(data.rateLimited){
       const waitSec = Math.min(20, Math.max(3, Number(data.retryAfterSec) || 6));

@@ -26,6 +26,11 @@ describe('escAttrJs', () => {
     expect(out).not.toContain("'");
     expect(out).not.toContain('"');
   });
+  it('escapes newlines and line separators so the JS string stays on one line', () => {
+    const out = g.escAttrJs('a\nb\rc\u2028d\u2029e');
+    expect(out).not.toMatch(/[\n\r\u2028\u2029]/);
+    expect(out).toBe('a\\nb\\rc\\u2028d\\u2029e');
+  });
 });
 
 describe('small helpers', () => {
