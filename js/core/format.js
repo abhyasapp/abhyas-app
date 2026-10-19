@@ -22,6 +22,21 @@ function fmtHMS(s) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+/**
+ * Centralized time formatter.
+ * @param {number} seconds - The time in seconds.
+ * @param {boolean} alwaysShowHours - If true, forces HH:MM:SS even if hours is 0.
+ * @returns {string}
+ */
+function formatTime(seconds, alwaysShowHours = false) {
+  if (seconds < 0) seconds = 0;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const p = n => String(n).padStart(2, '0');
+  return (alwaysShowHours || h > 0) ? `${p(h)}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+}
+
 function today() {
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
@@ -55,3 +70,6 @@ function renderMath(el) {
     });
   } catch (e) {}
 }
+
+// Expose globally
+window.formatTime = formatTime;

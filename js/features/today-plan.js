@@ -59,8 +59,13 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
     try {
       MASTERY.filteredChapters().forEach(c => {
         const m = MASTERY.chapter(c.lv, c.ch);
-        out.push({ lv: c.lv, ch: c.ch, label: ChapterData.chapterName(c.lv, c.ch) + (c.lv === 'gk' ? ' (GK)' : ''),
-                   total: m.total, attempted: m.attempted, wrong: m.wrong, accuracy: m.accuracy, state: m.state });
+        out.push({ 
+          lv: c.lv, ch: c.ch, 
+          label: ChapterData.chapterName(c.lv, c.ch) + (c.lv === 'gk' ? ' (GK)' : ''),
+          total: m.total || 0, attempted: m.attempted || 0, 
+          wrong: m.wrong || 0, accuracy: m.accuracy, 
+          state: m.state 
+        });
       });
     } catch(e){}
     this._chC = { t, v: out };
@@ -101,7 +106,7 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
     if (!it) return;
     if (it.kind === 'review') { try { if (REV.start) { REV.start('wr', 'flashcard', true); return; } } catch(e){} toast('Nothing to review right now.'); return; }
     if (it.kind === 'mock') { try { if (SYLLABUS_MOCK && SYLLABUS_MOCK.start) { SYLLABUS_MOCK.start(); return; } } catch(e){} toast('Mock papers are not available yet.'); return; }
-    if (it.lv && it.ch) CH_GRID.startChapter(it.lv, it.ch, 'flashcard');
+    if (it.lv && it.ch && typeof CH_GRID !== 'undefined') CH_GRID.startChapter(it.lv, it.ch, 'flashcard');
   },
 
   restDay(){
@@ -176,11 +181,11 @@ window.TODAY_PLAN = {
   _resumeCtx(){
     try {
       const sessions = (S.prog && S.prog.sessions) || [];
-      const last = sessions.find(s => s.fid && s.lv && s.ch);
+      const last = sessions.find(s => s && s.fid && s.lv && s.ch);
       if (!last || !last.fid) return null;
       const ref = ChapterData.allFileRefs().find(r => r.fid === last.fid);
       if (!ref) return null;
-      const at = last.at || 0;
+      const at = Number(last.at) || 0;
       if (Date.now() - at > 14 * 24 * 60 * 60 * 1000) return null;
       return {
         fid: ref.fid,
@@ -223,7 +228,6 @@ window.TODAY_PLAN = {
     const box = $('today-body');
     if (!box) return;
 
-    // Re-compute the plan properly using the core progress logic
     const due = this._dueReview();
     const weak = this._weakest(3);
     const newRef = this._pickNew();

@@ -36,7 +36,9 @@ const PSYNC = {
       const json = JSON.stringify(this._syncPayloadForServer());
       if(json.length > this._SYNC_PAYLOAD_CEILING) return;
       const body = JSON.stringify({ action:'saveProgress', username: S.user.username, token: S.user.token, data: json, baseUpdatedAt: this._rev() });
-      navigator.sendBeacon?.(APPS, new Blob([body], {type:'text/plain'}));
+      if(navigator.sendBeacon) {
+        navigator.sendBeacon(APPS, new Blob([body], {type:'text/plain'}));
+      }
     }catch(e){ }
   },
   flushOnHide(){
@@ -118,10 +120,21 @@ const PSYNC = {
     let r = remote;
     try { if(typeof r === 'string') r = await syncDecode(r); } catch(e){ return { ok:false, error:'That copy could not be read.' }; }
     if(!r || typeof r !== 'object') return { ok:false, error:'That copy is empty.' };
+    
     const local = this._fullLocal();
-    const merged = mergeSyncData(local, r);
+    let merged;
+    try {
+      merged = mergeSyncData(local, r);
+    } catch(e) {
+      console.error('[PSYNC.mergeIn] merge failed:', e);
+      return { ok:false, error:'The cloud data is corrupted and could not be merged.' };
+    }
+    
     const resetsChanged = JSON.stringify(merged.resets || {}) !== JSON.stringify(local.resets || {});
-    if(!resetsChanged && !this._mergeKeepsEverything(local, merged)) return { ok:false, error:'The merge was cancelled because it would have removed data. Nothing was changed.' };
+    if(!resetsChanged && !this._mergeKeepsEverything(local, merged)) {
+      return { ok:false, error:'The merge was cancelled because it would have removed data. Nothing was changed.' };
+    }
+    
     this._snapshot(reason || 'before-merge');
     const before = this._counts(local);
     this._applyMergedObject(merged);
@@ -160,7 +173,14 @@ const PSYNC = {
     clearTimeout(this._timer);
     this._timer = null;
     this._setState('syncing');
-    const payload = await syncEncode(JSON.stringify(this._syncPayloadForServer()), this._SYNC_PAYLOAD_CEILING);
+    
+    let payload = null;
+    try {
+      payload = await syncEncode(JSON.stringify(this._syncPayloadForServer()), this._SYNC_PAYLOAD_CEILING);
+    } catch(e) {
+      console.warn('[PSYNC.pushNow] encode failed', e);
+    }
+    
     if(payload === null){
       this._setStatus('Cloud copy failed. Your data is safe on this device. Download a backup file from Data.');
       this._setState('error');
@@ -186,7 +206,6 @@ const PSYNC = {
       } else if(res && res.sessionInvalid){
         this._setStatus('Session expired — please log in again.');
         this._setState('error');
-        // Removed AUTH._bounce() to prevent mid-quiz logout loop
       } else { 
         this._setStatus('Backup failed \u2014 will retry automatically.'); 
         this._setState('error'); 
@@ -214,7 +233,7 @@ const PSYNC = {
         body: JSON.stringify({action:'getProgress', username:S.user.username, token:S.user.token})
       }, 15000);
       const res = await r.json();
-      if(!res.success || !res.data){
+      if(!res || !res.success || !res.data){
         if(force) toast('No cloud backup found for this account yet.');
         return;
       }
@@ -254,6 +273,7 @@ const PSYNC = {
     return out;
   }
 };
+
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') PSYNC.flushOnHide(); });
 window.addEventListener('pagehide', ()=>PSYNC.flushOnHide());
 

@@ -1,6 +1,4 @@
 // js/features/review.js — bookmarks, flags, wrong bank, spaced repetition.
-// WRONGBY (in wrong-bank-ui.js) monkey-patches REV.renderList at load time,
-// so this file MUST load BEFORE wrong-bank-ui.js.
 
 const REV = {
   _filters: { bk: '', fl: '', wr: '' },
@@ -27,12 +25,16 @@ const REV = {
   },
   _matches(q, term) {
     if (!term) return true;
+    if (!q) return false;
     return (String(q.q || '').toLowerCase().indexOf(term) !== -1) ||
-           (q.options || []).some(o => String(o).toLowerCase().indexOf(term) !== -1) ||
+           (Array.isArray(q.options) && q.options.some(o => String(o).toLowerCase().indexOf(term) !== -1)) ||
            (String(q.explanation || '').toLowerCase().indexOf(term) !== -1) ||
            (String(q.tag || '').toLowerCase().indexOf(term) !== -1);
   },
-  _store(kind) { return kind === 'bk' ? S.bk : kind === 'fl' ? S.fl : S.wr; },
+  _store(kind) { 
+    const arr = kind === 'bk' ? S.bk : kind === 'fl' ? S.fl : S.wr;
+    return Array.isArray(arr) ? arr : [];
+  },
   _lsKey(kind) { return kind === 'bk' ? LS.BK : kind === 'fl' ? LS.FL : LS.WR; },
   _listEl(kind) { return kind === 'bk' ? 'bk-list' : kind === 'fl' ? 'fl-list' : 'wr-list'; },
 
@@ -43,8 +45,9 @@ const REV = {
   },
 
   toggle(kind, question) {
+    if (!question || !question.uid) return false;
     const arr = REV._store(kind);
-    const i = arr.findIndex(x => x.uid === question.uid);
+    const i = arr.findIndex(x => x && x.uid === question.uid);
     if (i > -1) {
       arr.splice(i, 1);
       toast(kind === 'bk' ? '⭐ Removed bookmark' : '🚩 Removed flag');
@@ -53,40 +56,52 @@ const REV = {
       toast(kind === 'bk' ? '⭐ Bookmarked' : '🚩 Flagged');
     }
     _save(REV._lsKey(kind), arr);
-    HOME.updateBadges();
+    if (typeof HOME !== 'undefined') HOME.updateBadges();
     return i === -1;
   },
-  has(kind, uid) { return REV._store(kind).some(x => x.uid === uid); },
-  getTag(uid) { return S.bk.find(x => x.uid === uid)?.tag || ''; },
+  
+  has(kind, uid) { return REV._store(kind).some(x => x && x.uid === uid); },
+  getTag(uid) { 
+    const item = REV._store('bk').find(x => x && x.uid === uid);
+    return item ? (item.tag || '') : ''; 
+  },
+  
   setTag(uid, tag, questionObj) {
-    let item = S.bk.find(x => x.uid === uid);
-    if (!item && questionObj) { item = { ...REV._stripHeavy(questionObj), tag: '' }; S.bk.push(item); }
+    if (!uid) return;
+    let item = REV._store('bk').find(x => x && x.uid === uid);
+    if (!item && questionObj) { 
+      item = { ...REV._stripHeavy(questionObj), tag: '' }; 
+      S.bk.push(item); 
+    }
     if (!item) return;
     item.tag = tag;
     _save(LS.BK, S.bk);
     REV.renderList('bk');
-    HOME.updateBadges?.();
+    if (typeof HOME !== 'undefined') HOME.updateBadges?.();
   },
 
   addWrong(question) {
-    const existing = S.wr.find(x => x.uid === question.uid);
+    if (!question || !question.uid) return;
+    const existing = REV._store('wr').find(x => x && x.uid === question.uid);
     if (existing) {
       existing._streak = 0;
       existing._nextDue = Date.now();
       _save(LS.WR, S.wr);
-      HOME.updateBadges();
+      if (typeof HOME !== 'undefined') HOME.updateBadges();
       return;
     }
     S.wr.push({ ...REV._stripHeavy(question), _streak: 0, _nextDue: Date.now(), _addedAt: Date.now() });
     _save(LS.WR, S.wr);
-    HOME.updateBadges();
+    if (typeof HOME !== 'undefined') HOME.updateBadges();
   },
+  
   removeWrong(uid) {
-    const i = S.wr.findIndex(x => x.uid === uid);
+    if (!uid) return;
+    const i = S.wr.findIndex(x => x && x.uid === uid);
     if (i > -1) {
       S.wr.splice(i, 1);
       _save(LS.WR, S.wr);
-      HOME.updateBadges();
+      if (typeof HOME !== 'undefined') HOME.updateBadges();
       if (typeof PROGRESS_RESET !== 'undefined') PROGRESS_RESET.noteRemoved(uid);
     }
   },
@@ -100,8 +115,10 @@ const REV = {
     try { localStorage.setItem(REV.MASTERED_KEY, JSON.stringify(list)); return true; }
     catch (e) { return false; }
   },
+  
   graduate(uid) {
-    const i = S.wr.findIndex(x => x.uid === uid);
+    if (!uid) return false;
+    const i = S.wr.findIndex(x => x && x.uid === uid);
     if (i < 0) return false;
     const item = S.wr[i];
     const list = REV._masteredLoad();
@@ -112,7 +129,7 @@ const REV = {
     }
     S.wr.splice(i, 1);
     _save(LS.WR, S.wr);
-    HOME.updateBadges();
+    if (typeof HOME !== 'undefined') HOME.updateBadges();
     if (typeof PROGRESS_RESET !== 'undefined') PROGRESS_RESET.noteRemoved(uid);
     REV._updateMasteredBtn();
     if (typeof toastUndo === 'function') {
@@ -120,12 +137,14 @@ const REV = {
     }
     return true;
   },
+  
   _restoreOne(uid) {
+    if (!uid) return false;
     const list = REV._masteredLoad();
-    const j = list.findIndex(x => x.uid === uid);
+    const j = list.findIndex(x => x && x.uid === uid);
     if (j < 0) return false;
     const item = list[j];
-    if (!S.wr.some(x => x.uid === uid)) {
+    if (!S.wr.some(x => x && x.uid === uid)) {
       const back = { ...item, _streak: 0, _nextDue: Date.now(), _addedAt: Date.now() };
       delete back._masteredAt;
       S.wr.push(back);
@@ -133,19 +152,21 @@ const REV = {
     }
     list.splice(j, 1);
     REV._masteredSave(list);
-    HOME.updateBadges();
+    if (typeof HOME !== 'undefined') HOME.updateBadges();
     REV._updateMasteredBtn();
     if (typeof REV.renderList === 'function') REV.renderList('wr');
     if (typeof PSYNC !== 'undefined') PSYNC.scheduleSync();
     return true;
   },
+  
   restoreMastered() {
-    const uids = REV._masteredLoad().map(x => x.uid);
+    const uids = REV._masteredLoad().map(x => x && x.uid).filter(Boolean);
     if (!uids.length) { toast('No mastered questions yet'); return; }
     let n = 0;
     uids.forEach(u => { if (REV._restoreOne(u)) n++; });
     toast('Brought back ' + n + ' mastered question' + (n === 1 ? '' : 's') + ' for revision');
   },
+  
   _updateMasteredBtn() {
     const b = document.getElementById('wr-mastered-btn');
     if (!b) return;
@@ -153,9 +174,11 @@ const REV = {
     b.hidden = n === 0;
     b.textContent = 'Bring back mastered (' + n + ')';
   },
+  
   trackAnswer(question, isCorrect) {
+    if (!question || !question.uid) return;
     if (isCorrect) {
-      const item = S.wr.find(x => x.uid === question.uid);
+      const item = S.wr.find(x => x && x.uid === question.uid);
       if (!item) return;
       if (item._nextDue && item._nextDue > Date.now()) return;
       const prev = item._streak || 0;
@@ -163,14 +186,16 @@ const REV = {
       item._streak = prev + 1;
       item._nextDue = Date.now() + SR_INTERVALS[prev] * 24 * 60 * 60 * 1000;
       _save(LS.WR, S.wr);
-      HOME.updateBadges?.();
+      if (typeof HOME !== 'undefined') HOME.updateBadges?.();
     } else {
       REV.addWrong(question);
     }
   },
+  
   dueWrong() {
-    return S.wr.filter(x => !x._withdrawn && ((x._nextDue == null) || x._nextDue <= Date.now()));
+    return REV._store('wr').filter(x => x && !x._withdrawn && ((x._nextDue == null) || x._nextDue <= Date.now()));
   },
+  
   dueCount() { return REV.dueWrong().length; },
 
   renderList(kind) {
@@ -206,100 +231,106 @@ const REV = {
     if (kind === 'wr') arr = [...arr].sort((a, b) => (a._nextDue ?? 0) - (b._nextDue ?? 0));
     
     requestAnimationFrame(() => {
-      el.innerHTML = arr.map((q, i) => {
-        const opts = (q.options || []).map((o, j) => {
-          const c = String(j) === String(q.correct) || j === Number(q.correct);
-          return `<div class="eo${c ? ' shc' : ''}">${String.fromCharCode(65 + j)}) ${esc(o)}</div>`;
-        }).join('');
-        
-        const uidJson = JSON.stringify(String(q.uid || ''));
-        const kindJson = JSON.stringify(kind);
-        
-        const tagPicker = kind === 'bk' ? `
-          <select class="sel-c" style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem;width:auto" data-on-change='REV.setTag(${uidJson}, this.value)'>
-            <option value="">🏷 No tag</option>
-            ${BK_TAGS.map(t => `<option value="${t}" ${q.tag === t ? 'selected' : ''}>${t}</option>`).join('')}
-          </select>` : '';
-        
-        const reasonPicker = kind === 'wr' ? (() => {
-          const r = q._reason || (q._misconception ? 'careless' : '');
-          return `<select class="sel-c" style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem;width:auto" data-on-change='WRONGBY.setReason(${uidJson}, this.value)'>
-            <option value="">Why did I miss this?</option>
-            <option value="careless" ${r === 'careless' ? 'selected' : ''}>Careless</option>
-            <option value="concept"  ${r === 'concept'  ? 'selected' : ''}>Concept gap</option>
-          </select>`;
-        })() : '';
-        
-        const notePicker = kind === 'wr' ? (() => {
-          const n = (typeof QNOTE !== 'undefined') ? QNOTE.get(q.uid) : String(q._note || '');
-          return `<div style="margin-top:.4rem">` +
-            `<input class="input" type="text" maxlength="500" ` +
-            `placeholder="Your note on this question (optional)" ` +
-            `value="${escAttrJs(n)}" ` +
-            `data-on-change='WRONGBY.setNote(${uidJson}, this.value)' ` +
-            `style="font-size:var(--fs-foot)">` +
-          `</div>`;
-        })() : '';
-        
-        let missBadge = '';
-        if (kind === 'wr' && typeof WRONGBY !== 'undefined') {
-          const mc = WRONGBY.missCount(q.uid);
-          if (mc >= 3) missBadge = `<span class="ctag tr" style="margin-left:.3rem" title="You have missed this question ${mc} times"><i class="ph ph-warning"></i> missed ${mc}\u00d7</span>`;
-        }
-        
-        let srBadge = '';
-        if (kind === 'wr') {
-          const isDue = (q._nextDue == null) || q._nextDue <= Date.now();
-          const streak = q._streak || 0;
-          if (isDue) srBadge = `<span class="ctag tr" style="margin-left:.3rem"><i class="ph ph-repeat"></i> Due now</span>`;
-          else {
-            const daysLeft = Math.ceil((q._nextDue - Date.now()) / (24 * 60 * 60 * 1000));
-            srBadge = `<span class="ctag ta" style="margin-left:.3rem">⏳ Due in ${daysLeft}d</span>`;
+      try {
+        el.innerHTML = arr.map((q, i) => {
+          if (!q) return '';
+          const opts = (Array.isArray(q.options) ? q.options : []).map((o, j) => {
+            const c = String(j) === String(q.correct) || j === Number(q.correct);
+            return `<div class="eo${c ? ' shc' : ''}">${String.fromCharCode(65 + j)}) ${esc(o)}</div>`;
+          }).join('');
+          
+          const uidJson = JSON.stringify(String(q.uid || ''));
+          const kindJson = JSON.stringify(kind);
+          
+          const tagPicker = kind === 'bk' ? `
+            <select class="sel-c" style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem;width:auto" data-on-change='REV.setTag(${uidJson}, this.value)'>
+              <option value="">🏷 No tag</option>
+              ${BK_TAGS.map(t => `<option value="${t}" ${q.tag === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>` : '';
+          
+          const reasonPicker = kind === 'wr' ? (() => {
+            const r = q._reason || (q._misconception ? 'careless' : '');
+            return `<select class="sel-c" style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem;width:auto" data-on-change='WRONGBY.setReason(${uidJson}, this.value)'>
+              <option value="">Why did I miss this?</option>
+              <option value="careless" ${r === 'careless' ? 'selected' : ''}>Careless</option>
+              <option value="concept"  ${r === 'concept'  ? 'selected' : ''}>Concept gap</option>
+            </select>`;
+          })() : '';
+          
+          const notePicker = kind === 'wr' ? (() => {
+            const n = (typeof QNOTE !== 'undefined') ? QNOTE.get(q.uid) : String(q._note || '');
+            return `<div style="margin-top:.4rem">` +
+              `<input class="input" type="text" maxlength="500" ` +
+              `placeholder="Your note on this question (optional)" ` +
+              `value="${escAttrJs(n)}" ` +
+              `data-on-change='WRONGBY.setNote(${uidJson}, this.value)' ` +
+              `style="font-size:var(--fs-foot)">` +
+            `</div>`;
+          })() : '';
+          
+          let missBadge = '';
+          if (kind === 'wr' && typeof WRONGBY !== 'undefined') {
+            const mc = WRONGBY.missCount(q.uid);
+            if (mc >= 3) missBadge = `<span class="ctag tr" style="margin-left:.3rem" title="You have missed this question ${mc} times"><i class="ph ph-warning"></i> missed ${mc}\u00d7</span>`;
           }
-          if (streak > 0) srBadge += `<span class="ctag tg" style="margin-left:.3rem"><i class="ph ph-check"></i>×${streak}</span>`;
-        }
-        
-        return `<div class="qcard" style="margin-bottom:.5rem">
-          <div class="qm"><span class="qn mono">#${i + 1}</span>
-            ${q.tag ? `<span class="ctag ta" style="margin-left:.3rem"><i class="ph ph-tag"></i> ${esc(q.tag)}</span>` : ''}
-            ${srBadge}
-            ${missBadge}
-            ${q._withdrawn ? `<span class="ctag tr" style="margin-left:.3rem" title="This question was removed from the question bank"><i class="ph ph-prohibit"></i> Withdrawn</span>` : ''}
-            ${(q._corrected && Date.now() - q._corrected < 14 * 24 * 60 * 60 * 1000) ? `<span class="ctag tg" style="margin-left:.3rem" title="Your teacher corrected this question"><i class="ph ph-check-circle"></i> Corrected</span>` : ''}
-            ${qReportHtml(q, `USER_REPORT.reportList(${kindJson},${uidJson})`)}
-            ${qSearchHtml(q)}
-            <button class="ib" data-on-click='REV._removeOne(${kindJson},${uidJson})' title="Remove from review" aria-label="Remove from review"><i class="ph ph-trash"></i></button>
-          </div>
-          <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
-          ${qImgHtml(q)}
-          <div style="margin-top:.3rem">${opts}</div>
-          ${q.explanation ? `<div class="expl show" style="margin-top:.45rem">${esc(q.explanation)}</div>` : ''}
-          ${tagPicker}
-          ${reasonPicker}
-          ${notePicker}
-        </div>`;
-      }).join('');
-      renderMath(el);
+          
+          let srBadge = '';
+          if (kind === 'wr') {
+            const isDue = (q._nextDue == null) || q._nextDue <= Date.now();
+            const streak = q._streak || 0;
+            if (isDue) srBadge = `<span class="ctag tr" style="margin-left:.3rem"><i class="ph ph-repeat"></i> Due now</span>`;
+            else {
+              const daysLeft = Math.ceil((q._nextDue - Date.now()) / (24 * 60 * 60 * 1000));
+              srBadge = `<span class="ctag ta" style="margin-left:.3rem">⏳ Due in ${daysLeft}d</span>`;
+            }
+            if (streak > 0) srBadge += `<span class="ctag tg" style="margin-left:.3rem"><i class="ph ph-check"></i>×${streak}</span>`;
+          }
+          
+          return `<div class="qcard" style="margin-bottom:.5rem">
+            <div class="qm"><span class="qn mono">#${i + 1}</span>
+              ${q.tag ? `<span class="ctag ta" style="margin-left:.3rem"><i class="ph ph-tag"></i> ${esc(q.tag)}</span>` : ''}
+              ${srBadge}
+              ${missBadge}
+              ${q._withdrawn ? `<span class="ctag tr" style="margin-left:.3rem" title="This question was removed from the question bank"><i class="ph ph-prohibit"></i> Withdrawn</span>` : ''}
+              ${(q._corrected && Date.now() - q._corrected < 14 * 24 * 60 * 60 * 1000) ? `<span class="ctag tg" style="margin-left:.3rem" title="Your teacher corrected this question"><i class="ph ph-check-circle"></i> Corrected</span>` : ''}
+              ${qReportHtml(q, `USER_REPORT.reportList(${kindJson},${uidJson})`)}
+              ${qSearchHtml(q)}
+              <button class="ib" data-on-click='REV._removeOne(${kindJson},${uidJson})' title="Remove from review" aria-label="Remove from review"><i class="ph ph-trash"></i></button>
+            </div>
+            <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
+            ${qImgHtml(q)}
+            <div style="margin-top:.3rem">${opts}</div>
+            ${q.explanation ? `<div class="expl show" style="margin-top:.45rem">${esc(q.explanation)}</div>` : ''}
+            ${tagPicker}
+            ${reasonPicker}
+            ${notePicker}
+          </div>`;
+        }).join('');
+        renderMath(el);
+      } catch (err) {
+        console.error('[REV.renderList] failed to render list:', err);
+      }
     });
   },
 
   _removeOne(kind, uid) {
+    if (!uid) return;
     const arr = REV._store(kind);
-    const i = arr.findIndex(x => x.uid === uid);
+    const i = arr.findIndex(x => x && x.uid === uid);
     if (i > -1) {
       const item = arr[i];
       arr.splice(i, 1);
       _save(REV._lsKey(kind), arr);
       REV.renderList(kind);
-      HOME.updateBadges();
+      if (typeof HOME !== 'undefined') HOME.updateBadges();
       if (kind === 'wr' && typeof PROGRESS_RESET !== 'undefined') {
         PROGRESS_RESET.noteRemoved(uid);
         toastUndo('Removed from wrong bank', () => {
-          if (S.wr.some(x => x.uid === uid)) return;
+          if (S.wr.some(x => x && x.uid === uid)) return;
           S.wr.push({ ...item, _addedAt: Date.now() });
           _save(LS.WR, S.wr);
           REV.renderList('wr');
-          HOME.updateBadges();
+          if (typeof HOME !== 'undefined') HOME.updateBadges();
           if (typeof PSYNC !== 'undefined') PSYNC.scheduleSync();
         });
       }
@@ -313,7 +344,7 @@ const REV = {
     else { S.wr = []; _save(LS.WR, []); }
     const clearedAt = (kind === 'wr' && typeof PROGRESS_RESET !== 'undefined') ? PROGRESS_RESET.noteWrongCleared() : 0;
     REV.renderList(kind);
-    HOME.updateBadges();
+    if (typeof HOME !== 'undefined') HOME.updateBadges();
     toastUndo('🗑 List cleared', () => {
       if (kind === 'bk') { S.bk = prev; _save(LS.BK, prev); }
       else if (kind === 'fl') { S.fl = prev; _save(LS.FL, prev); }
@@ -323,13 +354,13 @@ const REV = {
         if (typeof PSYNC !== 'undefined') PSYNC.scheduleSync();
       }
       REV.renderList(kind);
-      HOME.updateBadges();
+      if (typeof HOME !== 'undefined') HOME.updateBadges();
       toast('↩️ Restored');
     });
   },
 
   start(kind, mode, dueOnly) {
-    let arr = [...REV._store(kind)].filter(x => !x._withdrawn);
+    let arr = [...REV._store(kind)].filter(x => x && !x._withdrawn);
     if (kind === 'wr' && dueOnly) arr = REV.dueWrong();
     if (!arr.length) { toast(dueOnly ? 'Nothing due for review right now 🎉' : 'Nothing to study here yet'); return; }
     QUIZ.startWith(shuf(arr), mode, kind === 'bk' ? '⭐ Bookmarks' : kind === 'fl' ? '🚩 Flagged' : (dueOnly ? '🔁 Wrong Bank (Due Today)' : '❌ Wrong Bank'));

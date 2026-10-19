@@ -1,8 +1,4 @@
 // js/features/progress.js — running totals + weighted prediction + progress view.
-// MUST load AFTER: core/state.js (S), core/storage.js (_save), core/format.js
-// (today), core/text.js (esc), data/chapters-data.js (ChapterData),
-// features/home.js (HOME), features/streak.js (STREAK),
-// features/chapter-stats.js (CHAPSTATS).
 
 const PROG = {
   track(correct){
@@ -10,8 +6,10 @@ const PROG = {
     S.prog.total = (S.prog.total || 0) + 1;
     if(correct) S.prog.correct = (S.prog.correct || 0) + 1;
     PROG._saveSoon();
-    HOME.updateStats();
-    HOME.updateBadges();
+    if (typeof HOME !== 'undefined') {
+      HOME.updateStats();
+      HOME.updateBadges();
+    }
   },
 
   _st: null,
@@ -24,6 +22,7 @@ const PROG = {
   },
 
   recordSession(sess){
+    if (!sess) return;
     if(!Array.isArray(S.prog.sessions)) S.prog.sessions = [];
     S.prog.sessions.unshift(sess);
     S.prog.sessions = S.prog.sessions.slice(0,50);
@@ -32,25 +31,29 @@ const PROG = {
     try { if (typeof WRONGBY !== 'undefined') WRONGBY._missCache = null; } catch(e){}
     try { if (typeof QHIST !== 'undefined') QHIST._cache = null; } catch(e){}
 
-    HOME.render();
+    if (typeof HOME !== 'undefined') HOME.render();
   },
 
   predict(){
-    const sessions = (S.prog.sessions||[]).filter(s=>s.total>0).slice(0,20);
+    const sessions = (S.prog.sessions||[]).filter(s => s && s.total > 0).slice(0,20);
     if(sessions.length < 3) return null;
     let wSum = 0, vSum = 0;
     sessions.forEach((s,i)=>{
       const recencyW = 1 - (i/sessions.length)*0.5;
       const modeW = s.mode==='exam' ? 1.5 : 1.0;
       const w = recencyW * modeW;
-      vSum += (s.pct||0) * w;
+      vSum += (Number(s.pct) || 0) * w;
       wSum += w;
     });
+    if (wSum <= 0) return null;
+    
     const predicted = Math.round(vSum/wSum);
-    const pcts = sessions.map(s=>s.pct||0);
+    if (!isFinite(predicted)) return null;
+    
+    const pcts = sessions.map(s=>Number(s.pct) || 0);
     const mean = pcts.reduce((a,b)=>a+b,0)/pcts.length;
     const variance = pcts.reduce((a,b)=>a+(b-mean)**2,0)/pcts.length;
-    const stdDev = Math.round(Math.sqrt(variance));
+    const stdDev = Math.round(Math.sqrt(variance)) || 0;
     const confidence = sessions.length>=10 && stdDev<15 ? 'High' : sessions.length>=5 ? 'Medium' : 'Low';
     return { predicted, margin: Math.max(3,stdDev), confidence, sampleSize: sessions.length };
   },
@@ -86,7 +89,7 @@ const PROG = {
   render(){
     PROG.renderPredict();
 
-    const total = S.prog.total, correct = S.prog.correct, wrong = total - correct;
+    const total = S.prog.total || 0, correct = S.prog.correct || 0, wrong = total - correct;
     const pct = total ? Math.round((correct/total)*100) : 0;
 
     const statsEl = document.getElementById('prog-stats');
@@ -101,16 +104,19 @@ const PROG = {
 
     const chapEl = document.getElementById('chap-acc');
     if(chapEl){
-      let entries = CHAPSTATS.entries();
+      let entries = [];
+      try { entries = CHAPSTATS.entries(); } catch(e){}
+      
       if(!entries.length){
         const byChap = {};
         (S.prog.sessions||[]).forEach(s=>{
+          if (!s) return;
           const k = s.chapter||'Unknown';
           if(!byChap[k]) byChap[k] = {correct:0,total:0,sessions:0,lastAt:0};
-          byChap[k].correct += s.correct||0;
-          byChap[k].total += s.total||0;
+          byChap[k].correct += Number(s.correct) || 0;
+          byChap[k].total += Number(s.total) || 0;
           byChap[k].sessions++;
-          if((s.at||0) > byChap[k].lastAt) byChap[k].lastAt = s.at||0;
+          if((Number(s.at) || 0) > byChap[k].lastAt) byChap[k].lastAt = Number(s.at) || 0;
         });
         entries = Object.entries(byChap)
           .map(([chapter,d])=>({chapter, attempted:d.total, correct:d.correct, accuracy:d.total?Math.round((d.correct/d.total)*100):0, sessions:d.sessions, lastAt:d.lastAt}))

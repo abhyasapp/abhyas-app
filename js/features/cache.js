@@ -1,8 +1,4 @@
 // js/features/cache.js — offline downloads, per-level picker, autosync.
-// MUST load AFTER: core/storage.js (QDB, _load, _save), core/state.js,
-// core/net.js (GETFILE_GATE), core/text.js (esc, escAttrJs),
-// core/modal.js (ASK), data/chapters-data.js (ChapterData).
-// Uses QUIZ._fetch / QUIZ._fetchBatch at runtime only.
 
 const CACHE = {
   async render(){
@@ -118,6 +114,8 @@ const CACHE = {
   },
 
   async dl(groups){
+    if (CACHE._running) { toast('A download is already running'); return; }
+    
     const only = Array.isArray(groups) && groups.length ? new Set(groups) : null;
     const refs = ChapterData.allFileRefs().filter(r => !only || only.has(r.lv));
     if(!refs.length){ toast('No content configured to cache'); return; }
@@ -140,14 +138,13 @@ const CACHE = {
       return ` · about ${Math.ceil(leftSec/60)} min left`;
     };
     
-    if(CACHE._running){ toast('A download is already running'); return; }
     CACHE._running = true; CACHE._paused = false; CACHE._stop = false;
     CACHE._ctl(true);
     
     let _lastPaint = 0;
     const paint = (force) => {
       const now = Date.now();
-      if (!force && now - _lastPaint < 100) return; // Throttle to 10fps
+      if (!force && now - _lastPaint < 100) return;
       _lastPaint = now;
       
       if(txt) txt.textContent = `Downloading ${Math.min(done+1, refs.length)} of ${refs.length}${etaText()}`;
@@ -178,6 +175,7 @@ const CACHE = {
       done++;
       paint();
     };
+    
     const singles = async list => { for(const ref of list){ if(CACHE._stop) return; await single(ref); } };
 
     const nextBatch = async size => {

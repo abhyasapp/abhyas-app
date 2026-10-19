@@ -115,31 +115,28 @@ if (cache) {
 
 /* ── 2. Cold path: no usable cache — fetch, run, cache ────────────── */
 if (!hasGlobals()) {
-  var src;
-  try {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', urlWithBust(), false);
-    xhr.send(null);
-    if (xhr.status < 200 || xhr.status >= 300) throw new Error('HTTP ' + xhr.status);
-    src = xhr.responseText;
-  } catch (e) {
-    console.error('[chapters-loader] fetch failed', e);
-    showScreen('Could not load chapters data. Check your connection and try again.', { retry: true });
-    return;
-  }
-  try {
-    runSource(src);
-    writeCache(src);
-  } catch (e) {
-    console.error('[chapters-loader] source failed to execute', e);
-    showScreen('Chapters data is corrupted. Please contact support.', { retry: true });
-    return;
-  }
-  if (!hasGlobals()) {
-    showScreen('Chapters data loaded but did not define ChapterData. Contact support.', { retry: true });
-    return;
-  }
-  return;
+  fetch(urlWithBust())
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(src) {
+      try {
+        runSource(src);
+        writeCache(src);
+        if (!hasGlobals()) {
+          showScreen('Chapters data loaded but did not define ChapterData. Contact support.', { retry: true });
+        }
+      } catch (e) {
+        console.error('[chapters-loader] source failed to execute', e);
+        showScreen('Chapters data is corrupted. Please contact support.', { retry: true });
+      }
+    })
+    .catch(function(e) {
+      console.error('[chapters-loader] fetch failed', e);
+      showScreen('Could not load chapters data. Check your connection and try again.', { retry: true });
+    });
+  return; // Exit early, the promise handles the rest
 }
 
 /* ── 3. Warm path complete — refresh fresh data in the background ──── */

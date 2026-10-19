@@ -1,23 +1,27 @@
 // js/features/insights.js — charts, pace, readiness, badges, leaderboard, per-file coverage.
-// MUST load AFTER: core/state.js (S), core/dom.js ($, $$), core/text.js (esc, escAttrJs),
-// core/format.js (shuf), core/insights.js (insightsData, localISODate),
-// core/net.js (netFetch, APPS), data/chapters-data.js (ChapterData),
-// features/progress.js (PROG), features/streak.js (STREAK), features/chapter-stats.js (CHAPSTATS).
 
 window.INSIGHTS = {
   GOAL: 40,
 
+  _safeMax(arr, fallback) {
+    let m = fallback;
+    for (let i = 0; i < arr.length; i++) { if (arr[i] > m) m = arr[i]; }
+    return m;
+  },
+
   _bars(days){
     const W = 320, H = 120, padL = 4, padB = 18, padT = 8, n = days.length;
-    const max = Math.max(this.GOAL, ...days.map(d => d.q), 1);
-    const bw = (W - padL * 2) / n, plotH = H - padB - padT;
+    const qvals = days.map(d => Number(d.q) || 0);
+    const max = this._safeMax(qvals, this.GOAL);
+    const bw = (W - padL * 2) / Math.max(n, 1), plotH = H - padB - padT;
     const y = v => padT + plotH - (v / max) * plotH;
     
     const bars = days.map((d, i) => {
-      const h = Math.max(d.q ? 2 : 0, (d.q / max) * plotH), x = padL + i * bw + 2;
-      const col = d.q >= this.GOAL ? 'var(--grn)' : d.q > 0 ? 'var(--accent)' : 'transparent';
+      const q = Number(d.q) || 0;
+      const h = Math.max(q ? 2 : 0, (q / max) * plotH), x = padL + i * bw + 2;
+      const col = q >= this.GOAL ? 'var(--grn)' : q > 0 ? 'var(--accent)' : 'transparent';
       return `<rect x="${x.toFixed(1)}" y="${(padT + plotH - h).toFixed(1)}" width="${(bw - 4).toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${col}" style="transition:height 0.5s ease-out, y 0.5s ease-out"${d.isToday ? ' opacity="1"' : ' opacity=".85"'}></rect>` +
-        `<text x="${(x + (bw - 4) / 2).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="8" fill="var(--t3)"${d.isToday ? ' font-weight="700"' : ''}>${d.label.charAt(0)}</text>`;
+        `<text x="${(x + (bw - 4) / 2).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="8" fill="var(--t3)"${d.isToday ? ' font-weight="700"' : ''}>${String(d.label || '').charAt(0)}</text>`;
     }).join('');
     
     const gy = y(this.GOAL).toFixed(1);
@@ -44,7 +48,8 @@ window.INSIGHTS = {
     const cols = 12, size = 14, gap = 3, W = cols * (size + gap), H = 7 * (size + gap);
     const out = cells.map((c, i) => {
       const col = Math.floor(i / 7), row = i % 7;
-      const fill = c.active ? (c.q >= this.GOAL ? 'var(--grn)' : 'var(--accent)') : 'var(--t3)';
+      const q = Number(c.q) || 0;
+      const fill = c.active ? (q >= this.GOAL ? 'var(--grn)' : 'var(--accent)') : 'var(--t3)';
       return `<rect x="${col * (size + gap)}" y="${row * (size + gap)}" width="${size}" height="${size}" rx="3" fill="${fill}" opacity="${c.active ? '1' : '.18'}"><title>${c.date}${c.active ? ' \u2713' : ''}</title></rect>`;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:260px" role="img" aria-label="Study days over the last 12 weeks">${out}</svg>`;
@@ -106,7 +111,7 @@ window.PACE = {
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     let actualSec = 0;
     ((S.prog && S.prog.sessions) || []).forEach(s => {
-      if ((s.at || 0) >= weekAgo) actualSec += (s.durationSec || 0);
+      if (s && Number(s.at) >= weekAgo) actualSec += (Number(s.durationSec) || 0);
     });
     let targetSec = 5 * 3600;
     try {
@@ -114,8 +119,10 @@ window.PACE = {
       if (v) {
         const p = v.split('-').map(Number);
         const target = new Date(p[0], p[1] - 1, p[2]).getTime();
-        const days = Math.max(1, Math.round((target - Date.now()) / 86400000));
-        targetSec = Math.min(20 * 3600, Math.max(3 * 3600, (120 * 3600) / Math.max(7, days) * 7));
+        if (!isNaN(target)) {
+          const days = Math.max(1, Math.round((target - Date.now()) / 86400000));
+          targetSec = Math.min(20 * 3600, Math.max(3 * 3600, (120 * 3600) / Math.max(7, days) * 7));
+        }
       }
     } catch(e){}
     return { actual: actualSec, target: targetSec, onTrack: actualSec >= targetSec * 0.85 };
@@ -128,14 +135,14 @@ window.READINESS = {
     if (!card) return;
     let p = null;
     try { p = (typeof PROG !== 'undefined' && PROG.predict) ? PROG.predict() : null; } catch(e){}
-    if (!p) { card.hidden = true; return; }
+    if (!p || typeof p.predicted !== 'number' || isNaN(p.predicted)) { card.hidden = true; return; }
     card.hidden = false;
-    const v = p.predicted;
+    const v = Math.max(0, Math.min(100, p.predicted));
     const cls = v >= 70 ? '' : v >= 50 ? 'warn' : 'low';
     const el = $('readiness-val');
     if (el) { el.textContent = v + '%'; el.className = 'readiness-val ' + cls; }
     const conf = $('readiness-conf');
-    if (conf) conf.textContent = p.confidence + ' confidence \u00b7 \u00b1 ' + p.margin + '%';
+    if (conf) conf.textContent = (p.confidence || 'Low') + ' confidence \u00b7 \u00b1 ' + (p.margin || 0) + '%';
     const fill = $('readiness-fill');
     if (fill) {
       fill.style.width = v + '%';
@@ -143,7 +150,7 @@ window.READINESS = {
     }
     const det = $('readiness-detail');
     if (det) {
-      const weakest = TODAY_PLAN._weakest(2);
+      const weakest = (typeof TODAY_PLAN !== 'undefined' && TODAY_PLAN._weakest) ? TODAY_PLAN._weakest(2) : [];
       if (weakest.length) {
         det.innerHTML = 'Focus on: ' +
           weakest.map(w => '<b>' + esc(w.chapter) + '</b> (' + w.accuracy + '%)').join(' \u00b7 ');
@@ -160,7 +167,7 @@ window.BADGES_UI = {
     { id:'half_500',    icon:'ph-books',     name:'500 answered', need:s => (s.prog.total||0) >= 500 },
     { id:'streak_7',    icon:'ph-fire',      name:'7-day streak', need:() => STREAK.currentStreak() >= 7 },
     { id:'streak_30',   icon:'ph-mountains', name:'30-day streak', need:() => STREAK.currentStreak() >= 30 },
-    { id:'perfect_exam',icon:'ph-medal',     name:'Perfect paper', need:s => (s.prog.sessions||[]).some(x => x.mode==='exam' && x.pct===100) },
+    { id:'perfect_exam',icon:'ph-medal',     name:'Perfect paper', need:s => (s.prog.sessions||[]).some(x => x && x.mode==='exam' && x.pct===100) },
     { id:'bookmark_50', icon:'ph-star',      name:'50 saved',     need:s => (s.bk||[]).length >= 50 },
     { id:'due_clear',   icon:'ph-target',    name:'Caught up',    need:() => S.wr && S.wr.length > 20 && REV.dueCount() === 0 }
   ],
@@ -227,7 +234,7 @@ window.WEEKLY_BOARD = {
 
     const sets = WEEKLY.sets || [];
     const attempts = WEEKLY.attempts || {};
-    const closed = sets.filter(s => s.released && !WEEKLY.examOpen(s) && attempts[s.id]);
+    const closed = sets.filter(s => s && s.released && !WEEKLY.examOpen(s) && attempts[s.id]);
     if (!closed.length) return;
 
     closed.sort((a,b) =>
@@ -302,7 +309,7 @@ window.SERVER_PROG = {
         body: JSON.stringify({ action:'getProgress', username:S.user.username, token:S.user.token })
       });
       const res = await r.json();
-      if (!res.success || !res.data) {
+      if (!res || !res.success || !res.data) {
         listEl.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-tray"></i></div>' +
           '<p>Nothing recorded yet</p><p>Finish a quiz and your per-file coverage shows up here.</p></div>';
         this._loaded = true; this._loading = false;
@@ -325,6 +332,7 @@ window.SERVER_PROG = {
     const sessions = (data && data.prog && Array.isArray(data.prog.sessions)) ? data.prog.sessions : [];
     const byFile = new Map();
     sessions.forEach(sess => {
+      if (!sess) return;
       (Array.isArray(sess.qres) ? sess.qres : []).forEach(q => {
         if (!q || !q.uid) return;
         const fid = typeof fidFromUid === 'function' ? fidFromUid(q.uid) : String(q.uid).replace(/_\d+$/, '');
@@ -450,9 +458,11 @@ window.CALENDAR = {
     const sessions = (S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
     sessions.forEach(s => {
       if (!s || !s.at) return;
-      const d = new Date(s.at), p = n => String(n).padStart(2, '0');
+      const d = new Date(s.at);
+      if (isNaN(d.getTime())) return;
+      const p = n => String(n).padStart(2, '0');
       const k = d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
-      map[k] = (map[k] || 0) + (s.total || 0);
+      map[k] = (map[k] || 0) + (Number(s.total) || 0);
     });
     return map;
   },
@@ -496,9 +506,9 @@ window.FORECAST = {
     if (!box) return;
     const sessions = (S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
     const since = Date.now() - 14 * 86400000;
-    const recent = sessions.filter(s => (s.at || 0) >= since);
+    const recent = sessions.filter(s => s && (Number(s.at) || 0) >= since);
     if (recent.length < 3){ box.innerHTML = ''; return; }
-    const total = recent.reduce((n, s) => n + (s.total || 0), 0);
+    const total = recent.reduce((n, s) => n + (Number(s.total) || 0), 0);
     const perDay = total / 14;
     if (perDay < 1){ box.innerHTML = ''; return; }
     const allRefs = (typeof ChapterData !== 'undefined') ? ChapterData.allFileRefs() : [];
@@ -520,6 +530,7 @@ window.FORECAST = {
       if (missing > 0 || totalQ === 0) continue;
       const remaining = Math.max(0, totalQ - seen);
       const days = Math.ceil(remaining / perDay);
+      if (!isFinite(days)) continue;
       lines.push({ label: label, seen: seen, totalQ: totalQ, remaining: remaining, days: days, target: new Date(Date.now() + days * 86400000) });
     }
     if (!lines.length){ box.innerHTML = ''; return; }
@@ -550,7 +561,7 @@ window.DIGEST = {
 
     const sessions = (S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
     const since = Date.now() - 7 * 86400000;
-    const recent = sessions.filter(s => (s.at || 0) >= since);
+    const recent = sessions.filter(s => s && (Number(s.at) || 0) >= since);
 
     if (recent.length < 2){
       boxes.forEach(b => { b.innerHTML = ''; });
@@ -560,11 +571,12 @@ window.DIGEST = {
     let answered = 0, correct = 0;
     const dayCount = {}, chapMiss = {};
     recent.forEach(function(s){
-      answered += s.total || 0; correct += s.correct || 0;
+      answered += Number(s.total) || 0;
+      correct += Number(s.correct) || 0;
       const k = new Date(s.at).toDateString();
-      dayCount[k] = (dayCount[k] || 0) + (s.total || 0);
+      dayCount[k] = (dayCount[k] || 0) + (Number(s.total) || 0);
       const c = s.chapter || 'Other';
-      chapMiss[c] = (chapMiss[c] || 0) + ((s.total || 0) - (s.correct || 0));
+      chapMiss[c] = (chapMiss[c] || 0) + ((Number(s.total) || 0) - (Number(s.correct) || 0));
     });
     const pct = answered ? Math.round((correct / answered) * 100) : 0;
     const bestDay = Object.entries(dayCount).sort((a, b) => b[1] - a[1])[0];

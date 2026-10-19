@@ -5,7 +5,16 @@
 // core/subjective-api.js (_api), subj-queue.js (SUBJ_QUEUE),
 // core/modal.js (ASK), core/toast.js (toast).
 
-let QOTD = null;
+let QOTD = {
+  date: '',
+  questionId: '',
+  marks: 0,
+  startedAt: 0,
+  solveEndsAt: 0,
+  uploadEndsAt: 0,
+  submitted: false,
+  queued: false
+};
 let _qotdTick = null;
 let _pendingQotdFile = null;
 let _lastQotdPhase = null;
@@ -19,15 +28,19 @@ function _restoreQotd() {
   try {
     const raw = localStorage.getItem(LS_QOTD);
     QOTD = raw ? JSON.parse(raw) : null;
+    if (QOTD && QOTD.date !== _todayKey()) QOTD = null;
   } catch (e) { QOTD = null; }
-  if (QOTD && QOTD.date !== _todayKey()) QOTD = null;
+  // Ensure default shape if null
+  if (!QOTD) {
+    QOTD = { date: '', questionId: '', marks: 0, startedAt: 0, solveEndsAt: 0, uploadEndsAt: 0, submitted: false, queued: false };
+  }
 }
 
 function _persistQotd() {
   try { localStorage.setItem(LS_QOTD, JSON.stringify(QOTD)); } catch (e) {}
 }
 function _clearQotd() {
-  QOTD = null;
+  QOTD = { date: '', questionId: '', marks: 0, startedAt: 0, solveEndsAt: 0, uploadEndsAt: 0, submitted: false, queued: false };
   try { localStorage.removeItem(LS_QOTD); } catch (e) {}
 }
 
@@ -36,13 +49,7 @@ function _solveSecFor(marks) {
   if (marks === 10) return TIMERS.solveSecondsFor10;
   return TIMERS.solveSecondsFallback;
 }
-function _fmtHMS(sec) {
-  if (sec < 0) sec = 0;
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-  return h > 0
-    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
+
 function _fmtMins(sec) {
   const m = Math.round(sec / 60);
   return m === 60 ? '1 hour' : `${m} minutes`;
@@ -58,7 +65,7 @@ function _todayPick() {
 }
 
 function _qotdPhase(){
-  if(!QOTD) return 'idle';
+  if(!QOTD || !QOTD.date) return 'idle';
   if(QOTD.submitted) return 'submitted';
   const now = Date.now();
   if(now < QOTD.solveEndsAt) return 'solving';
@@ -67,16 +74,16 @@ function _qotdPhase(){
 }
 
 function _qotdPublicState(){
-  if(!QOTD) return { phase: 'idle' };
+  if(!QOTD || !QOTD.date) return { phase: 'idle' };
   const phase = _qotdPhase();
   if(phase === 'submitted') return { phase, marks: QOTD.marks };
   if(phase === 'solving'){
     const leftSec = Math.max(0, Math.round((QOTD.solveEndsAt - Date.now()) / 1000));
-    return { phase, leftSec, left: _fmtHMS(leftSec), marks: QOTD.marks };
+    return { phase, leftSec, left: formatTime(leftSec), marks: QOTD.marks };
   }
   if(phase === 'upload'){
     const leftSec = Math.max(0, Math.round((QOTD.uploadEndsAt - Date.now()) / 1000));
-    return { phase, leftSec, left: _fmtHMS(leftSec), marks: QOTD.marks };
+    return { phase, leftSec, left: formatTime(leftSec), marks: QOTD.marks };
   }
   return { phase: 'expired', marks: QOTD.marks };
 }
@@ -96,13 +103,13 @@ function _renderQotd(){
     return;
   }
 
-  if(QOTD && !QOTD.submitted && !QOTD.uploadEndsAt && Date.now() >= QOTD.solveEndsAt){
+  if(QOTD.date && !QOTD.submitted && !QOTD.uploadEndsAt && Date.now() >= QOTD.solveEndsAt){
     QOTD.uploadEndsAt = QOTD.solveEndsAt + TIMERS.uploadSeconds * 1000;
     _persistQotd();
   }
 
   const phase = _qotdPhase();
-  const q = QOTD
+  const q = (QOTD.date && QOTD.questionId)
     ? (_allQuestions().find(x => x.id === QOTD.questionId) || _todayPick())
     : _todayPick();
 
@@ -170,7 +177,7 @@ function _renderQotd(){
         </div>
         <div class="qotd-q">${esc(q.q)}</div>
         ${q.hint ? `<div style="font-size:.72rem;color:var(--t3);font-style:italic;margin-top:-.4rem;margin-bottom:.85rem">${esc(q.hint)}</div>` : ''}
-        <div class="qotd-timer ${left < 120 ? 'urgent' : ''}" id="qotd-tmr">${_fmtHMS(left)}</div>
+        <div class="qotd-timer ${left < 120 ? 'urgent' : ''}" id="qotd-tmr">${formatTime(left)}</div>
         <div class="qotd-timer-lbl">Time left to write</div>
         <div class="qotd-phase-bar"><div class="qotd-phase-fill" id="qotd-bar" style="width:${(left/total)*100}%"></div></div>
         <p style="font-size:.72rem;color:var(--t3);text-align:center;line-height:1.55">
@@ -193,7 +200,7 @@ function _renderQotd(){
           </div>
           <div class="qotd-marks ${q.marks===10?'m10':''}">${q.marks} marks</div>
         </div>
-        <div class="qotd-timer upload ${left < 60 ? 'urgent' : ''}" id="qotd-tmr">${_fmtHMS(left)}</div>
+        <div class="qotd-timer upload ${left < 60 ? 'urgent' : ''}" id="qotd-tmr">${formatTime(left)}</div>
         <div class="qotd-timer-lbl">Upload closes in</div>
         <div class="qotd-phase-bar"><div class="qotd-phase-fill upload" id="qotd-bar" style="width:${(left/total)*100}%"></div></div>
         <label class="qotd-drop" for="qotd-pdf">
@@ -236,7 +243,7 @@ function _renderQotdFileChip(fileInfo){
 }
 
 function _paintQotdTimer(){
-  if(!QOTD) return;
+  if(!QOTD || !QOTD.date) return;
   const el = document.getElementById('qotd-tmr');
   if(!el) return;
   const phase = _qotdPhase();
@@ -250,13 +257,11 @@ function _paintQotdTimer(){
     total = TIMERS.uploadSeconds;
     el.classList.toggle('urgent', left < 60);
   } else return;
-  el.textContent = _fmtHMS(left);
+  el.textContent = formatTime(left);
   const bar = document.getElementById('qotd-bar');
   if(bar) bar.style.width = ((left / total) * 100) + '%';
 }
 
-/* v1.14: repaint only the clock each second. Re-rendering the whole card (the
-   old behaviour) replaced the file picker and re-enabled Submit mid-upload. */
 function _startQotdTick(){
   _stopQotdTick();
   _lastQotdPhase = _qotdPhase();
@@ -265,13 +270,6 @@ function _startQotdTick(){
     if(phase !== _lastQotdPhase){ _lastQotdPhase = phase; _renderQotd(); }
     else _paintQotdTimer();
     if(++_hintTick % 10 === 0 && typeof window.SB_HINTS !== 'undefined') window.SB_HINTS.refresh();
-  }, 1000);
-}
-function _startQotdTickLegacy(){
-  _stopQotdTick();
-  _qotdTick = setInterval(() => {
-    _renderQotd();
-    if(typeof window.SB_HINTS !== 'undefined') window.SB_HINTS.refresh();
   }, 1000);
 }
 function _stopQotdTick(){
@@ -290,7 +288,8 @@ function _qotdBegin(){
     startedAt: now,
     solveEndsAt: now + solveSec * 1000,
     uploadEndsAt: 0,
-    submitted: false
+    submitted: false,
+    queued: false
   };
   _persistQotd();
   _renderQotd();
@@ -325,15 +324,12 @@ async function _qotdSubmit(){
   try { return await _qotdSubmitInner(); } finally { _qotdSubmitting = false; }
 }
 async function _qotdSubmitInner(){
-  if(!QOTD || !_pendingQotdFile){ toast('Attach a PDF first'); return; }
+  if(!QOTD || !QOTD.date || !_pendingQotdFile){ toast('Attach a PDF first'); return; }
   const q = _allQuestions().find(x => x.id === QOTD.questionId);
   if(!q){ toast('❌ Question no longer available'); return; }
   const btn = document.getElementById('qotd-submit');
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Uploading…'; }
 
-  /* v1.29: no connection → queue the answer on this device rather than
-     throwing it away. The QOTD card shows "Queued" until the server
-     confirms receipt. */
   const _offline = (typeof navigator !== 'undefined' && !navigator.onLine)
     || (typeof S !== 'undefined' && S && (S.forcedOffline || !S.online));
   if(_offline){

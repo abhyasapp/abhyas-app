@@ -8,7 +8,8 @@ function _buildCustomExam(chapterIds, targetMarks, markFilter) {
     return;
   }
   const all = _allQuestions();
-  if (!all.length) { toast('Question bank not loaded yet'); return; }
+  if (!all || !all.length) { toast('Question bank not loaded yet'); return; }
+  
   let pool = chapterIds && chapterIds.length
     ? all.filter(q => chapterIds.includes(q.chapterId))
     : all;
@@ -28,26 +29,30 @@ function _buildCustomExam(chapterIds, targetMarks, markFilter) {
   }
   if (!picked.length) { toast('Could not build a paper — try a lower total'); return; }
 
-  /* EXAM is a global object from subj-exam.js. Assigning an object literal
-   * to it is not permitted (const), so mutate in place. */
-  EXAM.generatedAt = Date.now();
-  EXAM.deadlineAt = EXAM.generatedAt + TIMERS.examSeconds * 1000;
-  EXAM.uploadEndsAt = EXAM.generatedAt + (TIMERS.examSeconds + TIMERS.examUploadSeconds) * 1000;
-  EXAM.sections = [{
-    group: 'custom',
-    name: 'Custom Paper — ' + picked.length + ' questions',
-    targetMarks: total,
-    questions: picked
-  }];
-  EXAM.submitted = false;
-  EXAM.submittedAt = 0;
-  EXAM.queued = false;
+  /* Reassign, do not mutate: EXAM starts as null until an exam exists. */
+  const now = Date.now();
+  EXAM = {
+    generatedAt: now,
+    deadlineAt: now + TIMERS.examSeconds * 1000,
+    uploadEndsAt: now + (TIMERS.examSeconds + TIMERS.examUploadSeconds) * 1000,
+    sections: [{
+      group: 'custom',
+      name: 'Custom Paper — ' + picked.length + ' questions',
+      targetMarks: total,
+      questions: picked
+    }],
+    submitted: false,
+    submittedAt: 0,
+    queued: false
+  };
 
-  /* _persistExam is in subj-exam.js. It is a global function, so it is
-   * reachable here. */
   _persistExam();
   _markCustomExamUsed();
-  _renderExam();
+  
+  if (typeof _renderExam === 'function') {
+    try { _renderExam(); } catch(e) { console.error('[subj-builder] render failed', e); }
+  }
+  
   toast('✅ Custom paper ready · ' + picked.length + ' Qs · ' + total + ' marks · next custom paper in 6h', 5000);
 }
 
@@ -62,7 +67,9 @@ function _notifyBuilder() {
 function _markCustomExamUsed() {
   _setCustomExamLast(Date.now());
   setTimeout(() => {
-    if (document.getElementById('view-subj-exam')?.classList.contains('on')) _renderExam();
+    if (document.getElementById('view-subj-exam')?.classList.contains('on')) {
+      if (typeof _renderExam === 'function') _renderExam();
+    }
     _notifyBuilder();
   }, 50);
 }

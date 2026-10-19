@@ -6,6 +6,7 @@
  *               (data-on-click="X.method(...)" needs window.X).
  * ===================================================================== */
 (function () {
+  try { if (typeof ACT !== 'undefined') window.ACT = ACT; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof ADMIN !== 'undefined') window.ADMIN = ADMIN; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof ADMINS !== 'undefined') window.ADMINS = ADMINS; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof ANNOUNCE !== 'undefined') window.ANNOUNCE = ANNOUNCE; } catch (e) { /* not yet defined at this point */ }
@@ -14,10 +15,15 @@
   try { if (typeof AUTH !== 'undefined') window.AUTH = AUTH; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof BN !== 'undefined') window.BN = BN; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof CACHE !== 'undefined') window.CACHE = CACHE; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof CLOUD_UI !== 'undefined') window.CLOUD_UI = CLOUD_UI; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof CONFIRM !== 'undefined') window.CONFIRM = CONFIRM; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof COOKIE_NOTICE !== 'undefined') window.COOKIE_NOTICE = COOKIE_NOTICE; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof DATA !== 'undefined') window.DATA = DATA; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof EXPIRING !== 'undefined') window.EXPIRING = EXPIRING; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof EXPORTNOTES !== 'undefined') window.EXPORTNOTES = EXPORTNOTES; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof FONT !== 'undefined') window.FONT = FONT; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof HEADERMENU !== 'undefined') window.HEADERMENU = HEADERMENU; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof HOMEFOCUS !== 'undefined') window.HOMEFOCUS = HOMEFOCUS; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof HOME_LAYOUT !== 'undefined') window.HOME_LAYOUT = HOME_LAYOUT; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof HOURLY !== 'undefined') window.HOURLY = HOURLY; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof IMGZOOM !== 'undefined') window.IMGZOOM = IMGZOOM; } catch (e) { /* not yet defined at this point */ }
@@ -36,7 +42,9 @@
   try { if (typeof PAYMENTS !== 'undefined') window.PAYMENTS = PAYMENTS; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof PROGRESS_RESET !== 'undefined') window.PROGRESS_RESET = PROGRESS_RESET; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof PSY !== 'undefined') window.PSY = PSY; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof PUSH !== 'undefined') window.PUSH = PUSH; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof PWA !== 'undefined') window.PWA = PWA; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof QREPORTS !== 'undefined') window.QREPORTS = QREPORTS; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof QSEARCH !== 'undefined') window.QSEARCH = QSEARCH; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof QUIZ !== 'undefined') window.QUIZ = QUIZ; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof RECOVER !== 'undefined') window.RECOVER = RECOVER; } catch (e) { /* not yet defined at this point */ }
@@ -56,34 +64,13 @@
   try { if (typeof SUBJ_TABS !== 'undefined') window.SUBJ_TABS = SUBJ_TABS; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof SUBJ_UPLOAD !== 'undefined') window.SUBJ_UPLOAD = SUBJ_UPLOAD; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof TODAY_PLAN !== 'undefined') window.TODAY_PLAN = TODAY_PLAN; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof TRY_Q !== 'undefined') window.TRY_Q = TRY_Q; } catch (e) { /* not yet defined at this point */ }
+  try { if (typeof TT !== 'undefined') window.TT = TT; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof UI !== 'undefined') window.UI = UI; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof USERS !== 'undefined') window.USERS = USERS; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof VERIFY !== 'undefined') window.VERIFY = VERIFY; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof WEEKLYSETS !== 'undefined') window.WEEKLYSETS = WEEKLYSETS; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof WRONGBY !== 'undefined') window.WRONGBY = WRONGBY; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof closeMod !== 'undefined') window.closeMod = closeMod; } catch (e) { /* not yet defined at this point */ }
-  try { if (typeof togglePw !== 'undefined') window.togglePw = togglePw; } catch (e) { /* not yet defined at this point */ }
   try { if (typeof toggleTheme !== 'undefined') window.toggleTheme = toggleTheme; } catch (e) { /* not yet defined at this point */ }
 })();
-
-/* ── togglePw — password visibility toggle ──────────────────────────
-   Admin has its own copy in js/admin/core.js. The student app
-   (index.html) needs this because the .pw-field buttons call
-   togglePw(). Without it, the eye icon does nothing. */
-if (typeof window.togglePw !== 'function') {
-  window.togglePw = function (btn) {
-    try {
-      const wrap = btn.closest('.pw-field');
-      if (!wrap) return;
-      const input = wrap.querySelector('input');
-      if (!input) return;
-      const show = input.type === 'password';
-      input.type = show ? 'text' : 'password';
-      btn.setAttribute('aria-pressed', show ? 'true' : 'false');
-      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-      btn.innerHTML = show
-        ? '<i class="ph ph-eye-slash"></i>'
-        : '<i class="ph ph-eye"></i>';
-    } catch (e) {}
-  };
-}

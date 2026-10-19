@@ -1,20 +1,21 @@
 // js/features/chapter-nav.js — chapter grid, mastery, verdicts, heatmap.
-// MUST load AFTER: core/state.js (S), core/dom.js ($, $$), core/text.js (esc, escAttrJs),
-// core/format.js (shuf), core/storage.js (QDB), core/modal.js (openMod, closeMod),
-// core/progress.js (chapterMastery, SPRINT_LEVELS), core/toast.js (toast),
-// data/chapters-data.js (ChapterData), features/online-study.js (prettySub, ON),
-// features/quiz-engine.js (QUIZ), features/wrong-bank-ui.js (WRONGBY),
-// features/chapter-stats.js (CHAPSTATS), features/print-q.js (PRINT_Q).
 
 window.MASTERY = {
-  _fids(lv, ch){ return ChapterData.chapterFileRefs(lv, ch).map(r => r.fid); },
+  _fids(lv, ch){ 
+    try { return ChapterData.chapterFileRefs(lv, ch).map(r => r.fid); } catch(e){ return []; }
+  },
   chapter(lv, ch){
     return chapterMastery({ fids: this._fids(lv, ch), fcount: S.fcount, cov: S.cov, wr: S.wr });
   },
   filteredChapters(){
     const out = [];
+    if (typeof SPRINT_LEVELS === 'undefined') return out;
     SPRINT_LEVELS.forEach(lv => {
-      try { Object.keys(ChapterData.chapters(lv)).forEach(ch => { if (ChapterData.chapterFileRefs(lv, ch).length) out.push({ lv, ch }); }); } catch(e){}
+      try { 
+        Object.keys(ChapterData.chapters(lv)).forEach(ch => { 
+          if (ChapterData.chapterFileRefs(lv, ch).length) out.push({ lv, ch }); 
+        }); 
+      } catch(e){}
     });
     return out;
   },
@@ -31,6 +32,7 @@ window.CH_GRID = {
   LEVELS: [['level7', 'Level 7'], ['level5', 'Level 5'], ['gk', 'General Knowledge']],
 
   _stats(refs){
+    if (!Array.isArray(refs)) return { seen: 0, total: 0, complete: false };
     let seen = 0, total = 0, known = 0;
     refs.forEach(r => {
       const c = S.cov && S.cov[r.fid];
@@ -42,60 +44,68 @@ window.CH_GRID = {
   },
 
   _last(){
-    return ((S.prog && S.prog.sessions) || []).find(x => x.fid && x.lv && x.ch) || null;
+    return ((S.prog && S.prog.sessions) || []).find(x => x && x.fid && x.lv && x.ch) || null;
   },
 
   _ref(fid){
-    return ChapterData.allFileRefs().find(r => r.fid === fid) || null;
+    try { return ChapterData.allFileRefs().find(r => r.fid === fid) || null; } catch(e){ return null; }
   },
 
   render(){
     const box = $('chgrid');
     if (!box || typeof ChapterData === 'undefined') return;
-    const last = this._last();
-    if (!this.lv) this.lv = (last && last.lv) || 'level7';
-
-    let html = '';
-    const lastRef = last ? this._ref(last.fid) : null;
-    if (lastRef) {
-      const st = this._stats([lastRef]);
-      html += '<div class="card" style="border-color:var(--accent-line);background:var(--accent-soft)">' +
-        '<div class="t-cap" style="color:var(--accent);font-weight:700">Continue</div>' +
-        '<div class="t-t3" style="margin:2px 0 var(--sp-2)">' + esc(ChapterData.chapterName(lastRef.lv, lastRef.ch)) + ': ' + esc(prettySub(lastRef.subtopic)) + '</div>' +
-        '<div class="t-foot mb3">' + (st.total ? st.seen + ' of ' + st.total + ' seen' : st.seen + ' seen') + '</div>' +
-        '<div class="bg"><button class="btn btn-solid" type="button" data-on-click="CH_GRID.startFid(\'' + lastRef.fid + '\',\'flashcard\')">Practise</button>' +
-        '<button class="btn btn-quiet" type="button" data-on-click="CH_GRID.startFid(\'' + lastRef.fid + '\',\'exam\')">Timed test</button></div></div>';
-    }
-
-    const tabs = this.LEVELS.map(l =>
-      '<button type="button" class="' + (l[0] === this.lv ? 'active' : '') + '" data-on-click="CH_GRID.setLevel(\'' + l[0] + '\')">' + esc(l[1]) + '</button>').join('');
-    const chs = ChapterData.chapters(this.lv);
     
-    requestAnimationFrame(() => {
-      const cards = Object.keys(chs).map(ch => {
-        const refs = ChapterData.chapterFileRefs(this.lv, ch);
-        const has = refs.length > 0;
-        const st = this._stats(refs);
-        const pct = (st.complete && st.total) ? Math.min(100, Math.round(st.seen / st.total * 100)) : null;
-        const missed = (typeof WRONGBY !== 'undefined') ? WRONGBY.countForChapter(this.lv, ch) : 0;
-        const mst = has ? MASTERY.chapter(this.lv, ch) : null;
-        const done = !!mst && mst.state === 'complete';
-        const gate = (mst && mst.state === 'in-progress' && mst.needs.length) ? mst.needs[0] : '';
-        const meta = !has ? 'Coming soon'
-          : (done ? 'Complete \u00b7 ' + Math.round(mst.accuracy * 100) + '% accuracy \u00b7 ' : (pct !== null ? pct + '% seen \u00b7 ' : (st.seen ? st.seen + ' seen \u00b7 ' : ''))) + refs.length + (refs.length === 1 ? ' set' : ' sets') +
-            (missed ? ' \u00b7 ' + missed + ' missed' : '') + (gate ? ' \u00b7 ' + gate : '');
-        const missedBadge = missed
-          ? '<span class="ctag tr" style="position:absolute;top:.4rem;right:.4rem">' + missed + ' missed</span>'
-          : '';
-        return '<button type="button" class="chg-card" style="position:relative"' + (has ? '' : ' disabled') + ' data-on-click="CH_GRID.open(\'' + this.lv + '\',\'' + ch + '\')">' +
-          missedBadge +
-          '<span class="chg-name">' + (done ? '<i class="ph ph-seal-check" style="color:var(--success)" aria-label="Complete"></i> ' : '') + esc(chs[ch]) + '</span>' +
-          (has ? '<span class="pb" style="display:block"><span class="pb-f" style="display:block;width:' + (pct === null ? 0 : pct) + '%"></span></span>' : '') +
-          '<span class="chg-meta">' + esc(meta) + '</span></button>';
-      }).join('');
+    try {
+      const last = this._last();
+      if (!this.lv) this.lv = (last && last.lv) || 'level7';
+
+      let html = '';
+      const lastRef = last ? this._ref(last.fid) : null;
+      if (lastRef) {
+        const st = this._stats([lastRef]);
+        html += '<div class="card" style="border-color:var(--accent-line);background:var(--accent-soft)">' +
+          '<div class="t-cap" style="color:var(--accent);font-weight:700">Continue</div>' +
+          '<div class="t-t3" style="margin:2px 0 var(--sp-2)">' + esc(ChapterData.chapterName(lastRef.lv, lastRef.ch)) + ': ' + esc(prettySub(lastRef.subtopic)) + '</div>' +
+          '<div class="t-foot mb3">' + (st.total ? st.seen + ' of ' + st.total + ' seen' : st.seen + ' seen') + '</div>' +
+          '<div class="bg"><button class="btn btn-solid" type="button" data-on-click="CH_GRID.startFid(\'' + lastRef.fid + '\',\'flashcard\')">Practise</button>' +
+          '<button class="btn btn-quiet" type="button" data-on-click="CH_GRID.startFid(\'' + lastRef.fid + '\',\'exam\')">Timed test</button></div></div>';
+      }
+
+      const tabs = this.LEVELS.map(l =>
+        '<button type="button" class="' + (l[0] === this.lv ? 'active' : '') + '" data-on-click="CH_GRID.setLevel(\'' + l[0] + '\')">' + esc(l[1]) + '</button>').join('');
       
-      box.innerHTML = html + '<div class="chg-tabs">' + tabs + '</div><div class="chg-grid">' + cards + '</div>';
-    });
+      let chs = {};
+      try { chs = ChapterData.chapters(this.lv) || {}; } catch(e){}
+      
+      requestAnimationFrame(() => {
+        const cards = Object.keys(chs).map(ch => {
+          const refs = (() => { try { return ChapterData.chapterFileRefs(this.lv, ch); } catch(e){ return []; } })();
+          const has = refs.length > 0;
+          const st = this._stats(refs);
+          const pct = (st.complete && st.total) ? Math.min(100, Math.round(st.seen / st.total * 100)) : null;
+          const missed = (typeof WRONGBY !== 'undefined') ? WRONGBY.countForChapter(this.lv, ch) : 0;
+          const mst = has ? MASTERY.chapter(this.lv, ch) : null;
+          const done = !!mst && mst.state === 'complete';
+          const gate = (mst && mst.state === 'in-progress' && mst.needs && mst.needs.length) ? mst.needs[0] : '';
+          const meta = !has ? 'Coming soon'
+            : (done ? 'Complete \u00b7 ' + Math.round(mst.accuracy * 100) + '% accuracy \u00b7 ' : (pct !== null ? pct + '% seen \u00b7 ' : (st.seen ? st.seen + ' seen \u00b7 ' : ''))) + refs.length + (refs.length === 1 ? ' set' : ' sets') +
+              (missed ? ' \u00b7 ' + missed + ' missed' : '') + (gate ? ' \u00b7 ' + gate : '');
+          const missedBadge = missed
+            ? '<span class="ctag tr" style="position:absolute;top:.4rem;right:.4rem">' + missed + ' missed</span>'
+            : '';
+          return '<button type="button" class="chg-card" style="position:relative"' + (has ? '' : ' disabled') + ' data-on-click="CH_GRID.open(\'' + this.lv + '\',\'' + ch + '\')">' +
+            missedBadge +
+            '<span class="chg-name">' + (done ? '<i class="ph ph-seal-check" style="color:var(--success)" aria-label="Complete"></i> ' : '') + esc(chs[ch]) + '</span>' +
+            (has ? '<span class="pb" style="display:block"><span class="pb-f" style="display:block;width:' + (pct === null ? 0 : pct) + '%"></span></span>' : '') +
+            '<span class="chg-meta">' + esc(meta) + '</span></button>';
+        }).join('');
+        
+        box.innerHTML = html + '<div class="chg-tabs">' + tabs + '</div><div class="chg-grid">' + cards + '</div>';
+      });
+    } catch (err) {
+      console.error('[CH_GRID.render] failed:', err);
+      box.innerHTML = '<div class="card"><div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>Could not load chapters. Try refreshing the page.</span></div></div>';
+    }
   },
 
   setLevel(id){ 
@@ -105,39 +115,44 @@ window.CH_GRID = {
   },
 
   async open(lv, ch){
-    const refs = ChapterData.chapterFileRefs(lv, ch);
-    if (!refs.length) return;
-    const name = ChapterData.chapterName(lv, ch);
-    let keys = new Set();
-    try { keys = new Set(await QDB.keys()); } catch(e){}
-    const offline = !(S.online && !S.forcedOffline);
-    const missedFor = fid => (typeof WRONGBY !== 'undefined') ? WRONGBY.countFor(fid) : 0;
-    
-    requestAnimationFrame(() => {
-      const rows = refs.map(r => {
-        const st = this._stats([r]);
-        const cached = keys.has(r.key);
-        const blocked = offline && !cached;
-        const m = missedFor(r.fid);
-        return '<div class="row" style="padding:var(--sp-2) 0">' +
-          '<div class="row-main"><div class="t-callout" style="color:var(--ink);font-weight:600">' + esc(prettySub(r.subtopic)) + '</div>' +
-          '<div class="t-cap">' + (st.total ? st.seen + ' of ' + st.total + ' seen' : (st.seen ? st.seen + ' seen' : 'Not started')) +
-          (cached ? ' · saved on this device' : (blocked ? ' · needs a connection' : '')) +
-          (m ? ' · ' + m + ' missed' : '') + '</div></div>' +
-          '<button class="btn btn-sm btn-a" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'flashcard\')">Practise</button>' +
-          (m ? '<button class="btn btn-sm btn-r" type="button" data-on-click="closeMod();WRONGBY.startFile(\'' + escAttrJs(r.fid) + '\',false)">Missed (' + m + ')</button>' : '') +
-          '<button class="btn btn-sm btn-quiet" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'exam\')">Test</button>' +
-          '<button class="btn btn-sm ch-row-print" type="button" title="Print a revision sheet"' + (blocked ? ' disabled' : '') + ' data-on-click="PRINT_Q.sheet(\'' + escAttrJs(r.fid) + '\')"><i class="ph ph-printer"></i></button>' +
-          '</div>';
-      }).join('');
+    try {
+      const refs = ChapterData.chapterFileRefs(lv, ch);
+      if (!refs.length) return;
+      const name = ChapterData.chapterName(lv, ch);
+      let keys = new Set();
+      try { keys = new Set(await QDB.keys()); } catch(e){}
+      const offline = !(S.online && !S.forcedOffline);
+      const missedFor = fid => (typeof WRONGBY !== 'undefined') ? WRONGBY.countFor(fid) : 0;
       
-      const head = refs.length > 1
-        ? '<div class="bg mb3"><button class="btn btn-solid" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'flashcard\')">Practise the whole chapter</button>' +
-          '<button class="btn btn-quiet" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'exam\')">Timed test</button></div>'
-        : '';
+      requestAnimationFrame(() => {
+        const rows = refs.map(r => {
+          const st = this._stats([r]);
+          const cached = keys.has(r.key);
+          const blocked = offline && !cached;
+          const m = missedFor(r.fid);
+          return '<div class="row" style="padding:var(--sp-2) 0">' +
+            '<div class="row-main"><div class="t-callout" style="color:var(--ink);font-weight:600">' + esc(prettySub(r.subtopic)) + '</div>' +
+            '<div class="t-cap">' + (st.total ? st.seen + ' of ' + st.total + ' seen' : (st.seen ? st.seen + ' seen' : 'Not started')) +
+            (cached ? ' · saved on this device' : (blocked ? ' · needs a connection' : '')) +
+            (m ? ' · ' + m + ' missed' : '') + '</div></div>' +
+            '<button class="btn btn-sm btn-a" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'flashcard\')">Practise</button>' +
+            (m ? '<button class="btn btn-sm btn-r" type="button" data-on-click="closeMod();WRONGBY.startFile(\'' + escAttrJs(r.fid) + '\',false)">Missed (' + m + ')</button>' : '') +
+            '<button class="btn btn-sm btn-quiet" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'exam\')">Test</button>' +
+            '<button class="btn btn-sm ch-row-print" type="button" title="Print a revision sheet"' + (blocked ? ' disabled' : '') + ' data-on-click="PRINT_Q.sheet(\'' + escAttrJs(r.fid) + '\')"><i class="ph ph-printer"></i></button>' +
+            '</div>';
+        }).join('');
         
-      openMod(name, head + '<div class="rows">' + rows + '</div>');
-    });
+        const head = refs.length > 1
+          ? '<div class="bg mb3"><button class="btn btn-solid" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'flashcard\')">Practise the whole chapter</button>' +
+            '<button class="btn btn-quiet" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'exam\')">Timed test</button></div>'
+          : '';
+          
+        openMod(name, head + '<div class="rows">' + rows + '</div>');
+      });
+    } catch(e) {
+      console.error('[CH_GRID.open] failed:', e);
+      toast('Could not open chapter. Please try again.');
+    }
   },
 
   go(fid, mode){ closeMod(); this.startFid(fid, mode); },
@@ -234,9 +249,10 @@ window.HEATMAP = {
     
     requestAnimationFrame(() => {
       box.innerHTML = levels.map(([lv, name]) => {
-        const chs = ChapterData.chapters(lv);
+        let chs = {};
+        try { chs = ChapterData.chapters(lv) || {}; } catch(e){}
         const cards = Object.keys(chs).map(ch => {
-          const refs = ChapterData.chapterFileRefs(lv, ch);
+          const refs = (() => { try { return ChapterData.chapterFileRefs(lv, ch); } catch(e){ return []; } })();
           if (!refs.length) return '';
           const label = ChapterData.chapterName(lv, ch);
           const s = stats[label];

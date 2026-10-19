@@ -1,9 +1,5 @@
 // js/features/subj-exam.js — the 100-mark paper and its 3-hour + 20-minute
 // two-phase timer.
-// MUST load AFTER: subj-bank.js (TIMERS, LS_EXAM, BANK, _allQuestions,
-// _questionsByChapter, _shuffle), subj-pdf.js (_prepareUpload),
-// core/subjective-api.js (_api), subj-queue.js (SUBJ_QUEUE),
-// core/modal.js (ASK), core/toast.js (toast).
 
 const EXAM_GROUPS = {
   A: { name: "Group A — Structure + Geotech",    marks: 30, chapterIds: ["structure","geotech"] },
@@ -154,7 +150,7 @@ function _renderExam(){
                     : _uploading ? 'Upload window closes in'
                     : 'Time is up';
   const _phaseClass = _uploading ? ' upload' : '';
-  const _timerText  = _writing ? _fmtHMS(writeLeftSec) : _fmtHMS(uploadLeftSec);
+  const _timerText  = _writing ? formatTime(writeLeftSec, true) : formatTime(uploadLeftSec, true);
   const _urgent = (_writing && writeLeftSec < 300) || (_uploading && uploadLeftSec < 120);
 
   const parts = [];
@@ -202,7 +198,7 @@ function _renderExam(){
     parts.push(`
       <div class="card">
         <div class="card-hd"><h3><i class="ph ph-file-arrow-up"></i> Upload Answer PDF</h3></div>
-        ${_uploading ? '<div class="banner banner-warning" style="margin-bottom:var(--sp-3)"><i class="ph ph-hourglass"></i><span><b>Writing time is over.</b> Upload your paper \u2014 the window closes in ' + _fmtHMS(uploadLeftSec) + '.</span></div>' : ''}
+        ${_uploading ? '<div class="banner banner-warning" style="margin-bottom:var(--sp-3)"><i class="ph ph-hourglass"></i><span><b>Writing time is over.</b> Upload your paper \u2014 the window closes in ' + formatTime(uploadLeftSec, true) + '.</span></div>' : ''}
         <label class="qotd-drop" for="exam-pdf">
           <input type="file" id="exam-pdf" accept="application/pdf,.pdf,image/*" multiple data-on-change="SUBJ._examFile(this)">
           <span class="ii"><i class="ph ph-file-pdf"></i></span>
@@ -251,7 +247,7 @@ function _startExamTick(){
 
     if(writing){
       const left = Math.max(0, Math.round((EXAM.deadlineAt - now) / 1000));
-      el.textContent = _fmtHMS(left);
+      el.textContent = formatTime(left, true);
       el.classList.remove('upload');
       el.classList.toggle('urgent', left < 300);
       if(lbl) lbl.textContent = 'Total exam time left';
@@ -263,7 +259,7 @@ function _startExamTick(){
       }
     } else if(uploading){
       const left = Math.max(0, Math.round((EXAM.uploadEndsAt - now) / 1000));
-      el.textContent = _fmtHMS(left);
+      el.textContent = formatTime(left, true);
       el.classList.add('upload');
       el.classList.toggle('urgent', left < 120);
       if(lbl) lbl.textContent = 'Upload window closes in';
@@ -297,8 +293,6 @@ function _examGenerate(){
   _renderExam();
 }
 
-/* v1.27: was native confirm() — suppressed by an installed iOS PWA, so
-   the discard ran silently even if the student tried to cancel. */
 async function _examReset(){
   const body = (EXAM && !EXAM.submitted)
     ? 'Any answers you have written on paper will not be submitted.'

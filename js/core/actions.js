@@ -20,16 +20,28 @@
   'use strict';
 
   const _cache = new Map();
+  const MAX_CACHE_SIZE = 1000;
 
   function _compile(code) {
     let fn = _cache.get(code);
     if (fn) return fn;
-    // eslint-disable-next-line no-new-func -- the data-on-* dispatcher is the single intended use (see README roadmap #5)
-    try { fn = new Function('event', code); }
+    
+    // eslint-disable-next-line no-new-func -- the data-on-* dispatcher is the single intended use
+    try { 
+      // Wrap in strict mode and return the result properly
+      fn = new Function('event', '"use strict";\n' + code); 
+    }
     catch (e) {
       console.error('[actions] Failed to compile:', code, e);
       fn = function () {};
     }
+    
+    if (_cache.size >= MAX_CACHE_SIZE) {
+      // Simple cache eviction: clear half the cache if it gets too big
+      const keys = Array.from(_cache.keys()).slice(0, MAX_CACHE_SIZE / 2);
+      keys.forEach(k => _cache.delete(k));
+    }
+    
     _cache.set(code, fn);
     return fn;
   }
@@ -37,42 +49,35 @@
   function _fire(el, attrName, evt) {
     const code = el.getAttribute(attrName);
     if (!code) return;
-    /* This dispatcher runs in the CAPTURE phase, before the event reaches its
-       target. If a handler's `event.stopPropagation()` were passed straight
-       through, it would also stop the event from ever reaching buttons wired
-       with element.onclick / addEventListener inside that element (that is how
-       the modal's "Send Report" button went dead: the modal box carries
-       data-on-click="event.stopPropagation()").
-       So during the handler we swap in a stand-in that only RECORDS the request,
-       then replay it in the bubble phase at `el`: handlers deeper than `el` still
-       run, handlers above it do not — exactly what a real inline onclick does. */
+    
     let stopRequested = false;
     evt.stopPropagation = function () { stopRequested = true; evt.__actStopped = true; };
+    
     let result;
-    try { result = _compile(code).call(el, evt); }
+    try { 
+      result = _compile(code).call(el, evt); 
+    }
     catch (e) {
-      console.error('[actions] Handler threw:', attrName, code, e);
+      console.error(`[actions] Handler threw (${attrName}):`, code, e);
+      if (typeof toast === 'function') {
+        toast('An unexpected error occurred. Please try again.', 4000);
+      }
       return;
     }
     finally { delete evt.stopPropagation; }
-    /* Inline-handler semantics: `return false` cancels the event. */
+    
     if (result === false && evt) {
       if (evt.preventDefault) evt.preventDefault();
       stopRequested = true; evt.__actStopped = true;
     }
+    
     if (stopRequested && evt.bubbles) {
       const stopper = ev => { if (ev === evt) ev.stopPropagation(); };
       el.addEventListener(evt.type, stopper);
-      /* dispatch is synchronous, so by the next tick the event is over */
       setTimeout(() => el.removeEventListener(evt.type, stopper), 0);
     }
   }
 
-  /* All types use capture: true — `error` and `focus` don't bubble.
-     The walk from e.target upward fires handlers innermost-first, so a
-     nested `data-on-click` on a child runs before the parent's, and
-     `event.stopPropagation()` in the child prevents the parent's (tracked with
-   e.__actStopped; see _fire for why it is not a real stopPropagation). */
   const TYPES = ['click', 'keydown', 'change', 'input', 'focus', 'mousedown', 'error'];
 
   TYPES.forEach(type => {
@@ -95,9 +100,9 @@
     hideParent(el) {
       if (el && el.parentNode) el.parentNode.style.display = 'none';
     },
-    /* Run something after a short delay, from a data-on-* attribute:
-         ACT.later(120, APP_SWITCH, 'toAdmin')   -> APP_SWITCH.toAdmin()
-         ACT.later(300, someFunction, arg)       -> someFunction(arg)      */
+    showParent(el) {
+      if (el && el.parentNode) el.parentNode.style.display = '';
+    },
     later(ms, target, method) {
       const rest = Array.prototype.slice.call(arguments, 3);
       setTimeout(() => {

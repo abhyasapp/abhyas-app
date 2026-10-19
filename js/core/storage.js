@@ -13,16 +13,40 @@ let _lastStorageWarnAt = 0;
 function _save(k, v) {
   try {
     localStorage.setItem(k, JSON.stringify(v));
-    if (PSYNC_KEYS.has(k)) PSYNC.scheduleSync();
+    if (typeof PSYNC_KEYS !== 'undefined' && PSYNC_KEYS.has(k)) PSYNC.scheduleSync();
     return true;
   } catch (e) {
     const now = Date.now();
     if (now - _lastStorageWarnAt > 30000) {
       _lastStorageWarnAt = now;
       const isQuota = e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014);
-      toast(isQuota
-        ? '⚠️ Device storage is full — new progress/bookmarks may not be saved. Try removing some old bookmarks or flagged questions to free space.'
-        : '⚠️ Could not save — some data may not have been saved.', 5000);
+      
+      if (isQuota) {
+        // Attempt to free up space by pruning oldest items
+        try {
+          if (typeof S !== 'undefined') {
+            if (S.wr && S.wr.length > 100) S.wr = S.wr.slice(0, 100);
+            if (S.bk && S.bk.length > 100) S.bk = S.bk.slice(0, 100);
+            if (S.fl && S.fl.length > 100) S.fl = S.fl.slice(0, 100);
+          }
+          // Retry saving the current item
+          localStorage.setItem(k, JSON.stringify(v));
+          if (typeof toast === 'function') {
+            toast('⚠️ Device storage was full. Older bookmarks/wrong answers were removed to free space.', 6000);
+          }
+          return true;
+        } catch (err) {
+          if (typeof toast === 'function') {
+            toast('⚠️ Device storage is completely full — new progress may not be saved.', 6000);
+          }
+          return false;
+        }
+      } else {
+        if (typeof toast === 'function') {
+          toast('⚠️ Could not save — some data may not have been saved.', 5000);
+        }
+        return false;
+      }
     }
     return false;
   }

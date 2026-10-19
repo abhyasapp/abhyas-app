@@ -5,8 +5,6 @@ async function pingSupabase(timeoutMs = 5000) {
   try {
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), timeoutMs);
-    // A simple GET to the Supabase URL. Any HTTP response (even 401/404) 
-    // means the network is alive and the server is reachable.
     await fetch(ABHYAS_CONFIG.SUPABASE_URL, { 
       method: 'GET', 
       signal: ctrl.signal, 
@@ -89,14 +87,12 @@ async function netFetch(url, opts, timeoutMs = 20000) {
   if (S.forcedOffline) throw new Error('OFFLINE');
   if (!S.online) throw new Error('OFFLINE');
 
-  // ── ROUTING LOGIC ──
   let targetUrl = url;
   
   if (typeof ABHYAS_CONFIG !== 'undefined' && typeof abhyasEndpointFor === 'function') {
     let action = null;
     let bodyObj = null;
 
-    // 1. Extract action + params from body (POST requests)
     if (opts && opts.body) {
       try {
         bodyObj = typeof opts.body === 'string' ? JSON.parse(opts.body) : opts.body;
@@ -104,7 +100,6 @@ async function netFetch(url, opts, timeoutMs = 20000) {
       } catch (e) {}
     }
 
-    // 2. Extract action + params from URL (GET requests)
     if (!action && url.indexOf('action=') !== -1) {
       try {
         const urlObj = new URL(url, window.location.origin);
@@ -116,9 +111,6 @@ async function netFetch(url, opts, timeoutMs = 20000) {
       } catch (e) {}
     }
 
-    // 3. Route based on endpoint resolution
-    //    For getfile, abhyasEndpointFor() inspects bodyObj.fileId to
-    //    decide gas vs supabase (Storage path → supabase, Drive ID → gas).
     if (action && abhyasEndpointFor(action, bodyObj) === 'supabase') {
       targetUrl = ABHYAS_CONFIG.SUPABASE_URL;
     }
@@ -133,7 +125,9 @@ async function netFetch(url, opts, timeoutMs = 20000) {
     return res;
   } catch (err) {
     clearTimeout(timer);
-    if (err.name === 'AbortError') throw new Error('Request timed out — the server is taking too long. Try again or check your connection.', { cause: err });
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out — the server is taking too long. Try again or check your connection.', { cause: err });
+    }
     throw err;
   }
 }
@@ -146,10 +140,7 @@ const NETCHECK = {
     let ok;
     
     try {
-      // 1. Try Supabase (Primary)
       ok = await pingSupabase();
-      
-      // 2. If Supabase is down, try GAS (Fallback)
       if (!ok && typeof APPS !== 'undefined') {
         ok = await pingBackend(APPS);
       }
@@ -171,25 +162,4 @@ const NETCHECK = {
   },
   start() { if (NETCHECK._timer) return; NETCHECK._timer = setInterval(() => NETCHECK.ping(), 30000); },
   reset() { this._failCount = 0; }
-};
-
-function _buildSearchQuery() {
-  const q = S.quiz?.qs?.[S.quiz.idx];
-  if (!q) return '';
-  return _buildRichQuery(q);
-}
-
-const SRCH = {
-  quickSearch() {
-    const text = _buildSearchQuery();
-    if (!text) { toast('No question to search'); return; }
-    SRCH._openGoogle(text);
-  },
-  _openGoogle(text) {
-    const q = encodeURIComponent(text);
-    if (!q) return;
-    const url = `https://www.google.com/search?q=${q}`;
-    const win = window.open(url, '_blank', 'noopener');
-    if (!win) window.location.href = url;
-  }
 };

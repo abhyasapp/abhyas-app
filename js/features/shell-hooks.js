@@ -1,6 +1,5 @@
 ﻿// js/features/shell-hooks.js — the wiring at the bottom of user-page.js:
 // screen hooks, touch/keyboard/hash listeners, DOM observers, perf coalesce.
-// MUST load AFTER every feature file, so all objects it references exist.
 
 (function shellHooks() {
   if (typeof UI === 'undefined') return;
@@ -11,6 +10,7 @@
     const b = document.getElementById(NAV.tabForView(v));
     if (b) b.classList.add('active');
   }
+  
   function _setAdminVisible(v) {
     ['tb-admin-btn', 'sb-admin-promo', 'bn-admin'].forEach(id => {
       const el = document.getElementById(id);
@@ -18,6 +18,7 @@
     });
   }
   window._setAdminVisible = _setAdminVisible;
+  
   function _populateChapterFilter() {
     const sel = document.getElementById('subj-list-chapter');
     if (!sel || sel.options.length > 1) return;
@@ -31,15 +32,23 @@
   }
 
   /* ── Global hooks ── */
-  UI.onEnterAny(v => { _updateBottomNav(v); if (typeof BN !== 'undefined') BN.close(); setTimeout(() => { try { _refreshHints(); } catch (e) {} }, 50); });
+  UI.onEnterAny(v => { 
+    _updateBottomNav(v); 
+    if (typeof BN !== 'undefined') BN.close(); 
+    setTimeout(() => { try { _refreshHints(); } catch (e) {} }, 50); 
+  });
+  
   UI.onEnter('online',   () => { if (typeof CH_GRID !== 'undefined') CH_GRID.render(); });
+  
   UI.onEnter('weekly',   () => {
     if (typeof WEEKLY === 'undefined') return;
     if (typeof WEEKLY._renderHomeCard === 'function') WEEKLY._renderHomeCard();
     const outer = document.getElementById('weekly-sets-outer'), empty = document.getElementById('weekly-empty');
     if (outer && empty) empty.style.display = (outer.style.display === 'none') ? '' : 'none';
   });
+  
   UI.onEnter('subj-mine', () => { if (typeof MY_SUBJ !== 'undefined') MY_SUBJ.load(false); });
+  
   ['subj-qotd', 'subj-exam', 'subj-list'].forEach(view => UI.onEnter(view, () => {
     if (typeof SUBJ !== 'undefined') {
       if (typeof SUBJ.ready === 'function' && SUBJ.ready()) {
@@ -51,13 +60,18 @@
     if (view === 'subj-exam') setTimeout(() => { if (typeof SUBJ_BUILDER !== 'undefined') { SUBJ_BUILDER._populate(); SUBJ_BUILDER._updateCooldownUI(); } }, 80);
     if (view === 'subj-list') setTimeout(_populateChapterFilter, 80);
   }));
+  
   UI.onEnter('progress', () => { if (typeof CLOUD_UI !== 'undefined' && CLOUD_UI.render) setTimeout(CLOUD_UI.render, 0); });
+  
   ['home', 'progress'].forEach(view => UI.onEnter(view, () => { if (typeof APP_SWITCH !== 'undefined') APP_SWITCH.refresh(); }));
+  
   UI.onEnter('studydocs', () => STUDYDOCS.load(false));
   UI.onEnterAny(v => { if (v !== 'studydocs' && typeof STUDYDOCS !== 'undefined') STUDYDOCS.chapter = ''; });
   UI.onEnter('data', () => { if (typeof RECOVER !== 'undefined') RECOVER.render(); });
+  
+  // Hourly hooks
   UI.onEnter('hourly', () => setTimeout(() => { try { HOURLY.mount(); } catch (e) {} }, 30));
-  UI.onEnterAny(v => { if (v !== 'hourly') { try { HOURLY.unmount(); } catch (e) {} } });
+  UI.onLeave('hourly', () => { try { HOURLY.unmount(); } catch (e) {} });
 
   /* ── Touch swipe to open the sidebar ── */
   let _tx = 0, _ty = 0;

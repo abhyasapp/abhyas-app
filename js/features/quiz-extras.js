@@ -1,8 +1,5 @@
 // js/features/quiz-extras.js — confidence, misconceptions, recovery,
 // read-aloud, fast-guess, image zoom, copy-explanation, question notes + history.
-// MUST load AFTER: core/state.js, core/dom.js, core/text.js (esc, escAttrJs),
-// core/format.js (shuf), features/quiz-engine.js (QUIZ).
-// Uses ASK, toast, LS.WR at call time only.
 
 window.CONF = {
   render(){

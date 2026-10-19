@@ -273,3 +273,70 @@ window.FOCUSMODE = {
     if (btn) btn.classList.toggle('active', on);
   }
 };
+
+// ---------------------------------------------------------------------------
+// HEADERMENU — three-dot (⋮) toolbar popup menu
+// ---------------------------------------------------------------------------
+window.HEADERMENU = {
+  _listening: false,
+  toggle() {
+    const pop = document.getElementById('tb-menu-pop');
+    const btn = document.getElementById('tb-more-btn');
+    if (!pop) return;
+    const opening = pop.hidden;
+    pop.hidden = !opening;
+    if (btn) btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    if (opening && !this._listening) {
+      this._listening = true;
+      const close = (e) => {
+        if (!e.target || !e.target.closest) return;
+        if (!e.target.closest('.tb-more')) {
+          window.HEADERMENU.close();
+          document.removeEventListener('click', close, true);
+          window.HEADERMENU._listening = false;
+        }
+      };
+      setTimeout(() => document.addEventListener('click', close, true), 0);
+    }
+  },
+  close() {
+    const pop = document.getElementById('tb-menu-pop');
+    const btn = document.getElementById('tb-more-btn');
+    if (pop) pop.hidden = true;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  },
+};
+
+// ---------------------------------------------------------------------------
+// HOMEFOCUS — home layout density toggle (simple / detailed)
+// ---------------------------------------------------------------------------
+window.HOMEFOCUS = (function () {
+  const KEY = 'abhyas_home_mode_v1';
+  function _get() {
+    try { return localStorage.getItem(KEY) === 'detailed' ? 'detailed' : 'simple'; } catch (e) { return 'simple'; }
+  }
+  function _paint(mode) {
+    document.querySelectorAll('.home-mode-opt').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-mode') === mode));
+    });
+    const btn = document.getElementById('home-mode-btn');
+    if (btn) {
+      btn.setAttribute('aria-pressed', String(mode === 'detailed'));
+      btn.textContent = mode === 'detailed' ? 'Show less on Home' : 'Show more on Home';
+    }
+  }
+  const obj = {
+    mode: _get,
+    setMode(mode) {
+      mode = mode === 'detailed' ? 'detailed' : 'simple';
+      try { localStorage.setItem(KEY, mode); } catch (e) {}
+      if (typeof HOME_LAYOUT !== 'undefined' && typeof HOME_LAYOUT.applyPreset === 'function') {
+        try { HOME_LAYOUT.applyPreset(mode); } catch (e) {}
+      }
+      _paint(mode);
+    },
+    toggleMode() { obj.setMode(_get() === 'detailed' ? 'simple' : 'detailed'); },
+    init() { _paint(_get()); },
+  };
+  return obj;
+})();

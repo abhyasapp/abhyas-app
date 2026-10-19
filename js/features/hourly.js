@@ -1,12 +1,4 @@
 // js/features/hourly.js — hourly written question + hourly sprint.
-// MUST load AFTER: core/state.js (S), core/text.js (esc), core/net.js
-// (GETFILE_GATE, netFetch, APPS), core/modal.js (ASK), core/toast.js (toast),
-// core/storage.js (QDB), core/question.js (normQ),
-// data/chapters-data.js (ChapterData), features/quiz-engine.js (QUIZ).
-// window.SUBJECTIVE_FILE_REFS is read at _ensureBank() call time only.
-// The QUIZ._doStart / QUIZ._showResults wraps for HOURLY's timeLimitSec and
-// sprint recording live in quiz-wrappers.js (items 14 and 15), NOT here —
-// this file only owns HOURLY.
 
 window.HOURLY = {
   LS_LV:    'abhyas_hourly_lv',
@@ -50,10 +42,6 @@ window.HOURLY = {
     const d = new Date();
     const n = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()+1, 0, 0, 0);
     return n.getTime() - d.getTime();
-  },
-  _fmtClock(ms){
-    const s = Math.max(0, Math.floor(ms/1000));
-    return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
   },
   _nextHourLabel(){
     const d = new Date();
@@ -192,7 +180,7 @@ window.HOURLY = {
   _paintClock(){
     const el = document.getElementById('hourly-clock');
     if (!el) return;
-    el.textContent = this._fmtClock(this._msToNextHour()) + ' to next hour';
+    el.textContent = formatTime(Math.floor(this._msToNextHour() / 1000)) + ' to next hour';
   },
 
   async render(){
@@ -307,7 +295,7 @@ window.HOURLY = {
     const el = document.getElementById('hourly-subj-tmr');
     if (!el) return;
     const left = Math.max(0, Math.round((st.endsAt - Date.now()) / 1000));
-    el.textContent = this._fmtClock(left * 1000);
+    el.textContent = formatTime(left);
     el.classList.toggle('urgent', left < 120);
     const bar = document.getElementById('hourly-subj-bar');
     if (bar) bar.style.width = ((left / this.SUBJ_SECONDS) * 100) + '%';
@@ -426,7 +414,7 @@ window.HOURLY = {
             '</div></div>' +
           '<span class="ctag ' + cls + '" style="font-size:var(--fs-t3);padding:.4rem .7rem">' + pct + '%</span>' +
         '</div>' +
-        '<p class="t-cap text-center" style="margin-top:var(--sp-3)">Next sprint in ' + this._fmtClock(this._msToNextHour()) + '</p>';
+        '<p class="t-cap text-center" style="margin-top:var(--sp-3)">Next sprint in ' + formatTime(Math.floor(this._msToNextHour() / 1000)) + '</p>';
       return;
     }
 
@@ -435,7 +423,7 @@ window.HOURLY = {
         '<div class="banner banner-warning"><i class="ph ph-warning"></i>' +
           '<span>You started this hour\'s sprint but didn\'t finish it. The next hour brings a fresh set.</span>' +
         '</div>' +
-        '<p class="t-cap text-center">Next sprint in ' + this._fmtClock(this._msToNextHour()) + '</p>';
+        '<p class="t-cap text-center">Next sprint in ' + formatTime(Math.floor(this._msToNextHour() / 1000)) + '</p>';
       return;
     }
 
@@ -453,9 +441,6 @@ window.HOURLY = {
     const refs = (typeof ChapterData !== 'undefined' ? ChapterData.allFileRefs() : []).filter(r => r.lv === lv);
     if (!refs.length){ toast('No chapters for this level yet.'); return; }
 
-    // Are we allowed to touch the network at all? Accept either signal —
-    // S.online can be stale for a few seconds after boot, and navigator.onLine
-    // lies on some mobile browsers.
     let canNet = false;
     try {
       canNet = !!(typeof S !== 'undefined' && S.online && !S.forcedOffline);
@@ -482,7 +467,6 @@ window.HOURLY = {
         const msgEl = document.getElementById('quiz-loader-msg');
         if (msgEl) msgEl.textContent = 'Loading sets (' + tried + '/' + MAX_FILES + ')…';
 
-        // ── 1. Cache lookup — instant, no network cost, always safe.
         let raw = null;
         try {
           if (typeof QDB !== 'undefined' && ref.key){
@@ -492,7 +476,6 @@ window.HOURLY = {
           }
         } catch(e){}
 
-        // ── 2. Network — only on cache miss AND only if we think we're online.
         if (!raw && canNet){
           try {
             raw = await QUIZ._fetch(ref.fid, ref.key);
@@ -513,7 +496,6 @@ window.HOURLY = {
           errors.push((ref.subtopic || ref.fid) + ': file had no valid questions');
           continue;
         }
-        // Dedupe by uid — two chapter refs can point at the same Drive file.
         for (const q of qs){
           if (q && q.uid && !seen.has(q.uid)){ seen.add(q.uid); all.push(q); }
         }
@@ -553,8 +535,6 @@ window.HOURLY = {
         toast('Running a ' + picked.length + '-question sprint — the full 50 aren\'t available at this level.', 5000);
       }
 
-      // Mark the hour as used BEFORE starting. If QUIZ._doStart throws we
-      // roll this back so the student can retry within the same hour.
       this._setObj({
         key:       this._hourKey() + '|' + lv,
         level:     lv,
@@ -569,7 +549,7 @@ window.HOURLY = {
           hourlyLevel:  lv
         });
       } catch(startErr){
-        this._setObj(null);   // undo, so the button is available again
+        this._setObj(null);
         throw startErr;
       }
 
@@ -597,7 +577,7 @@ window.HOURLY = {
     else this._refreshBadge();
   },
 
-  // ── PDF prep (self-contained) ────────────────────────────────────────
+  // ── PDF prep ─────────────────────────────────────────────────────────
   _readAsDataUrl(file){
     return new Promise((res, rej) => {
       const r = new FileReader();

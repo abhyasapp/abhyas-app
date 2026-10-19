@@ -1,8 +1,4 @@
 // js/features/weekly.js — weekly test sets, one graded attempt + local retakes.
-// MUST load AFTER: core/state.js (S), core/storage.js (_load, _save),
-// core/net.js (netFetch, APPS), core/format.js (fmtHMS, shuf),
-// core/text.js (esc, escAttrJs), core/toast.js (toast), core/modal.js
-// (MODAL, ASK), data/chapters-data.js (ChapterData). QUIZ at call time only.
 
 const WEEKLY = {
   LS_RETAKES: 'abhyas_weekly_last_retake',
@@ -88,7 +84,7 @@ const WEEKLY = {
   _saveAttempts() { S.weeklyAttempts = this.attempts; _save(LS.WK_ATTEMPTS, this.attempts); },
 
   async init() {
-    if (!S.online || S.forcedOffline) { this._renderHomeCard(); this._startTick(); return; }
+    if (!S.online || S.forcedOffline || !S.user || !S.user.token) { this._renderHomeCard(); this._startTick(); return; }
     try {
       const post = (action) => netFetch(APPS, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
@@ -100,8 +96,8 @@ const WEEKLY = {
         post('getMyWeeklyAttempts')
       ]);
       
-      if (setsRes.success) this.sets = setsRes.sets || [];
-      if (attemptsRes.success && Array.isArray(attemptsRes.attempts)) {
+      if (setsRes && setsRes.success) this.sets = setsRes.sets || [];
+      if (attemptsRes && attemptsRes.success && Array.isArray(attemptsRes.attempts)) {
         for (const a of attemptsRes.attempts) {
           const local = this.attempts[a.weeklyId];
           if (local && !local.synced) continue;
@@ -113,16 +109,19 @@ const WEEKLY = {
       this._renderHomeCard();
       this._startTick();
       this._loadStandings();
-    } catch (e) { this._renderHomeCard(); }
+    } catch (e) { 
+      console.warn('[WEEKLY.init] failed', e);
+      this._renderHomeCard(); 
+    }
   },
 
   examCloseAt(s) {
-    if (!s.releaseAt) return null;
+    if (!s || !s.releaseAt) return null;
     const t = new Date(s.releaseAt).getTime();
     return isNaN(t) ? null : t + WEEKLY_EXAM_WINDOW_HOURS * 60 * 60 * 1000;
   },
   examOpen(s) {
-    if (!s.released) return false;
+    if (!s || !s.released) return false;
     const closeAt = this.examCloseAt(s);
     return closeAt !== null && Date.now() < closeAt;
   },
@@ -143,7 +142,7 @@ const WEEKLY = {
 
         if (!s.released) {
           const when = s.releaseAt ? new Date(s.releaseAt) : null;
-          const whenTxt = when ? when.toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'soon';
+          const whenTxt = (when && !isNaN(when.getTime())) ? when.toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'soon';
           return `<div class="qb-btn" style="width:100%;justify-content:flex-start;opacity:.6;cursor:default">
             <i class="ph ph-lock-simple"></i> ${esc(s.title)} <span style="opacity:.7">— unlocks ${whenTxt}</span>
           </div>`;
@@ -173,7 +172,7 @@ const WEEKLY = {
         if (open) {
           return `<div class="qb-btn ok" style="cursor:pointer;width:100%;justify-content:space-between;align-items:center" data-on-click='WEEKLY.open(${idJson})'>
             <span><i class="ph ph-note-pencil"></i> ${esc(s.title)}${s.chapterLabel?` <span style="opacity:.6">— ${esc(s.chapterLabel)}</span>`:''}</span>
-            <span class="mono" id="weekly-countdown-${esc(s.id)}" data-close="${closeAt}" style="font-size:.68rem;font-weight:700;color:var(--ros)" title="Time left — one attempt only">${fmtHMS(Math.max(0,Math.round((closeAt-Date.now())/1000)))}</span>
+            <span class="mono" id="weekly-countdown-${esc(s.id)}" data-close="${closeAt}" style="font-size:.68rem;font-weight:700;color:var(--ros)" title="Time left — one attempt only">${formatTime(Math.max(0,Math.round((closeAt-Date.now())/1000)))}</span>
           </div>`;
         }
 
@@ -268,7 +267,7 @@ const WEEKLY = {
         const left = Math.round((closeAt - Date.now()) / 1000);
         if (left <= 0) { anyExpired = true; return; }
         anyLive = true;
-        if (el) el.textContent = fmtHMS(left);
+        if (el) el.textContent = formatTime(left);
       });
       if (anyExpired) this._renderHomeCard();
       if (!anyLive && !anyExpired) {
@@ -291,7 +290,7 @@ const WEEKLY = {
           body: JSON.stringify({action:'getWeeklyAttempt', username:S.user.username, token:S.user.token, weeklyId:id})
         }, 15000);
         const res = await r.json();
-        if (res.success && res.attempt) {
+        if (res && res.success && res.attempt) {
           attempt = res.attempt;
           this.attempts[id] = attempt;
           this._saveAttempts();
@@ -468,11 +467,11 @@ const WEEKLY = {
         })
       }, 20000);
       const res = await r.json();
-      if (res.success && res.attempt) {
+      if (res && res.success && res.attempt) {
         this.attempts[attempt.weeklyId] = res.attempt;
         this._saveAttempts();
         this._renderHomeCard();
-      } else if (res.alreadyAttempted && res.attempt) {
+      } else if (res && res.alreadyAttempted && res.attempt) {
         this.attempts[attempt.weeklyId] = res.attempt;
         this._saveAttempts();
         this._renderHomeCard();

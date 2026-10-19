@@ -1,12 +1,8 @@
 // js/features/online-study.js — Chapters screen: the cascade picker AND
 // the per-scope progress panel below it.
-// MUST load AFTER: core/state.js, core/dom.js, core/text.js (esc, escAttrJs),
-// core/storage.js (QDB), core/scope.js (scopeLeaves, scopedStats),
-// data/chapters-data.js (ChapterData), features/count.js (CNT),
-// features/quiz-engine.js (QUIZ).
 
 function prettySub(name){
-  return String(name)
+  return String(name == null ? '' : name)
     .replace(/^UNCLASSIFIED\s+Unclassified questions/i, 'Mixed questions')
     .replace(/\s*&\s*/g, ' & ');
 }
@@ -14,99 +10,129 @@ function prettySub(name){
 const ON = {
   onLv(){
     if (navigator.vibrate) navigator.vibrate(5);
-    const lv = document.getElementById('on-lv').value;
+    const lvEl = document.getElementById('on-lv');
     const cs = document.getElementById('on-ch');
+    if (!lvEl || !cs) return;
+    const lv = lvEl.value;
     cs.innerHTML = '<option value="">📘 Select Chapter…</option>'; cs.disabled = !lv;
-    const bs = document.getElementById('on-bk'); bs.innerHTML = '<option value="">📚 Select Book…</option>'; bs.disabled = true;
-    const ts = document.getElementById('on-to'); ts.innerHTML = '<option value="">📑 Select Subtopic…</option>'; ts.disabled = true;
+    const bs = document.getElementById('on-bk'); if(bs) { bs.innerHTML = '<option value="">📚 Select Book…</option>'; bs.disabled = true; }
+    const ts = document.getElementById('on-to'); if(ts) { ts.innerHTML = '<option value="">📑 Select Subtopic…</option>'; ts.disabled = true; }
     
     if (lv){
       requestAnimationFrame(() => {
-        Object.entries(ChapterData.chapters(lv)).forEach(([k,n])=>{
-          const fc = ChapterData.fileCount(lv,k);
-          const o = document.createElement('option'); o.value = k; o.textContent = `Ch${k}: ${n}${fc?'':' (coming soon)'}`; cs.appendChild(o);
-        });
+        try {
+          Object.entries(ChapterData.chapters(lv)).forEach(([k,n])=>{
+            const fc = ChapterData.fileCount(lv,k);
+            const o = document.createElement('option'); 
+            o.value = k; 
+            o.textContent = `Ch${k}: ${n}${fc?'':' (coming soon)'}`; 
+            cs.appendChild(o);
+          });
+        } catch(e) { console.warn('[ON.onLv] failed to load chapters', e); }
       });
     }
-    ONPROG.render();
+    if (typeof ONPROG !== 'undefined') ONPROG.render();
   },
+  
   onCh(){
     if (navigator.vibrate) navigator.vibrate(5);
-    const lv = document.getElementById('on-lv').value, ch = document.getElementById('on-ch').value;
+    const lvEl = document.getElementById('on-lv');
+    const chEl = document.getElementById('on-ch');
     const bs = document.getElementById('on-bk');
+    if (!lvEl || !chEl || !bs) return;
+    const lv = lvEl.value, ch = chEl.value;
+    
     bs.innerHTML = '<option value="">📚 Select Book…</option>'; bs.disabled = true;
-    const ts = document.getElementById('on-to'); ts.innerHTML = '<option value="">📑 Select Subtopic…</option>'; ts.disabled = true;
+    const ts = document.getElementById('on-to'); if(ts) { ts.innerHTML = '<option value="">📑 Select Subtopic…</option>'; ts.disabled = true; }
     
     if (lv && ch){
-      const books = ChapterData.books(lv,ch);
-      if (!Object.keys(books).length){
-        bs.innerHTML = '<option value="">No books yet for this chapter</option>';
-        toast('ℹ️ This chapter has no question files yet');
-      } else {
-        requestAnimationFrame(() => {
-          Object.keys(books).forEach(book=>{
-            const fc = ChapterData.fileCount(lv,ch,book);
-            const o = document.createElement('option'); o.value = book; o.textContent = `${book}${fc?'':' (coming soon)'}`; bs.appendChild(o);
+      try {
+        const books = ChapterData.books(lv,ch);
+        if (!Object.keys(books).length){
+          bs.innerHTML = '<option value="">No books yet for this chapter</option>';
+          toast('ℹ️ This chapter has no question files yet');
+        } else {
+          requestAnimationFrame(() => {
+            Object.keys(books).forEach(book=>{
+              const fc = ChapterData.fileCount(lv,ch,book);
+              const o = document.createElement('option'); o.value = book; o.textContent = `${book}${fc?'':' (coming soon)'}`; bs.appendChild(o);
+            });
+            bs.disabled = false;
+            const _bk = Object.keys(books);
+            bs.style.display = _bk.length === 1 ? 'none' : '';
+            if (_bk.length === 1){ bs.value = _bk[0]; ON.onBook(); return; }
           });
-          bs.disabled = false;
-          const _bk = Object.keys(books);
-          bs.style.display = _bk.length === 1 ? 'none' : '';
-          if (_bk.length === 1){ bs.value = _bk[0]; ON.onBook(); return; }
-        });
-      }
+        }
+      } catch(e) { console.warn('[ON.onCh] failed', e); }
     }
-    ONPROG.render();
+    if (typeof ONPROG !== 'undefined') ONPROG.render();
   },
+  
   async onBook(){
     if (navigator.vibrate) navigator.vibrate(5);
-    const lv = document.getElementById('on-lv').value, ch = document.getElementById('on-ch').value, book = document.getElementById('on-bk').value;
+    const lvEl = document.getElementById('on-lv');
+    const chEl = document.getElementById('on-ch');
+    const bkEl = document.getElementById('on-bk');
     const ts = document.getElementById('on-to');
+    if (!lvEl || !chEl || !bkEl || !ts) return;
+    const lv = lvEl.value, ch = chEl.value, book = bkEl.value;
+    
     ts.innerHTML = '<option value="">📑 Select Subtopic…</option>'; ts.disabled = true;
     
     if (lv && ch && book){
-      const files = ChapterData.files(lv,ch,book);
-      if (!Object.keys(files).length){
-        ts.innerHTML = '<option value="">No files yet for this book</option>';
-        toast('ℹ️ This book has no question files yet');
-      } else {
-        const isOfflineMode = !S.online || S.forcedOffline;
-        const cachedKeys = new Set(await QDB.keys());
-        let anyEnabled = false;
-        
-        requestAnimationFrame(() => {
-          Object.entries(files).forEach(([n,id])=>{
-            if (!id) return;
-            const cacheKey = `${lv}_${ch}_${book}_${n}`;
-            const isCached = cachedKeys.has(cacheKey);
-            const o = document.createElement('option');
-            o.value = id;
-            o.dataset.key = cacheKey;
-            o.dataset.sub = n;
-            if (isOfflineMode && !isCached){
-              o.textContent = `🔒 ${prettySub(n)} (not cached)`;
-              o.disabled = true;
-              o.style.color = 'var(--t3)';
-            } else {
-              o.textContent = isCached ? `📦 ${prettySub(n)}` : prettySub(n);
-              anyEnabled = true;
+      try {
+        const files = ChapterData.files(lv,ch,book);
+        if (!Object.keys(files).length){
+          ts.innerHTML = '<option value="">No files yet for this book</option>';
+          toast('ℹ️ This book has no question files yet');
+        } else {
+          const isOfflineMode = !S.online || S.forcedOffline;
+          let cachedKeys;
+          try { cachedKeys = new Set(await QDB.keys()); } catch(e) { cachedKeys = new Set(); }
+          let anyEnabled = false;
+          
+          requestAnimationFrame(() => {
+            Object.entries(files).forEach(([n,id])=>{
+              if (!id) return;
+              const cacheKey = `${lv}_${ch}_${book}_${n}`;
+              const isCached = cachedKeys.has(cacheKey);
+              const o = document.createElement('option');
+              o.value = id;
+              o.dataset.key = cacheKey;
+              o.dataset.sub = n;
+              if (isOfflineMode && !isCached){
+                o.textContent = `🔒 ${prettySub(n)} (not cached)`;
+                o.disabled = true;
+                o.style.color = 'var(--t3)';
+              } else {
+                o.textContent = isCached ? `📦 ${prettySub(n)}` : prettySub(n);
+                anyEnabled = true;
+              }
+              ts.appendChild(o);
+            });
+            ts.disabled = false;
+            if (isOfflineMode && !anyEnabled){
+              ts.innerHTML = '<option value="">No cached files for this book</option>';
+              toast('📡 You\'re offline — no cached files in this book. Cache them first while online.');
             }
-            ts.appendChild(o);
           });
-          ts.disabled = false;
-          if (isOfflineMode && !anyEnabled){
-            ts.innerHTML = '<option value="">No cached files for this book</option>';
-            toast('📡 You\'re offline — no cached files in this book. Cache them first while online.');
-          }
-        });
-      }
+        }
+      } catch(e) { console.warn('[ON.onBook] failed', e); }
     }
-    ONPROG.render();
+    if (typeof ONPROG !== 'undefined') ONPROG.render();
   },
+  
   start(mode){
     if (navigator.vibrate) navigator.vibrate(10);
     const ts = document.getElementById('on-to');
+    if (!ts) return;
     const fid = ts.value, opt = ts.options[ts.selectedIndex], key = opt?.dataset?.key;
-    const ch = document.getElementById('on-ch').value, lv = document.getElementById('on-lv').value, book = document.getElementById('on-bk').value;
+    const chEl = document.getElementById('on-ch');
+    const lvEl = document.getElementById('on-lv');
+    const bkEl = document.getElementById('on-bk');
+    if (!chEl || !lvEl || !bkEl) return;
+    const ch = chEl.value, lv = lvEl.value, book = bkEl.value;
+    
     if (!fid || !key){ toast('Select a subtopic'); return; }
     const sub = opt?.dataset?.sub || '';
     const name = `${ChapterData.chapterName(lv,ch)} — ${book}`;
@@ -137,33 +163,35 @@ const ONPROG = {
     const label = ref ? `${ref.book} — ${ref.subtopic}` : 'this file';
     const ok = await ASK.confirm({
       title: 'Reset practice progress?',
-      body:  'Reset progress for <b>' + esc(label) + '</b>? This clears only the Practised / Attempted / Correct / Wrong counts for this one file. Bookmarks, flags and your wrong-answer bank are not touched — the question file itself is never modified.',
+      body:  'Reset progress for <b>' + esc(label) + '</b>? This clears only the Practised / Attempted / Correct / Wrong counts for this one file. Bookmarks, flags and your wrong-answer bank are not touched.',
       ok:    'Reset',
       danger: true
     });
     if (!ok) return;
     
     let removedTotal = 0, removedCorrectTotal = 0;
-    S.prog.sessions.forEach(s=>{
-      if (!s.qres || !s.qres.length) return;
-      const kept = [];
-      let removedHere = 0, removedCorrectHere = 0;
-      s.qres.forEach(q=>{
-        if (q && q.uid && fidFromUid(q.uid) === fid){
-          removedHere++;
-          if (q.ok) removedCorrectHere++;
-        } else kept.push(q);
+    if (Array.isArray(S.prog.sessions)) {
+      S.prog.sessions.forEach(s=>{
+        if (!s || !s.qres || !s.qres.length) return;
+        const kept = [];
+        let removedHere = 0, removedCorrectHere = 0;
+        s.qres.forEach(q=>{
+          if (q && q.uid && fidFromUid(q.uid) === fid){
+            removedHere++;
+            if (q.ok) removedCorrectHere++;
+          } else kept.push(q);
+        });
+        if (removedHere){
+          s.qres = kept;
+          s.correct = Math.max(0,(s.correct||0) - removedCorrectHere);
+          s.wrong   = Math.max(0,(s.wrong||0)   - (removedHere - removedCorrectHere));
+          s.total   = Math.max(0,(s.total||0)   - removedHere);
+          removedTotal += removedHere;
+          removedCorrectTotal += removedCorrectHere;
+        }
       });
-      if (removedHere){
-        s.qres = kept;
-        s.correct = Math.max(0,(s.correct||0) - removedCorrectHere);
-        s.wrong   = Math.max(0,(s.wrong||0)   - (removedHere - removedCorrectHere));
-        s.total   = Math.max(0,(s.total||0)   - removedHere);
-        removedTotal += removedHere;
-        removedCorrectTotal += removedCorrectHere;
-      }
-    });
-    S.prog.sessions = S.prog.sessions.filter(s => (s.qres && s.qres.length) || (s.total||0) > 0);
+      S.prog.sessions = S.prog.sessions.filter(s => (s && s.qres && s.qres.length) || (s && (s.total||0) > 0));
+    }
     S.prog.total   = Math.max(0,(S.prog.total||0)   - removedTotal);
     S.prog.correct = Math.max(0,(S.prog.correct||0) - removedCorrectTotal);
     _save(LS.PROG, S.prog);
@@ -174,10 +202,13 @@ const ONPROG = {
   },
 
   _scope(){
-    const lv   = document.getElementById('on-lv')?.value   || '';
-    const ch   = document.getElementById('on-ch')?.value   || '';
-    const book = document.getElementById('on-bk')?.value   || '';
-    const ts   = document.getElementById('on-to');
+    const lvEl = document.getElementById('on-lv');
+    const chEl = document.getElementById('on-ch');
+    const bkEl = document.getElementById('on-bk');
+    const ts = document.getElementById('on-to');
+    const lv   = lvEl ? lvEl.value : '';
+    const ch   = chEl ? chEl.value : '';
+    const book = bkEl ? bkEl.value : '';
     const opt  = ts && ts.selectedIndex >= 0 ? ts.options[ts.selectedIndex] : null;
     const valid = opt && opt.dataset && opt.dataset.sub && !opt.disabled;
     return { lv, ch, book, sub: valid ? opt.dataset.sub : '', fid: valid ? opt.value : '' };
@@ -196,7 +227,7 @@ const ONPROG = {
 
     if (!lv){
       titleEl.textContent = '📊 Overall Progress';
-      const total = S.prog.total, correct = S.prog.correct, wrong = total - correct;
+      const total = S.prog.total || 0, correct = S.prog.correct || 0, wrong = total - correct;
       const pct = total ? Math.round((correct/total)*100) : 0;
       bodyEl.innerHTML = `
         <div class="prog-grid">
@@ -209,7 +240,8 @@ const ONPROG = {
       return;
     }
 
-    const lvLabel = document.getElementById('on-lv').selectedOptions[0]?.textContent.replace(/^📖\s*/,'') || lv;
+    const lvSel = document.getElementById('on-lv');
+    const lvLabel = (lvSel && lvSel.selectedOptions[0]) ? lvSel.selectedOptions[0].textContent.replace(/^📖\s*/,'') : lv;
     const label = fid  ? `${ChapterData.chapterName(lv,ch)} — ${book} — ${sub}`
                 : book ? `${ChapterData.chapterName(lv,ch)} — ${book}`
                 : ch   ? ChapterData.chapterName(lv,ch)
@@ -233,7 +265,7 @@ const ONPROG = {
                      : 'var(--amb)';
       const pct = total ? Math.min(100, Math.round((metricVal / total) * 100)) : 0;
       const unknownNote = info.unknown
-        ? `<div style="font-size:.66rem;color:var(--t3);margin-top:.45rem"><i class="ph ph-warning"></i> ${info.unknown} of ${info.files} file${info.files>1?'s':''} not counted yet${CNT._lastError ? ' — ' + esc(CNT._lastError) : ' (offline, or not downloaded)'}</div>`
+        ? `<div style="font-size:.66rem;color:var(--t3);margin-top:.45rem"><i class="ph ph-warning"></i> ${info.unknown} of ${info.files} file${info.files>1?'s':''} not counted yet</div>`
         : '';
       const confirmBtn = info.needsConfirm
         ? `<button class="btn btn-sm btn-a" style="margin-top:.5rem" data-on-click="ONPROG.render(true)"><i class="ph ph-list-numbers"></i> Count questions (${info.files} files)</button>`
@@ -308,12 +340,17 @@ const ONPROG = {
   _renderOldPreview(){
     const el = document.getElementById('on-progress-preview');
     if (!el) return;
-    const lv = document.getElementById('on-lv')?.value || '';
-    const ch = document.getElementById('on-ch')?.value || '';
-    const book = document.getElementById('on-bk')?.value || '';
+    const lvEl = document.getElementById('on-lv');
+    const chEl = document.getElementById('on-ch');
+    const bkEl = document.getElementById('on-bk');
+    if (!lvEl || !chEl) return;
+    const lv = lvEl.value;
+    const ch = chEl.value;
+    const book = bkEl ? bkEl.value : '';
     if (!lv || !ch){ el.innerHTML = ''; return; }
+    
     const chapterLabel = ChapterData.chapterName(lv,ch) + (book ? ' — ' + book : '');
-    const match = CHAPSTATS.entries().find(c=>c.chapter === chapterLabel);
+    const match = typeof CHAPSTATS !== 'undefined' ? CHAPSTATS.entries().find(c=>c.chapter === chapterLabel) : null;
     if (!match){
       el.innerHTML = `<p style="font-size:.7rem;color:var(--t3);margin-top:.3rem">No attempts yet for this chapter.</p>`;
       return;

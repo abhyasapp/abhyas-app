@@ -10,10 +10,6 @@ const AUTH = {
       return;
     }
 
-    // ── FIX #3: heal sessions from before the _buildSession token fix ──
-    // A session without a token cannot reach any API — the edge function
-    // will always respond sessionInvalid. Bounce cleanly now, instead of
-    // letting the user into the app and hitting the bug on the Written tab.
     if (!u.token) {
       try { localStorage.setItem('abhyas_notice',
         'Please sign in again — we needed to refresh your session.'); } catch (e) {}
@@ -28,10 +24,6 @@ const AUTH = {
     try {
       const { res } = await AUTH._checkSessionOnce(u);
       if (!res.success) {
-        // ── FIX #2: distinguish "session dead" from "server error" ──
-        // sessionInvalid means the token/expiry is genuinely wrong. Falling
-        // back to offline here is what let a broken session into the app
-        // and produced a working Home screen but a broken Written tab.
         if (res.sessionInvalid) {
           try { localStorage.setItem('abhyas_notice',
             'Your session expired. Please sign in again.'); } catch (e) {}
@@ -39,13 +31,9 @@ const AUTH = {
           AUTH._bounce();
           return;
         }
-        // Transient failure (server error, network blip): offline fallback is fine.
         if (AUTH._isValidOffline(u)) AUTH._enter(u); else AUTH._bounce();
         return;
       }
-      // Session is valid. Enter the app even when access has expired —
-      // the user stays logged in and sees a paywall notice instead of being
-      // kicked back to the sign-in page. (Fixes: "logged out after exam".)
       const updated = AUTH._buildSession(u, res);
       _save(LS.USER, updated);
       AUTH._enter(updated);
@@ -66,7 +54,11 @@ const AUTH = {
   _isValidOffline(u) {
     const a = u.access || {};
     if (a.level === 'permanent') return true;
-    if (a.level === 'trial' && a.trialExpiresAt) return new Date(a.trialExpiresAt) > Date.now();
+    if (a.level === 'trial' && a.trialExpiresAt) {
+      const exp = new Date(a.trialExpiresAt).getTime();
+      // Allow up to 2 days of clock skew backwards to prevent lockouts on bad device clocks
+      return exp > (Date.now() - 2 * 24 * 60 * 60 * 1000); 
+    }
     return false;
   },
 
@@ -79,10 +71,6 @@ const AUTH = {
       name: user.name || prevSession.name,
       email: user.email || prevSession.email,
       mobile: user.mobile || prevSession.mobile,
-      // ── FIX #1: persist the refreshed token ──
-      // checkSession returns a fresh token in its response. Without this
-      // line, every 10-minute revalidation silently erases the token from
-      // LS.USER, and every API call afterwards fails with sessionInvalid.
       token: res.token || prevSession.token,
       access,
       needsPayment: !!res.needsPayment,
@@ -131,20 +119,31 @@ const AUTH = {
   },
 
   _enter(user) {
+    if (!user || !user.username) { AUTH._bounce(); return; }
     S.user = user;
     AUTH._resetUserScopedLocalDataIfDifferentUser(user.username);
-    document.getElementById('sg').style.display = 'none';
-    document.getElementById('app').classList.add('on');
-    document.getElementById('uchip').textContent = '👤 ' + (user?.name || user?.username || 'Student');
+    
+    const sg = document.getElementById('sg');
+    if (sg) sg.style.display = 'none';
+    const app = document.getElementById('app');
+    if (app) app.classList.add('on');
+    
+    const uchip = document.getElementById('uchip');
+    if (uchip) uchip.textContent = '👤 ' + (user?.name || user?.username || 'Student');
+    
     AUTH._updateSidebarCard(user);
-    if (!S.online) document.getElementById('offbar').classList.add('show');
-    APP.init();
-    TUTORIAL.maybeAutoOpen(user);
-    PSYNC.pullIfEmpty();
-    TT._startReminderChecker();
-    if (typeof PUSH !== 'undefined') PUSH.silentRefresh();
-    WEEKLY.init();
+    
+    const offbar = document.getElementById('offbar');
+    if (!S.online && offbar) offbar.classList.add('show');
+    
+    if (typeof APP !== 'undefined' && APP.init) APP.init();
+    if (typeof TUTORIAL !== 'undefined' && TUTORIAL.maybeAutoOpen) TUTORIAL.maybeAutoOpen(user);
+    if (typeof PSYNC !== 'undefined' && PSYNC.pullIfEmpty) PSYNC.pullIfEmpty();
+    if (typeof TT !== 'undefined' && TT._startReminderChecker) TT._startReminderChecker();
+    if (typeof PUSH !== 'undefined' && PUSH.silentRefresh) PUSH.silentRefresh();
+    if (typeof WEEKLY !== 'undefined' && WEEKLY.init) WEEKLY.init();
     if (typeof SB_HINTS !== 'undefined') setTimeout(() => SB_HINTS.refresh(), 200);
+    
     if (user.needsPayment) AUTH._notifyPaymentNeeded();
   },
 
@@ -187,13 +186,6 @@ const AUTH = {
     window.location.href = 'index.html';
   },
 
-  // ── FIX #4: logoutOtherDevices now actually works ──
-  // Previously: called GAS endpoint which has no `logoutotherdevices` case,
-  //             and had a dead code-path checking for `window.supabase` which
-  //             is never defined in this app.
-  // Now: calls the Supabase edge function (which we add the case to in File 2).
-  //      The server rotates the session token; we adopt the new one so this
-  //      tab stays logged in while every other device's token is dead.
   async logoutOtherDevices() {
     if (!(await ASK.confirm({
       title: 'Log out other devices?',
@@ -207,7 +199,6 @@ const AUTH = {
     }
 
     try {
-      // netFetch routes this to Supabase automatically (not in DRIVE_ACTIONS).
       const r = await netFetch(APPS, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -221,7 +212,6 @@ const AUTH = {
       if (!res || !res.success) {
         throw new Error((res && res.error) || 'Failed to log out other devices.');
       }
-      // Server rotated the token. Adopt it so this tab stays logged in.
       if (res.token) {
         S.user = { ...S.user, token: res.token };
         _save(LS.USER, S.user);
@@ -255,9 +245,6 @@ const AUTH = {
     if (document.visibilityState === 'hidden') return;
     if (!S.online || S.forcedOffline || !S.user) return;
 
-    // ── FIX #3b: bounce broken sessions from the periodic tick too ──
-    // restore() heals at boot, but if the user was offline then came online,
-    // the revalidation tick would otherwise still attempt a broken call.
     if (!S.user.token) {
       try { localStorage.setItem('abhyas_notice',
         'Please sign in again — we needed to refresh your session.'); } catch (e) {}

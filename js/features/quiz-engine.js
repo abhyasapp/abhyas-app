@@ -1,9 +1,4 @@
 // js/features/quiz-engine.js — the MCQ engine. Classic script, top-level const.
-// MUST load AFTER: core/state.js, core/format.js (shuf, fmt, fmtHMS, isOk),
-// core/text.js (esc), core/question.js (normQ, qImgHtml, qSearchHtml),
-// core/net.js (GETFILE_GATE, netFetch, APPS, qs), core/modal.js (ASK),
-// core/storage.js (QDB, _load, _save), core/constants.js (LS),
-// data/chapters-data.js (ChapterData), js/report/report-shared.js.
 
 const QUIZ = {
   CDN_BASE: (window.ABHYAS_CONFIG && window.ABHYAS_CONFIG.CONTENT_CDN_BASE) || '',
@@ -772,9 +767,10 @@ const QUIZ = {
             else if(isSelected) cls += ' bad2';
           }
           const blocked = answered || S.quiz.reviewOnly;
-          return `<div class="${cls}" role="button" tabindex="${blocked?-1:0}" aria-pressed="${isSelected}" aria-label="Option ${String.fromCharCode(65+i)}: ${esc(opt)}${isSelected?', selected':''}" data-on-click="${blocked?'':'QUIZ.fcAnswer('+i+')'}" data-on-keydown="!${blocked}&&ACT.enterOrSpace(event)&&QUIZ.fcAnswer(${i})" style="${blocked?'cursor:default;pointer-events:none':''}">
+          // Changed to <button> for better accessibility
+          return `<button type="button" class="${cls}" aria-pressed="${isSelected}" aria-label="Option ${String.fromCharCode(65+i)}: ${esc(opt)}${isSelected?', selected':''}" data-on-click="${blocked?'':'QUIZ.fcAnswer('+i+')'}" data-on-keydown="!${blocked}&&ACT.enterOrSpace(event)&&QUIZ.fcAnswer(${i})" style="width:100%;text-align:left;font-family:inherit;background:inherit;border:inherit;color:inherit;padding:inherit;margin:inherit;display:flex;align-items:center;${blocked?'cursor:default;pointer-events:none':''}">
             <div class="ok">${String.fromCharCode(65+i)}</div><div>${esc(opt)}</div>
-          </div>`;
+          </button>`;
         }).join('');
       });
 
@@ -926,9 +922,10 @@ const QUIZ = {
           ${qImgHtml(q)}
           ${q.options.map((opt,oi)=>{
             const sel = savedAns===oi;
-            return `<div class="eo${sel?' sel':''}" role="button" tabindex="0" aria-pressed="${sel}" aria-label="Option ${String.fromCharCode(65+oi)}: ${esc(opt)}" data-on-click="QUIZ.exAnswer(${qi},${oi})" data-on-keydown="ACT.enterOrSpace(event)&&QUIZ.exAnswer(${qi},${oi})" id="eo-${qi}-${oi}">
+            // Changed to <button> for better accessibility
+            return `<button type="button" class="eo${sel?' sel':''}" aria-pressed="${sel}" aria-label="Option ${String.fromCharCode(65+oi)}: ${esc(opt)}" data-on-click="QUIZ.exAnswer(${qi},${oi})" data-on-keydown="ACT.enterOrSpace(event)&&QUIZ.exAnswer(${qi},${oi})" id="eo-${qi}-${oi}" style="width:100%;text-align:left;font-family:inherit;background:inherit;border:inherit;color:inherit;padding:inherit;margin:inherit;display:flex;align-items:center;">
               <div class="ok">${String.fromCharCode(65+oi)}</div><div>${esc(opt)}</div>
-            </div>`;
+            </button>`;
           }).join('')}
           <button type="button" class="ex-clear" id="ex-clear-${qi}" data-on-click="QUIZ.clearAnswer(${qi})" aria-label="Clear response for question ${qi+1}"${savedAns===null||savedAns===undefined?' hidden':''}><i class="ph ph-eraser"></i> Clear response</button>
         </div>
