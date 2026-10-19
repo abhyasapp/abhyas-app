@@ -88,38 +88,18 @@ window.HOURLY = {
     }
     this._bankLoading = true;
     try {
-      const refs = (window.SUBJECTIVE_FILE_REFS || []).filter(r => r.fileId && !/^REPLACE_WITH/.test(r.fileId));
-      const all = [];
-      const url = ((typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || APPS || '');
-      for (const ref of refs){
-        let raw = null;
-        const ck = 'subj_' + ref.fileId;
-        try { if (typeof QDB !== 'undefined') raw = await QDB.get(ck); } catch(e){}
-        const stale = !raw || (typeof raw === 'object' && !Array.isArray(raw) && raw.success === false);
-        if (stale && typeof S !== 'undefined' && S.online && !S.forcedOffline && url){
-          try {
-            if (typeof GETFILE_GATE !== 'undefined') await GETFILE_GATE.take();
-            const params = new URLSearchParams({
-              action:'getFile', fileId: ref.fileId,
-              username:(S.user && S.user.username) || '',
-              token:   (S.user && S.user.token)    || ''
-            }).toString();
-            const r = await fetch(url + '?' + params, { redirect:'follow' });
-            let data = await r.json();
-            if (data && data.rateLimited){
-              if (typeof GETFILE_GATE !== 'undefined') GETFILE_GATE.backoff(12000);
-            } else {
-              if (data && data.result !== undefined) data = data.result;
-              if (data && typeof QDB !== 'undefined') QDB.set(ck, data).catch(() => {});
-              raw = data;
-            }
-          } catch(e){}
-        }
-        if (!raw) continue;
-        all.push(...this._extract(raw, ref));
+      /* subj-bank.js already handles both backends correctly (POST for
+         Supabase, GET for GAS) and caches per-file. Reuse it rather than
+         duplicating the fetch logic here. */
+      if (typeof loadBank === 'function') await loadBank();
+      if (typeof _allQuestions === 'function') {
+        this._bank = _allQuestions();
+      } else {
+        this._bank = [];
       }
-      this._bank = all;
-    } catch(e){ this._bank = []; }
+    } catch(e){
+      this._bank = [];
+    }
     this._bankLoading = false;
     return this._bank;
   },
@@ -199,7 +179,6 @@ window.HOURLY = {
     const marksEl = document.getElementById('hourly-subj-marks');
     if (!box) return;
 
-    // Expire an attempt whose window has closed.
     const cur0 = this._getSubj();
     if (cur0 && !cur0.submitted && cur0.endsAt && Date.now() >= cur0.endsAt){
       this._setSubj(null);
@@ -248,7 +227,6 @@ window.HOURLY = {
       return;
     }
 
-    // Fresh hour — pick the question for (hour, level).
     if (marksEl) marksEl.textContent = '—';
     const bank = await this._ensureBank();
     if (!bank.length){
@@ -351,34 +329,37 @@ window.HOURLY = {
   async submitSubj(){
     const st = this._getSubj();
     if (!st || !this._pendingFile) return;
+
     const btn = document.getElementById('hourly-subj-submit');
     if (btn){ btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Uploading…'; }
 
-    const url  = ((typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || APPS || '');
     const user = (typeof S !== 'undefined' && S.user) || null;
-    if (!url || !user || !user.token){
+    if (!user || !user.token){
       toast('Please sign in again.');
       if (btn){ btn.disabled = false; btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit for review'; }
       return;
     }
+
+    if (typeof S !== 'undefined' && S && (!S.online || S.forcedOffline)){
+      if (btn){ btn.disabled = false; btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit for review'; }
+      toast('❌ You are offline. Reconnect to submit.', 5000);
+      return;
+    }
+
     try {
-      const r = await fetch(url, {
-        method:'POST', headers:{ 'Content-Type':'text/plain' },
-        body: JSON.stringify({
-          action: 'submitSubjectiveAnswer',
-          username: user.username, token: user.token,
-          kind: 'hourly',
-          questionId: st.questionId + '_' + st.hourKey,
-          questionText: String(st.q || '').slice(0, 2000),
-          chapterId: st.chapter || 'hourly',
-          marks: st.marks,
-          solveSec: this.SUBJ_SECONDS,
-          startedAt: st.startedAt,
-          pdfData: this._pendingFile.dataUrl,
-          filename: this._pendingFile.filename
-        })
-      });
-      const res = await r.json();
+      /* submitSubjectiveAnswer is Supabase — _api handles the routing
+         correctly (see subjective-api.js). */
+      const res = await _api('submitSubjectiveAnswer', {
+        kind: 'hourly',
+        questionId: st.questionId + '_' + st.hourKey,
+        questionText: String(st.q || '').slice(0, 2000),
+        chapterId: st.chapter || 'hourly',
+        marks: st.marks,
+        solveSec: this.SUBJ_SECONDS,
+        startedAt: st.startedAt,
+        pdfData: this._pendingFile.dataUrl,
+        filename: this._pendingFile.filename
+      }, 'POST');
       if (!res || !res.success) throw new Error((res && res.error) || 'Submit failed.');
       st.submitted   = true;
       st.submittedAt = Date.now();

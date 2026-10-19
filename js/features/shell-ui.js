@@ -6,8 +6,7 @@ window.BN = {
   open(key){
     const sec = NAV.sheet(key);
     if (!sec) return;
-    
-    // Haptic feedback
+
     if (navigator.vibrate) navigator.vibrate(10);
 
     set('bn-sheet-title-el', sec.title);
@@ -45,8 +44,7 @@ window.BN = {
     $('bn-sheet-backdrop').classList.add('show');
     document.body.style.overflow = 'hidden';
     this._activeKey = key;
-    
-    // Focus the first item for accessibility
+
     setTimeout(() => { const f = $('bn-sheet-grid').querySelector('button'); if (f) f.focus(); }, 60);
   },
   close(){
@@ -70,15 +68,12 @@ window.APP_SWITCH = {
     try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); token = user.token || ''; } catch(e){}
     if (!online || !token) return;
 
-    let url = '';
-    try { url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || (typeof APPS !== 'undefined' ? APPS : ''); } catch(e){}
-    if (!url) return;
-
+    /* checkAdminCapable is Supabase per handover §3. Route explicitly. */
     try {
-      const r = await fetch(url, {
+      const r = await netFetch(ABHYAS_CONFIG.SUPABASE_URL, {
         method:'POST', headers:{ 'Content-Type':'text/plain' },
         body: JSON.stringify({ action:'checkAdminCapable', username:user.username, token:user.token })
-      });
+      }, 15000);
       const data = await r.json();
       if (data && data.success && data.adminCapable) { this._capable = true; _setAdminVisible(true); }
     } catch(e){}
@@ -97,15 +92,12 @@ window.APP_SWITCH = {
     const orig = btn ? btn.innerHTML : '';
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin" style="margin:0"></span>'; }
 
-    let url = '';
-    try { url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || ''; } catch(e){}
-    if (!url) { if (btn) { btn.disabled = false; btn.innerHTML = orig; } return; }
-
+    /* adminSwitchFromUser is Supabase per handover §3. */
     try {
-      const r = await fetch(url, {
+      const r = await netFetch(ABHYAS_CONFIG.SUPABASE_URL, {
         method:'POST', headers:{ 'Content-Type':'text/plain' },
         body: JSON.stringify({ action:'adminSwitchFromUser', username:user.username, token:user.token })
-      });
+      }, 15000);
       const data = await r.json();
 
       if (!data || !data.success) {
@@ -191,14 +183,14 @@ window.ANNOUNCE = {
     
     this._last = Date.now();
     try {
-      // FIX: Route via netFetch instead of direct fetch to GAS
-      const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
-      const r = await netFetch(url, {
-        method: 'POST', 
+      /* getPublicInfo is Supabase per handover §3. Route via netFetch so the
+         routing layer decides; explicit SUPABASE_URL for clarity. */
+      const r = await netFetch(ABHYAS_CONFIG.SUPABASE_URL, {
+        method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'getpublicinfo' })
       }, 10000);
-      
+
       const res = await r.json();
       if (res && res.success) {
         this._text = String(res.announcement || '').trim();
@@ -274,9 +266,6 @@ window.FOCUSMODE = {
   }
 };
 
-// ---------------------------------------------------------------------------
-// HEADERMENU — three-dot (⋮) toolbar popup menu
-// ---------------------------------------------------------------------------
 window.HEADERMENU = {
   _listening: false,
   toggle() {
@@ -307,9 +296,6 @@ window.HEADERMENU = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// HOMEFOCUS — home layout density toggle (simple / detailed)
-// ---------------------------------------------------------------------------
 window.HOMEFOCUS = (function () {
   const KEY = 'abhyas_home_mode_v1';
   function _get() {

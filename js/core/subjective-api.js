@@ -1,20 +1,22 @@
 // js/core/subjective-api.js — the transport for the written-answer backend.
-// Two thin wrappers around ABHYAS_CONFIG.GAS_URL so a change of host or
-// auth shape is a one-file change.
+// Routes through abhyasEndpointFor so the 4 SMTP actions still hit GAS while
+// everything else (subjective answers, study docs, admin grading) hits Supabase.
 
-function _backendUrl() {
+function _backendUrlFor(action, params) {
   try {
-    if (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG && ABHYAS_CONFIG.GAS_URL) {
-      return ABHYAS_CONFIG.GAS_URL;
+    if (typeof ABHYAS_CONFIG === 'undefined' || !ABHYAS_CONFIG) return '';
+    const which = (typeof abhyasEndpointFor === 'function')
+      ? abhyasEndpointFor(action, params)
+      : 'supabase';
+    return which === 'gas' ? ABHYAS_CONFIG.GAS_URL : ABHYAS_CONFIG.SUPABASE_URL;
+  } catch (e) {}
+  try {
+    if (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG && ABHYAS_CONFIG.SUPABASE_URL) {
+      return ABHYAS_CONFIG.SUPABASE_URL;
     }
   } catch (e) {}
   try {
     if (typeof APPS !== 'undefined' && APPS) return APPS;
-  } catch (e) {}
-  try {
-    if (typeof window !== 'undefined' && window.ABHYAS_CONFIG && window.ABHYAS_CONFIG.GAS_URL) {
-      return window.ABHYAS_CONFIG.GAS_URL;
-    }
   } catch (e) {}
   return '';
 }
@@ -34,19 +36,20 @@ function _authParams() {
 }
 
 async function _api(action, params, method) {
-  const url = _backendUrl();
-  if (!url) return { success: false, error: 'Backend URL not configured.' };
   const base = _authParams();
+  const body = { action, ...base, ...(params || {}) };
+  const url = _backendUrlFor(action, body);
+  if (!url) return { success: false, error: 'Backend URL not configured.' };
   try {
     if (method === 'GET') {
-      const qs = new URLSearchParams({ action, ...base, ...(params || {}) }).toString();
-      const r = await fetch(url + '?' + qs, { redirect: 'follow' });
+      const queryString = new URLSearchParams(body).toString();
+      const r = await fetch(url + '?' + queryString, { redirect: 'follow' });
       return await r.json();
     }
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action, ...base, ...(params || {}) })
+      body: JSON.stringify(body)
     });
     return await r.json();
   } catch (e) {

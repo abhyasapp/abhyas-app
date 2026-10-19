@@ -78,7 +78,9 @@ const SUBJ_QUEUE = {
   },
 
   async _send(item, user) {
-    const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG && ABHYAS_CONFIG.GAS_URL) || '';
+    /* submitSubjectiveAnswer is Supabase per handover §3. Route explicitly
+       rather than going through GAS_URL, which would 404. */
+    const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG && ABHYAS_CONFIG.SUPABASE_URL) || '';
     if (!url) return { success: false, error: 'Backend URL not configured.' };
     const body = JSON.stringify({
       action: 'submitSubjectiveAnswer',

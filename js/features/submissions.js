@@ -3,6 +3,7 @@
 // MUST load AFTER: core/state.js (S), core/dom.js ($, set), core/text.js
 // (esc, escAttrJs), core/toast.js (toast), core/scope.js (fidFromUid),
 // core/study-docs.js (studyDocsForChapter, subjChapterName, STUDYDOC_LABELS),
+// core/net.js (netFetch), core/config.js (ABHYAS_CONFIG),
 // features/study-docs.js (STUDYDOCS).
 
 window.MY_SUBJ = {
@@ -10,10 +11,6 @@ window.MY_SUBJ = {
   _loaded: false,
   _items: [],
 
-  _url(){
-    try { return (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || ''; }
-    catch(e){ return ''; }
-  },
   _user(){
     try { return (typeof S !== 'undefined' && S.user) ? S.user : null; }
     catch(e){ return null; }
@@ -35,7 +32,6 @@ window.MY_SUBJ = {
     </div>`;
 
     const user = this._user();
-    const url = this._url();
 
     if (!user || !user.token) {
       box.innerHTML = '<div class="card"><div class="empty">' +
@@ -56,24 +52,16 @@ window.MY_SUBJ = {
       return;
     }
 
-    if (!url) {
-      box.innerHTML = '<div class="card"><div class="banner banner-danger">' +
-        '<i class="ph ph-warning-circle"></i>' +
-        '<span>The backend address is not configured.</span>' +
-        '</div></div>';
-      this._loading = false;
-      return;
-    }
-
     try {
-      const r = await fetch(url, {
+      const r = await netFetch(ABHYAS_CONFIG.SUPABASE_URL, {
         method:'POST', headers:{ 'Content-Type':'text/plain' },
         body: JSON.stringify({
           action:'getMySubjectiveSubmissions',
           username:user.username,
           token:user.token
         })
-      });
+      }, 15000);
+      if (!r.ok) throw new Error('The server replied with HTTP ' + r.status + '.');
       const res = await r.json();
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not load your submissions.');
       
@@ -195,28 +183,43 @@ window.MY_SUBJ = {
 
   async openPdf(id, label){
     const user = this._user();
-    const url = this._url();
     if (!user || !user.token) { toast('Please log in again.'); return; }
-    if (!url) { toast('The backend address is not set up.'); return; }
+    if (!this._online()) { toast('You are offline. Connect to open your submitted PDF.'); return; }
 
+    /* Supabase returns a signed URL; the viewer needs base64. Fetch once,
+       re-encode, hand back the shape PDFVIEW.open expects. */
     const fetchPdf = async () => {
-      const r = await fetch(url, {
+      const r = await netFetch(ABHYAS_CONFIG.SUPABASE_URL, {
         method:'POST', headers:{ 'Content-Type':'text/plain' },
-        body: JSON.stringify({ action:'getMySubmissionPdf', username:user.username, token:user.token, id })
-      });
+        body: JSON.stringify({
+          action:'getMySubmissionPdf',
+          username:user.username,
+          token:user.token,
+          id
+        })
+      }, 15000);
       if (!r.ok) throw new Error('The server replied with an error (' + r.status + ').');
       const res = await r.json();
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not load that PDF.');
-      return res;
+      if (res.base64) return res;                    /* legacy GAS shape */
+      if (!res.url) throw new Error('The server did not return a PDF URL.');
+      const blob = await fetch(res.url).then(rr => {
+        if (!rr.ok) throw new Error('The signed URL replied with HTTP ' + rr.status + '.');
+        return rr.blob();
+      });
+      const base64 = await new Promise((ok, bad) => {
+        const fr = new FileReader();
+        fr.onload = () => ok(String(fr.result).split(',')[1]);
+        fr.onerror = () => bad(new Error('Could not read the PDF.'));
+        fr.readAsDataURL(blob);
+      });
+      return { base64, filename: res.filename || 'submission.pdf', mimeType: 'application/pdf' };
     };
 
     if (window.PDFVIEW) {
       PDFVIEW.open({
         title: label || 'My answer paper',
-        load: async () => {
-          const res = await fetchPdf();
-          return { base64: res.base64, filename: res.filename || 'answer.pdf' };
-        }
+        load: fetchPdf
       });
       return;
     }
@@ -272,6 +275,8 @@ window.VERIFY = {
     } catch(e){}
   },
   async resend(){
+    /* resendVerification is one of the four SMTP actions that stays on GAS
+       (per config.js DRIVE_ACTIONS). Route it explicitly. */
     let user = null, url = '';
     try { user = (typeof S !== 'undefined' && S.user) ? S.user : null; } catch(e){}
     try { url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || ''; } catch(e){}

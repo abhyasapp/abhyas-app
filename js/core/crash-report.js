@@ -11,7 +11,7 @@
       msg = String(msg || '').slice(0, 200);
       if (!msg || msg === 'Script error.' || seen[msg]) return;
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-      const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
+      const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.SUPABASE_URL) || '';
       if (!url) return;
       seen[msg] = 1; sent++;
       fetch(url, {

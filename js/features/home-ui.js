@@ -159,13 +159,22 @@ window.HARDQ = {
       }
     } catch(e){}
     
-    // FIX: Only attempt fetch if we are definitively online, don't hang if offline
     if (!S.online || S.forcedOffline) return;
-    
-    const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
+
+    /* gethardquestions is Supabase per handover §3, and requires auth. */
+    const user = (typeof S !== 'undefined' && S.user) || null;
+    if (!user || !user.token) return;
+
+    const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.SUPABASE_URL) || '';
     if (!url) return;
-    
-    fetch(url + '?action=gethardquestions', { cache: 'no-store' })
+
+    const queryString = new URLSearchParams({
+      action: 'gethardquestions',
+      username: user.username,
+      token: user.token
+    }).toString();
+
+    fetch(url + '?' + queryString, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
         if (d && d.success && d.map) {
@@ -173,7 +182,7 @@ window.HARDQ = {
           try { localStorage.setItem('abhyas_hardq', JSON.stringify({ at: Date.now(), map: d.map })); } catch(e){}
         }
       })
-      .catch(() => {}); // silent fail
+      .catch(() => {});
   },
   forUid(uid){ return (this._map && this._map[uid]) || 0; }
 };

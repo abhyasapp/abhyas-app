@@ -112,7 +112,14 @@ async function netFetch(url, opts, timeoutMs = 20000) {
     }
 
     if (action && abhyasEndpointFor(action, bodyObj) === 'supabase') {
-      targetUrl = ABHYAS_CONFIG.SUPABASE_URL;
+      /* Preserve the query string. Without this, any GET whose params live in
+         the URL (QUIZ._fetch, _fetchBatch, _revalidateQuiet, HARDQ.load)
+         reaches Supabase with nothing to route on and fails. The query is
+         harmless on POST — the body wins. */
+      const qIdx = url.indexOf('?');
+      targetUrl = qIdx === -1
+        ? ABHYAS_CONFIG.SUPABASE_URL
+        : ABHYAS_CONFIG.SUPABASE_URL + url.slice(qIdx);
     }
   }
 

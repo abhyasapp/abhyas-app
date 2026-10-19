@@ -8,14 +8,25 @@ window.STUDYDOCS = {
   docs: [], loaded: false, loading: false, cat: 'all', q: '', chapter: '', newIds: new Set(), _at: 0,
 
   _user(){ try { return (typeof S !== 'undefined' && S.user) ? S.user : null; } catch(e){ return null; } },
-  _url(){ try { return (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || ''; } catch(e){ return ''; } },
   _online(){ try { return !!(S.online && !S.forcedOffline); } catch(e){ return navigator.onLine; } },
   _read(key, dflt){ try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? dflt : v; } catch(e){ return dflt; } },
   _write(key, v){ try { localStorage.setItem(key, JSON.stringify(v)); } catch(e){} },
 
+  _urlFor(action){
+    try {
+      if (typeof abhyasEndpointFor === 'function' && typeof ABHYAS_CONFIG !== 'undefined') {
+        return abhyasEndpointFor(action) === 'gas'
+          ? (ABHYAS_CONFIG.GAS_URL || '')
+          : (ABHYAS_CONFIG.SUPABASE_URL || '');
+      }
+    } catch(e){}
+    return (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
+  },
+
   async _post(body){
-    const u = this._user(), url = this._url();
+    const u = this._user();
     if (!u || !u.token) throw new Error('Please sign in again.');
+    const url = this._urlFor(body && body.action);
     if (!url) throw new Error('The backend address is not set up.');
     const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'text/plain' },
       body: JSON.stringify(Object.assign({ username:u.username, token:u.token }, body)) });
@@ -193,7 +204,7 @@ window.STUDYDOCS = {
     const d = this.docs.find(x => x.id === id);
     if (!d) { toast('That PDF is no longer available.'); return; }
     if (!window.PDFVIEW) { toast('The PDF reader did not load. Reload the page and try again.', 5000); return; }
-    
+
     PDFVIEW.open({
       title: d.title,
       load: async () => {
@@ -203,8 +214,20 @@ window.STUDYDOCS = {
         }
         if (!this._online()) throw new Error('You are offline and this PDF was not saved on this device yet. Open it once while online.');
         const res = await this._post({ action:'getStudyDocPdf', id: d.id });
-        this._cacheSet(d, res);
-        return { base64: res.base64, filename: res.filename || d.fileName };
+        if (res.base64) { this._cacheSet(d, res); return { base64: res.base64, filename: res.filename || d.fileName }; }
+        if (!res.url) throw new Error('The server did not return a PDF URL.');
+        const blob = await fetch(res.url).then(rr => {
+          if (!rr.ok) throw new Error('The signed URL replied with HTTP ' + rr.status + '.');
+          return rr.blob();
+        });
+        const base64 = await new Promise((ok, bad) => {
+          const fr = new FileReader();
+          fr.onload = () => ok(String(fr.result).split(',')[1]);
+          fr.onerror = () => bad(new Error('Could not read the PDF.'));
+          fr.readAsDataURL(blob);
+        });
+        this._cacheSet(d, { base64, filename: res.filename || d.fileName });
+        return { base64, filename: res.filename || d.fileName };
       }
     });
   }

@@ -704,42 +704,44 @@ const ADMIN = {
     ), 'payments_' + localISODate(new Date()) + '.csv');
   },
 
-  /* ── screenshots ── */
+    /* ── screenshots ── */
   async renderScreenshot(containerId, url, username) {
     const box = $(containerId);
     if (!box) return;
-    const fileId = driveFileId(url);
-    if (!fileId) { box.innerHTML = '<p class="t-foot">No screenshot was attached.</p>'; return; }
+    // If we already have an absolute URL (a Supabase signed URL), use it.
+    if (url && /^https?:\/\//i.test(url)) {
+      box.innerHTML = '<img src="' + esc(url) + '" alt="Payment screenshot" style="max-width:100%;border-radius:8px;display:block" data-on-error="ACT.hideParent(this)">';
+      return;
+    }
+    // Otherwise ask the backend for a fresh signed URL by username.
+    if (!username) { box.innerHTML = '<p class="t-foot">No screenshot was attached.</p>'; return; }
     box.innerHTML = '<span class="inline-loader">Loading the screenshot</span>';
     try {
-      const r = await this.post('adminDownloadScreenshot', { url, fileId, username });
+      const r = await this.post('adminDownloadScreenshot', { targetUsername: username });
       if (!r.success) throw new Error(r.error || 'Could not load that screenshot.');
-      const mime = r.mimeType || 'image/png';
-      box.innerHTML = '<img src="data:' + mime + ';base64,' + r.base64 +
-        '" alt="Payment screenshot" style="max-width:100%;border-radius:8px;display:block">';
+      if (!r.url) throw new Error('The server did not return a screenshot URL.');
+      box.innerHTML = '<img src="' + esc(r.url) + '" alt="Payment screenshot" style="max-width:100%;border-radius:8px;display:block" data-on-error="ACT.hideParent(this)">';
     } catch (e) {
-      box.innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>' +
-        esc(e.message) + '</span></div>';
+      box.innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>' + esc(e.message) + '</span></div>';
     }
   },
 
   async downloadScreenshot(url, filename) {
-    const fileId = driveFileId(url);
-    if (!fileId) return TOAST.show('That screenshot has no file attached.', 'warning');
+    if (!url || !/^https?:\/\//i.test(url)) {
+      return TOAST.show('The screenshot link is not a URL — reload the review dialog and try again.', 'warning');
+    }
     BUSY.start();
     try {
-      const r = await this.post('adminDownloadScreenshot', { url, fileId, download: true });
-      if (!r.success) throw new Error(r.error || 'Could not download that screenshot.');
-      const mime = r.mimeType || 'image/png';
-      const bytes = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0));
-      const blob = new Blob([bytes], { type: mime });
+      const res = await fetch(url, { credentials: 'omit' });
+      if (!res.ok) throw new Error('The server replied with HTTP ' + res.status + '.');
+      const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = filename || 'screenshot.png';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       TOAST.show('Downloaded', 'success');
-    } catch (e) { TOAST.show(e.message, 'error'); }
+    } catch (e) { TOAST.show(e.message || 'Could not download that screenshot', 'error'); }
     BUSY.stop();
   },
 

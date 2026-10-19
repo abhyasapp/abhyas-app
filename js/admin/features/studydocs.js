@@ -103,14 +103,28 @@ const STUDYDOCS = {
     if (!f) return TOAST.show('Choose a PDF file first', 'warning');
     const btn = $('sd-save'), status = $('sd-status');
     btn.disabled = true; btn.textContent = 'Uploading…';
-    status.innerHTML = '<span class="inline-loader">Uploading to Drive</span>';
+    status.innerHTML = '<span class="inline-loader">Requesting upload slot</span>';
     try {
-      const dataUrl = await new Promise((res, rej) => {
-        const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('Could not read that file.')); r.readAsDataURL(f);
+      const up = await ADMIN.post('getStudyDocUploadUrl', {});
+      if (!up.success || !up.signedUrl || !up.path) {
+        throw new Error(up.error || 'The server did not return an upload slot.');
+      }
+      status.innerHTML = '<span class="inline-loader">Uploading to storage</span>';
+      const put = await fetch(up.signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/pdf' },
+        body: f
       });
+      if (!put.ok) throw new Error('Storage refused the upload (HTTP ' + put.status + ').');
+      status.innerHTML = '<span class="inline-loader">Saving</span>';
       const r = await ADMIN.post('adminAddStudyDoc', {
-        title, category: $('sd-cat').value, chapterId: $('sd-chap').value, description: $('sd-desc').value.trim(),
-        sortOrder: $('sd-pin').checked ? 1 : 100, publish: $('sd-publish').checked, pdfData: dataUrl
+        title,
+        category: $('sd-cat').value,
+        chapterId: $('sd-chap').value,
+        description: $('sd-desc').value.trim(),
+        sortOrder: $('sd-pin').checked ? 1 : 100,
+        publish: $('sd-publish').checked,
+        pdfPath: up.path
       });
       if (!r.success) throw new Error(r.error || 'Upload failed.');
       MODAL.close('sheet');
@@ -120,6 +134,29 @@ const STUDYDOCS = {
       status.innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
       btn.disabled = false; btn.textContent = 'Upload';
     }
+  },
+
+  preview(id, title){
+    if (typeof PDFVIEW === 'undefined') return TOAST.show('The PDF reader did not load. Reload the page.', 'error');
+    PDFVIEW.open({
+      title: title || 'Study PDF',
+      filename: (title || 'study').replace(/[^A-Za-z0-9_-]+/g, '_') + '.pdf',
+      load: async () => {
+        const r = await ADMIN.post('adminDownloadStudyDoc', { id });
+        if (!r.success || !r.url) throw new Error(r.error || 'Could not open that PDF.');
+        const blob = await fetch(r.url).then(res => {
+          if (!res.ok) throw new Error('The signed URL replied with HTTP ' + res.status + '.');
+          return res.blob();
+        });
+        const base64 = await new Promise((res2, rej) => {
+          const fr = new FileReader();
+          fr.onload = () => res2(String(fr.result).split(',')[1]);
+          fr.onerror = () => rej(new Error('Could not read the PDF.'));
+          fr.readAsDataURL(blob);
+        });
+        return { base64, filename: r.title ? r.title + '.pdf' : 'study.pdf' };
+      }
+    });
   },
 
   openEdit(id){
@@ -169,18 +206,6 @@ const STUDYDOCS = {
       if (!r.success) throw new Error(r.error || 'Could not delete.');
       TOAST.show('Deleted', 'success'); this.load(true);
     } catch(e){ TOAST.show(e.message, 'error'); }
-  },
-
-  preview(id, title){
-    if (typeof PDFVIEW === 'undefined') return TOAST.show('The PDF reader did not load. Reload the page.', 'error');
-    PDFVIEW.open({
-      title: title || 'Study PDF',
-      load: async () => {
-        const r = await ADMIN.post('adminDownloadStudyDoc', { id });
-        if (!r.success) throw new Error(r.error || 'Could not open that PDF.');
-        return { base64: r.base64, filename: r.filename || 'study.pdf' };
-      }
-    });
   }
 };
 

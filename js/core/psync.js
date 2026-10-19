@@ -36,8 +36,11 @@ const PSYNC = {
       const json = JSON.stringify(this._syncPayloadForServer());
       if(json.length > this._SYNC_PAYLOAD_CEILING) return;
       const body = JSON.stringify({ action:'saveProgress', username: S.user.username, token: S.user.token, data: json, baseUpdatedAt: this._rev() });
+      const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG && ABHYAS_CONFIG.SUPABASE_URL)
+        ? ABHYAS_CONFIG.SUPABASE_URL
+        : APPS;
       if(navigator.sendBeacon) {
-        navigator.sendBeacon(APPS, new Blob([body], {type:'text/plain'}));
+        navigator.sendBeacon(url, new Blob([body], {type:'text/plain'}));
       }
     }catch(e){ }
   },

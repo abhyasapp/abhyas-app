@@ -87,6 +87,7 @@ const ADMIN_REPORT = {
   reasonFilter: 'all',
   searchTerm: '',
   _t: null,
+  _historyCache: null,
 
   setFilter(v) { this.filter = v; ADMIN.state.qrPage = 1; this.render(this.all); },
   setChapterFilter(v) { this.chapterFilter = v; ADMIN.state.qrPage = 1; this.render(this.all); },
@@ -167,8 +168,6 @@ const ADMIN_REPORT = {
     }).join('') + '</div>';
   },
 
-  /* The before/after block for a report that was closed by actually fixing
-     the question. Uses the correctedSnapshot stored on the report row. */
   _correctedBannerHtml(r) {
     if (!r.correctedSnapshot) return '';
     const cs = r.correctedSnapshot;
@@ -270,6 +269,11 @@ const ADMIN_REPORT = {
             '<button class="btn btn-secondary btn-sm" ' +
               'data-on-click="ADMIN_REPORT.editQ(\'' + escAttrJs(r.id) + '\')">' +
               '<i class="ph ph-pencil-simple"></i> Fix the question</button>' +
+            '<button class="icon-btn sm" ' +
+              'data-on-click="ADMIN_REPORT.history(\'' + escAttrJs(r.fileId) + '\')" ' +
+              'title="Correction history for this file" ' +
+              'aria-label="Correction history for this file">' +
+              '<i class="ph ph-clock-counter-clockwise"></i></button>' +
             (r.status !== 'resolved'
               ? '<button class="btn btn-primary btn-sm" ' +
                 'title="You corrected the question file. Every student\'s app replaces its copy." ' +
@@ -302,7 +306,9 @@ const ADMIN_REPORT = {
 
   goPage(p) { ADMIN.state.qrPage = p; this.render(this.all); UI.scrollTop(); },
 
-  /* Open the reported question in an editor. */
+  /* Open the reported question in an editor. Captures the report context
+     (reason, note, reporter) so the backend can attach it to the correction
+     event it writes. */
   async editQ(id) {
     const r = this.all.find(x => x.id === id);
     if (!r) return;
@@ -317,18 +323,31 @@ const ADMIN_REPORT = {
       });
       if (!res.success) throw new Error(res.error || 'Could not load that question.');
       const q = res.question;
-      this._eq = { reportId: id, fileId: m[1], index: Number(m[2]), q: q };
+      this._eq = {
+        reportId: id,
+        fileId: m[1],
+        index: Number(m[2]),
+        q: q,
+        reportReason: r.reason || null,
+        reportNote: r.note || null,
+        reportedBy: r.reportedBy || null
+      };
       const letters = 'ABCDEF';
       const opts = q.options || [];
       $('bd-sheet').innerHTML =
         '<p class="t-foot mb3">A copy of the file is saved before your change. ' +
-        'Students\' apps replace their copy within minutes of opening online, and update ' +
+        'Every student\'s app replaces its copy within minutes of opening online, and updates ' +
         'the questions they saved for review. Correct questions in place: do not delete or ' +
         'reorder questions in the file, because students\' progress is tied to each ' +
         'question\'s position.</p>' +
         (r.note
           ? '<div class="banner banner-info"><i class="ph ph-chat-text"></i>' +
             '<span>Student note: ' + esc(r.note) + '</span></div>'
+          : '') +
+        (r.openReporters > 1
+          ? '<div class="banner banner-warning"><i class="ph ph-users-three"></i>' +
+            '<span><b>' + r.openReporters + ' students</b> reported this question — the fix will ' +
+            'close all of their reports.</span></div>'
           : '') +
         '<div class="field"><label for="eq-q">Question</label>' +
           '<textarea class="textarea" id="eq-q" style="min-height:96px">' +
@@ -347,6 +366,9 @@ const ADMIN_REPORT = {
           '</select></div>' +
         '<div class="field"><label for="eq-e">Explanation</label>' +
           '<textarea class="textarea" id="eq-e">' + esc(q.explanation) + '</textarea></div>' +
+        '<div class="field"><label for="eq-admin-note">Your note <span class="dim">(optional, for the audit trail)</span></label>' +
+          '<input class="input" type="text" id="eq-admin-note" maxlength="200" ' +
+          'placeholder="e.g. Corrected per IS 456:2000 clause 6.1.3"></div>' +
         '<label class="perm-row mb4"><input type="checkbox" id="eq-done" checked>' +
           '<span>Mark this report as fixed</span></label>' +
         '<div class="flex g2">' +
@@ -372,6 +394,7 @@ const ADMIN_REPORT = {
     if (!qt) return TOAST.show('The question text cannot be empty', 'error');
     const cv = $('eq-c').value;
     if (cv === '') return TOAST.show('Choose the correct answer', 'error');
+    const adminNote = (($('eq-admin-note') && $('eq-admin-note').value) || '').trim().slice(0, 200);
     const btn = $('eq-save');
     btn.classList.add('loading');
     try {
@@ -384,7 +407,11 @@ const ADMIN_REPORT = {
           options: opts,
           correct: Number(cv),
           explanation: $('eq-e').value.trim()
-        })
+        }),
+        /* The backend attaches these to the correction event it writes. */
+        reportId: c.reportId,
+        reportReason: c.reportReason,
+        adminNote: adminNote || c.reportNote || null
       });
       if (!res.success) throw new Error(res.error || 'Could not save.');
       TOAST.show('Saved. Students get the fix the next time they open the app online.',
@@ -395,6 +422,144 @@ const ADMIN_REPORT = {
       if (done) this.setStatus(c.reportId, 'resolved');
     } catch (e) { TOAST.show(e.message, 'error', 6000); }
     btn.classList.remove('loading');
+  },
+
+  /* ── Correction history for a file ───────────────────────────────────
+     Every edit made through this console is logged to admin_logs with
+     action='question_corrected', target=fileId, and a JSON details payload
+     carrying the before/after diff. This reads those entries and offers
+     a "Restore" button per edit.
+     ─────────────────────────────────────────────────────────────────── */
+  async history(fileId) {
+    if (!fileId) return TOAST.show('No file id on this report', 'warning');
+    MODAL.sheet('Correction history — ' + fileId,
+      '<div class="skeleton sk-100"></div><div class="skeleton sk-80"></div>');
+    try {
+      const res = await ADMIN.post('adminListLogs', { limit: 1000 });
+      if (!res.success) throw new Error(res.error || 'Could not load history.');
+      const rows = (res.logs || [])
+        .filter(l => l.action === 'question_corrected' && l.target === fileId)
+        .map(l => {
+          let diff = null;
+          if (l.details) {
+            try {
+              const parsed = typeof l.details === 'string' ? JSON.parse(l.details) : l.details;
+              if (parsed && parsed.before && parsed.after) diff = parsed;
+            } catch (e) { /* not a JSON log entry — skip */ }
+          }
+          return Object.assign({}, l, { diff });
+        })
+        .filter(r => r.diff);
+
+      if (!rows.length) {
+        $('bd-sheet').innerHTML =
+          '<div class="empty"><i class="ph ph-clock-counter-clockwise"></i>' +
+          '<div class="t">No corrections yet</div>' +
+          '<div class="d">Edits made through this console will show up here.</div>' +
+          (res.truncated
+            ? '<div class="t-foot mt3">Only the ' + (res.logs || []).length + ' most recent log entries ' +
+              'are loaded, so older corrections may be further back than that.</div>'
+            : '') +
+          '</div>';
+        this._historyCache = [];
+        return;
+      }
+
+      this._historyCache = rows;
+      const letters = 'ABCDEF';
+      $('bd-sheet').innerHTML = rows.map((r, i) => {
+        const b = r.diff.before, a = r.diff.after;
+        const optsB = Array.isArray(b.options) ? b.options : [];
+        const optsA = Array.isArray(a.options) ? a.options : [];
+        return '<div class="sub-card" style="margin-bottom:var(--sp-3)">' +
+          '<div class="sub-top">' +
+            '<div>' +
+              '<div class="sub-user"><span class="avatar">' +
+                esc(initials(r.admin || '?')) + '</span>' + esc(r.admin || 'unknown') +
+              '</div>' +
+              '<div class="sub-meta">' +
+                '<span title="' + esc(fullTime(r.timestamp)) + '">' + relTime(r.timestamp) + '</span>' +
+                '<span>index ' + (r.diff.index != null ? r.diff.index : '?') + '</span>' +
+                (r.diff.adminNote ? '<span>note: ' + esc(r.diff.adminNote) + '</span>' : '') +
+                (r.diff.reportId ? '<span>from report</span>' : '') +
+              '</div>' +
+            '</div>' +
+            '<button class="btn btn-quiet btn-sm" ' +
+              'data-on-click="ADMIN_REPORT.restore(\'' + escAttrJs(fileId) + '\',' + i + ')" ' +
+              'title="Revert this edit (a backup is taken, and the revert is logged)">' +
+              '<i class="ph ph-arrow-counter-clockwise"></i> Restore before' +
+            '</button>' +
+          '</div>' +
+          '<div class="t-callout mt2" style="line-height:1.55;color:var(--ink-2)">' +
+            '<b style="color:var(--ink)">Before:</b> ' +
+            esc(String(b.q || '').slice(0, 200)) +
+            (optsB.length
+              ? '<div class="t-cap" style="margin-top:2px">' +
+                  optsB.map((o, j) =>
+                    letters[j] + ') ' + esc(String(o).slice(0, 60)) +
+                    (j === b.correct ? ' \u2713' : '')
+                  ).join(' \u00b7 ') +
+                '</div>'
+              : '') +
+          '</div>' +
+          '<div class="t-callout mt1" style="line-height:1.55;color:var(--ink)">' +
+            '<b>After:</b> ' + esc(String(a.q || '').slice(0, 200)) +
+            (optsA.length
+              ? '<div class="t-cap" style="margin-top:2px">' +
+                  optsA.map((o, j) =>
+                    letters[j] + ') ' + esc(String(o).slice(0, 60)) +
+                    (j === a.correct ? ' \u2713' : '')
+                  ).join(' \u00b7 ') +
+                '</div>'
+              : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+    } catch (e) {
+      $('bd-sheet').innerHTML =
+        '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i>' +
+        '<span>' + esc(e.message) + '</span></div>';
+    }
+  },
+
+  async restore(fileId, idx) {
+    const h = (this._historyCache || [])[idx];
+    if (!h || !h.diff || !h.diff.before) {
+      return TOAST.show('No diff data on that entry.', 'error');
+    }
+    const b = h.diff.before;
+    const a = h.diff.after;
+    const ok = await CONFIRM.ask({
+      title: 'Restore previous version?',
+      body: 'This puts the question back to what it was before ' +
+            '<b>' + esc(h.admin || 'this edit') + '</b> (' + esc(relTime(h.timestamp)) + '). ' +
+            'A backup is taken first, and the change is logged again.',
+      confirmText: 'Restore', tone: 'danger'
+    });
+    if (!ok) return;
+    BUSY.start();
+    try {
+      const res = await ADMIN.post('adminUpdateQuestion', {
+        fileId,
+        index: h.diff.index,
+        expectedQ: a.q,                 /* concurrency guard: current state must match this */
+        fields: JSON.stringify({
+          q: b.q,
+          options: b.options,
+          correct: b.correct,
+          explanation: b.explanation || ''
+        }),
+        reportId: null,
+        reportReason: null,
+        adminNote: 'Restored to pre-' + (h.admin || 'admin') + ' state'
+      });
+      if (!res.success) throw new Error(res.error || 'Restore failed.');
+      TOAST.show('Question restored.', 'success');
+      ADMIN_CORRECTIONS.invalidate();
+      MODAL.close('sheet');
+      this.load();
+    } catch (e) { TOAST.show(e.message, 'error', 6000); }
+    BUSY.stop();
   },
 
   exportCSV() {
@@ -468,9 +633,9 @@ const ADMIN_REPORT = {
 
   async doRefreshFile() {
     const id = ($('rf-id').value || '').trim();
-    if (!/^[A-Za-z0-9_-]{10,200}$/.test(id)) {
+    if (!/^[A-Za-z0-9_\-/.]{5,200}$/.test(id)) {
       $('rf-id').classList.add('invalid');
-      return TOAST.show('That does not look like a Drive file id', 'warning');
+      return TOAST.show('That does not look like a file id or path', 'warning');
     }
     const btn = $('rf-go');
     btn.disabled = true;

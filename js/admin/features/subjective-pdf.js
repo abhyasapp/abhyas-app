@@ -1,6 +1,6 @@
 // js/admin/features/subjective-pdf.js — replace / fetch / annotate a
 // submission PDF.
-// MUST load AFTER: core.js (ADMIN, $, esc, escAttrJs, driveFileId, BUSY,
+// MUST load AFTER: core.js (ADMIN, $, esc, escAttrJs, BUSY,
 // TOAST, MODAL, CONFIRM), app/pdf-viewer.js (PDFVIEW),
 // vendor/pdf-lib/pdf-lib.min.js (PDFLib), vendor/pdfjs/pdf.min.js (pdfjsLib).
 // Uses SUBJ_STORE, SUBJ_TABS, SUBJ_QOTD, SUBJ_EXAM at call time only.
@@ -10,28 +10,27 @@ const SUBJ_PDF = {
   _file: null,
 
   open(id, username, pdfUrl){
-    const fileId = driveFileId(pdfUrl);
-    if (!fileId) {
-      TOAST.show('That submission has no Drive file to replace', 'error');
+    if (!id) {
+      TOAST.show('This submission has no id — reload the page and try again', 'error');
       return;
     }
-    this._ctx = { id, username, fileId, pdfUrl };
+    this._ctx = { id, username, pdfUrl };
     this._file = null;
 
     MODAL.sheet('Replace PDF — ' + username,
       '<div class="banner banner-warning"><i class="ph ph-warning"></i><span>' +
-        'The file in Drive is <b>overwritten in place</b>. The URL the student already has will point at the new content the moment you finish. ' +
-        'A backup of the original is kept for 30 days.' +
+        'The stored PDF is <b>overwritten in place</b>. <b>' + esc(username) + '</b> will see the new version immediately. ' +
+        'A backup of the original is kept.' +
       '</span></div>' +
       '<dl class="dl mb4">' +
         '<div><dt>Student</dt><dd class="mono">' + esc(username) + '</dd></div>' +
-        '<div><dt>Drive file</dt><dd class="mono" style="overflow-wrap:anywhere">' + esc(fileId) + '</dd></div>' +
+        '<div><dt>Submission</dt><dd class="mono" style="overflow-wrap:anywhere">' + esc(id) + '</dd></div>' +
       '</dl>' +
       '<div class="field"><span class="field-label">Step 1 — get the original</span>' +
         '<div class="flex g2 wrap mt2">' +
           '<button class="btn btn-secondary btn-sm" data-on-click="SUBJ_PDF.downloadOriginal()"><i class="ph ph-download-simple"></i> Download original</button>' +
           '<button class="btn btn-secondary btn-sm" data-on-click="openPdf(\'' + escAttrJs(id) + '\',\'' + escAttrJs(username) + '\')"><i class="ph ph-eye"></i> View the original</button>' +
-          '<button class="btn btn-primary btn-sm" data-on-click="MODAL.close(\'sheet\');PDF_ANNOTATE.open(\'' + escAttrJs(id) + '\',\'' + escAttrJs(username) + '\',\'' + escAttrJs(pdfUrl) + '\')"><i class="ph ph-highlighter-circle"></i> Mark it here instead</button>' +
+          '<button class="btn btn-primary btn-sm" data-on-click="MODAL.close(\'sheet\');PDF_ANNOTATE.open(\'' + escAttrJs(id) + '\',\'' + escAttrJs(username) + '\',\'' + escAttrJs(pdfUrl || '') + '\')"><i class="ph ph-highlighter-circle"></i> Mark it here instead</button>' +
         '</div>' +
         '<span class="field-hint mt2">Annotate in this console, or in any external PDF editor and save the copy to your device.</span>' +
       '</div>' +
@@ -102,8 +101,8 @@ const SUBJ_PDF = {
 
     const ok = await CONFIRM.ask({
       title: 'Replace the PDF',
-      body: 'The Drive file is <b>overwritten</b>. <b>' + esc(ctx.username) + '</b> will see the new version immediately. ' +
-            'A backup of the original is kept for 30 days.',
+      body: 'The stored PDF is <b>overwritten</b>. <b>' + esc(ctx.username) + '</b> will see the new version immediately. ' +
+            'A backup of the original is kept.',
       confirmText: 'Replace', tone: 'danger'
     });
     if (!ok) return;
@@ -112,26 +111,25 @@ const SUBJ_PDF = {
     btn.classList.add('loading');
     BUSY.start();
     try {
-      const dataUrl = await new Promise((res, rej) => {
+      /* Supabase takes raw base64 in `pdfData`, not a data URL in `fileData`. */
+      const base64 = await new Promise((res, rej) => {
         const r = new FileReader();
-        r.onload = () => res(r.result);
+        r.onload = () => res(String(r.result).split(',')[1]);
         r.onerror = () => rej(new Error('Could not read that file.'));
         r.readAsDataURL(file);
       });
 
       const res = await ADMIN.post('adminReplaceSubmissionPdf', {
         id: ctx.id,
-        fileId: ctx.fileId,
-        fileData: dataUrl,
-        filename: file.name
+        pdfData: base64
       });
       if (!res.success) throw new Error(res.error || 'Replace failed.');
 
       TOAST.show('PDF replaced — ' + ctx.username + ' now sees the updated version', 'success', 5000);
       MODAL.close('sheet');
       await SUBJ_STORE.load(true);
-       if (typeof SUBJ_QOTD !== 'undefined' && SUBJ_TABS.current === 'qotd') SUBJ_QOTD.render();
-       if (typeof SUBJ_EXAM !== 'undefined' && SUBJ_TABS.current === 'exam') SUBJ_EXAM.render();
+      if (typeof SUBJ_QOTD !== 'undefined' && SUBJ_TABS.current === 'qotd') SUBJ_QOTD.render();
+      if (typeof SUBJ_EXAM !== 'undefined' && SUBJ_TABS.current === 'exam') SUBJ_EXAM.render();
     } catch(e) {
       TOAST.show(e.message || 'Could not replace that PDF', 'error', 6000);
     }
@@ -147,9 +145,6 @@ const SUBJ_PDF = {
    part that is genuinely admin-specific: take the ink overlays the viewer
    produces, stamp them onto the ORIGINAL PDF with pdf-lib, and upload the
    result through adminReplaceSubmissionPdf.
-
-   Stamping rather than flattening is what keeps the student's scan sharp and
-   its text selectable. Pages that were never marked keep their exact bytes.
    ═══════════════════════════════════════════════════════════════════════ */
 const PDF_ANNOTATE = {
   ctx: null,
@@ -161,10 +156,9 @@ const PDF_ANNOTATE = {
     if (typeof PDFLib === 'undefined') {
       return TOAST.show('pdf-lib did not load, so marks cannot be saved — check your connection and reload', 'error', 6000);
     }
-    const fileId = driveFileId(pdfUrl);
-    if (!fileId) return TOAST.show('That submission has no Drive file to mark', 'error');
+    if (!id) return TOAST.show('This submission has no id', 'error');
 
-    this.ctx = { id, username, fileId, pdfUrl };
+    this.ctx = { id, username, pdfUrl };
     PDFVIEW.open({
       title: 'Marking — ' + username,
       filename: 'marked_' + username + '.pdf',
@@ -182,8 +176,6 @@ const PDF_ANNOTATE = {
 
   close(){ if (typeof PDFVIEW !== 'undefined') PDFVIEW.close(); },
 
-  /* Returns true on success; anything else leaves the viewer's save chip in
-     its failed state with the marks still on screen. */
   async _commit(overlays, info){
     const ctx = this.ctx;
     if (!ctx) return false;
@@ -207,9 +199,8 @@ const PDF_ANNOTATE = {
         binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
       }
       const res = await ADMIN.post('adminReplaceSubmissionPdf', {
-        id: ctx.id, fileId: ctx.fileId,
-        fileData: 'data:application/pdf;base64,' + btoa(binary),
-        filename: 'marked_' + ctx.username + '.pdf'
+        id: ctx.id,
+        pdfData: btoa(binary)
       });
       if (!res.success) throw new Error(res.error || 'The server refused the upload.');
 
@@ -226,9 +217,6 @@ const PDF_ANNOTATE = {
     }
   },
 
-  /* The ink overlays arrive as data URLs; extract the base64 payload with a
-     clear error rather than letting a malformed string throw a TypeError
-     deep inside pdf-lib with no clue what went wrong. */
   _base64FromDataUrl(dataUrl){
     const s = String(dataUrl || '');
     const i = s.indexOf(',');
@@ -236,8 +224,6 @@ const PDF_ANNOTATE = {
     return s.slice(i + 1);
   },
 
-  /* Overlay-on-original where possible; flatten only if pdf-lib cannot
-     reopen the file or a page is rotated, and say so when that happens. */
   async _stamp(overlays, info){
     try {
       const doc = await PDFLib.PDFDocument.load(info.bytes.slice());
@@ -260,10 +246,6 @@ const PDF_ANNOTATE = {
     }
   },
 
-  /* Flatten at three quality tiers, stopping as soon as the output fits
-     inside the upload ceiling. A 30-page paper at scale 2 hits 9–12 MB,
-     over what the endpoint and the browser's own file input will accept —
-     degrading quality is better than failing the whole save. */
   async _flatten(overlays, info){
     if (typeof pdfjsLib === 'undefined') throw new Error('The PDF engine is not available.');
     const src = await pdfjsLib.getDocument({ data: info.bytes.slice() }).promise;
@@ -319,15 +301,31 @@ const PDF_ANNOTATE = {
   }
 };
 
-/* Answer PDFs live in the SubjectiveAnswers Drive folder, which
-   adminDownloadScreenshot deliberately refuses to read — it only serves
-   files from PaymentScreenshots. adminDownloadSubmissionPdf is the endpoint
-   for these, it is gated on subjective_view rather than screenshots, and it
-   takes the submission id instead of a Drive URL. */
+/* Answer PDFs live in the SubjectiveAnswers bucket. Supabase returns a
+   signed URL; this wrapper turns it into the { base64, filename, mimeType }
+   shape every caller (openPdf, downloadOriginal, PDF_ANNOTATE._commit,
+   PDFVIEW.open) already expects. The legacy GAS path returned base64
+   directly, so both shapes are handled by the same wrapper. */
 async function fetchSubmissionPdf(id){
   const res = await ADMIN.post('adminDownloadSubmissionPdf', { id });
   if (!res.success) throw new Error(res.error || 'Could not fetch that PDF.');
-  return res;
+  if (res.base64) return res;
+  if (!res.url) throw new Error('The server did not return a PDF URL.');
+  const blob = await fetch(res.url).then(r => {
+    if (!r.ok) throw new Error('The signed URL replied with HTTP ' + r.status + '.');
+    return r.blob();
+  });
+  const base64 = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).split(',')[1]);
+    fr.onerror = () => reject(new Error('Could not read the PDF.'));
+    fr.readAsDataURL(blob);
+  });
+  return {
+    base64,
+    filename: res.filename || 'submission.pdf',
+    mimeType: 'application/pdf'
+  };
 }
 
 async function openPdf(id, username){
