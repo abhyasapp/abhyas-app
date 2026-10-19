@@ -1,23 +1,33 @@
-# Backups / temp files
+# ── Backups / temp files ──
 *.bak
 *.bak2
+*.orig
+*.tmp
+*~
 user.html.backup
 
-# OS junk
+# ── OS junk ──
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Editor / IDE
+# ── Editor / IDE ──
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Node (package-lock.json IS committed so CI can use `npm ci`)
+# ── Node (package-lock.json IS committed so CI can use `npm ci`) ──
 node_modules/
 coverage/
 
-# Local env
+# ── Generated artifacts ──
+tree.txt
+Folder PATH listing*.txt
+*.log
+npm-debug.log*
+
+# ── Local env ──
 .env
-.env.local
+.env.*
+!.env.example
