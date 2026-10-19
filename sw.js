@@ -1,26 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   SW.JS — Abhyas Service Worker  (v1.21)
-
-   v1.21 changes (v1.46 app split cleanup):
-   • Removed dead Firebase FCM importScripts (js/core/firebase-config.js
-     no longer exists; the 404 was aborting every install-cache attempt).
-   • Removed dead SHELL entries:
-       js/core/shared.js
-       js/app/cloud-sync.js / storage-health.js / display-prefs.js
-       css/design-system.css   (CSS is inline in each HTML page)
-   • Fixed SHELL paths:
-       js/app/app.js        → js/app.js
-       js/app/pdf-viewer.js → js/features/pdf-viewer.js
-       vendor/*             → tools/vendor/*   (all 34 vendor files)
-   • Icons assumed at project root: icon-192.png, icon-512.png, favicon.png
-
-   Strategy (unchanged):
-   • API (script.google.com)          → never touched.
-   • App shell (same origin)          → network-first, 2.5 s timeout when a
-                                        cached copy exists.
-   • Fonts / KaTeX / pdf.js / confetti (CDNs) → cache-first in CDN_CACHE.
-   • Precache tolerant: one missing file never cancels the whole install.
-   • admin.html is never served from cache.
+   SW.JS — Abhyas Service Worker (v1.22)
+   Added background push listener for FCM.
    ═══════════════════════════════════════════════════════════════════════ */
 
 importScripts('./js/core/version.js');
@@ -29,87 +9,37 @@ const CDN_CACHE  = 'abhyas-cdn-v1';
 const NETWORK_TIMEOUT_MS = 2500;
 const CDN_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
 
-/* Everything the app loads from its own origin.
-   Runtime network-first still caches anything fetched that isn't listed here;
-   SHELL just guarantees the critical path works after one online visit. */
 const SHELL = [
-  './',
-  './index.html',
-  './user.html',
-  './privacy.html',
-  './terms.html',
-  './manifest.json',
-
-  './js/core/config.js',
-  './js/core/version.js',
-  './js/core/nav.js',
-  './js/app.js',
-  './js/data/chapters-loader.js',
-  './js/data/content-index.js',
-  './js/data/subjective_chapters.js',
-  './js/data/subjective-data.js',
-
-  './icon-192.png',
-  './icon-512.png',
-  './favicon.png',
-
-  /* tools/vendor — self-hosted assets */
-  './tools/vendor/phosphor/phosphor-regular.css',
-  './tools/vendor/phosphor/Phosphor.woff2',
-  './tools/vendor/pdfjs/pdf.min.js',
-  './tools/vendor/pdfjs/pdf.worker.min.js',
-  './tools/vendor/pdf-lib/pdf-lib.min.js',
-  './tools/vendor/katex/katex.min.js',
-  './tools/vendor/katex/katex.min.css',
-  './tools/vendor/katex/auto-render.min.js',
+  './', './index.html', './user.html', './privacy.html', './terms.html', './manifest.json',
+  './js/core/config.js', './js/core/version.js', './js/core/nav.js', './js/app.js',
+  './js/data/chapters-loader.js', './js/data/content-index.js', './js/data/subjective_chapters.js', './js/data/subjective-data.js',
+  './icon-192.png', './icon-512.png', './favicon.png',
+  './tools/vendor/phosphor/phosphor-regular.css', './tools/vendor/phosphor/Phosphor.woff2',
+  './tools/vendor/pdfjs/pdf.min.js', './tools/vendor/pdfjs/pdf.worker.min.js', './tools/vendor/pdf-lib/pdf-lib.min.js',
+  './tools/vendor/katex/katex.min.js', './tools/vendor/katex/katex.min.css', './tools/vendor/katex/auto-render.min.js',
   './tools/vendor/confetti/confetti.browser.js',
   './tools/vendor/fonts/fonts.css',
-  './tools/vendor/fonts/inter-latin-400-normal.woff2',
-  './tools/vendor/fonts/inter-latin-500-normal.woff2',
-  './tools/vendor/fonts/inter-latin-600-normal.woff2',
-  './tools/vendor/fonts/inter-latin-700-normal.woff2',
+  './tools/vendor/fonts/inter-latin-400-normal.woff2', './tools/vendor/fonts/inter-latin-500-normal.woff2',
+  './tools/vendor/fonts/inter-latin-600-normal.woff2', './tools/vendor/fonts/inter-latin-700-normal.woff2',
   './tools/vendor/fonts/inter-latin-800-normal.woff2',
-  './tools/vendor/fonts/jetbrains-mono-latin-400-normal.woff2',
-  './tools/vendor/fonts/jetbrains-mono-latin-500-normal.woff2',
-  './tools/vendor/fonts/jetbrains-mono-latin-700-normal.woff2',
-  './tools/vendor/katex/fonts/KaTeX_AMS-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Fraktur-Bold.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Fraktur-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Main-Bold.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Main-BoldItalic.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Main-Italic.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Main-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Math-BoldItalic.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Math-Italic.woff2',
-  './tools/vendor/katex/fonts/KaTeX_SansSerif-Bold.woff2',
-  './tools/vendor/katex/fonts/KaTeX_SansSerif-Italic.woff2',
-  './tools/vendor/katex/fonts/KaTeX_SansSerif-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Script-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Size1-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Size2-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Size3-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Size4-Regular.woff2',
-  './tools/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2'
-
-  /* admin.html is deliberately NOT here: it must never be served from cache. */
+  './tools/vendor/fonts/jetbrains-mono-latin-400-normal.woff2', './tools/vendor/fonts/jetbrains-mono-latin-500-normal.woff2', './tools/vendor/fonts/jetbrains-mono-latin-700-normal.woff2',
+  './tools/vendor/katex/fonts/KaTeX_AMS-Regular.woff2', './tools/vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2',
+  './tools/vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff2', './tools/vendor/katex/fonts/KaTeX_Fraktur-Bold.woff2',
+  './tools/vendor/katex/fonts/KaTeX_Fraktur-Regular.woff2', './tools/vendor/katex/fonts/KaTeX_Main-Bold.woff2',
+  './tools/vendor/katex/fonts/KaTeX_Main-BoldItalic.woff2', './tools/vendor/katex/fonts/KaTeX_Main-Italic.woff2',
+  './tools/vendor/katex/fonts/KaTeX_Main-Regular.woff2', './tools/vendor/katex/fonts/KaTeX_Math-BoldItalic.woff2',
+  './tools/vendor/katex/fonts/KaTeX_Math-Italic.woff2', './tools/vendor/katex/fonts/KaTeX_SansSerif-Bold.woff2',
+  './tools/vendor/katex/fonts/KaTeX_SansSerif-Italic.woff2', './tools/vendor/katex/fonts/KaTeX_SansSerif-Regular.woff2',
+  './tools/vendor/katex/fonts/KaTeX_Script-Regular.woff2', './tools/vendor/katex/fonts/KaTeX_Size1-Regular.woff2',
+  './tools/vendor/katex/fonts/KaTeX_Size2-Regular.woff2', './tools/vendor/katex/fonts/KaTeX_Size3-Regular.woff2',
+  './tools/vendor/katex/fonts/KaTeX_Size4-Regular.woff2', './tools/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2'
 ];
 
 function offlinePage() {
-  const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title>' +
-    '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
-    'font:16px/1.6 system-ui,sans-serif;background:#f2f4f3;color:#1c2321;text-align:center;padding:24px}' +
-    'h1{font-size:1.3rem;margin:0 0 8px}p{margin:0 0 16px;color:#4a5551}' +
-    'a{display:inline-block;padding:10px 18px;border-radius:10px;background:#1e7a4c;color:#fff;text-decoration:none;font-weight:600}' +
-    '@media(prefers-color-scheme:dark){body{background:#080b14;color:#edf2ef}p{color:#9aa6b8}}</style></head><body>' +
-    '<div><h1>You are offline</h1><p>This page has not been saved on your phone yet.<br>' +
-    'Chapters you downloaded still open from the app.</p><a href="./user.html">Open Abhyas</a></div></body></html>';
+  const html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font:16px/1.6 system-ui,sans-serif;background:#f2f4f3;color:#1c2321;text-align:center;padding:24px}h1{font-size:1.3rem;margin:0 0 8px}p{margin:0 0 16px;color:#4a5551}a{display:inline-block;padding:10px 18px;border-radius:10px;background:#1e7a4c;color:#fff;text-decoration:none;font-weight:600}@media(prefers-color-scheme:dark){body{background:#080b14;color:#edf2ef}p{color:#9aa6b8}}</style></head><body><div><h1>You are offline</h1><p>This page has not been saved on your phone yet.<br>Chapters you downloaded still open from the app.</p><a href="./user.html">Open Abhyas</a></div></body></html>';
   return new Response(html, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
-/* ── INSTALL ── */
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
@@ -118,15 +48,12 @@ self.addEventListener('install', e => {
       if (!res.ok) throw new Error(path + ' -> ' + res.status);
       await cache.put(path, res);
     }));
-    const failed = results
-      .map((r, i) => (r.status === 'rejected' ? SHELL[i] : null))
-      .filter(Boolean);
-    if (failed.length) console.warn('SW install: these files could not be cached (offline use may be limited):', failed);
+    const failed = results.map((r, i) => (r.status === 'rejected' ? SHELL[i] : null)).filter(Boolean);
+    if (failed.length) console.warn('SW install: failed to cache:', failed);
   })());
   self.skipWaiting();
 });
 
-/* ── ACTIVATE ── */
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
     const keep = [CACHE_NAME, CDN_CACHE];
@@ -135,7 +62,7 @@ self.addEventListener('activate', e => {
     await self.clients.claim();
     const clients = await self.clients.matchAll({ type: 'window' });
     clients.forEach(client => {
-      try { client.postMessage({ type: 'SW_ACTIVATED', version: APP_VERSION }); } catch (err) { /* closing */ }
+      try { client.postMessage({ type: 'SW_ACTIVATED', version: APP_VERSION }); } catch (err) {}
     });
   })());
 });
@@ -159,7 +86,28 @@ self.addEventListener('message', e => {
   }
 });
 
-/* ── NOTIFICATION CLICK (kept for future notifications) ── */
+// ── NEW: Background Push Listener ──
+self.addEventListener('push', function(event) {
+  if (!event.data) return;
+  try {
+    const data = event.data.json();
+    const title = data.notification?.title || 'Abhyas';
+    const options = {
+      body: data.notification?.body || 'You have a new update.',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      data: data.data // pass custom data
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (e) {
+    // Fallback if payload is not JSON
+    event.waitUntil(self.registration.showNotification('Abhyas', { 
+      body: event.data.text(),
+      icon: './icon-192.png'
+    }));
+  }
+});
+
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil((async () => {
@@ -171,7 +119,6 @@ self.addEventListener('notificationclick', e => {
   })());
 });
 
-/* ── FETCH HELPERS ── */
 function fetchWithTimeout(req, ms) {
   if (!ms) return fetch(req, { cache: 'no-cache' });
   const ctrl = new AbortController();
@@ -218,17 +165,16 @@ async function cdnCacheFirst(req) {
   }
 }
 
-/* ── FETCH ── */
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET') return;                       // POSTs (Apps Script) go straight through
+  if (req.method !== 'GET') return;
   let url;
   try { url = new URL(req.url); } catch (err) { return; }
 
-  if (/^script\.google(usercontent)?\.com$/.test(url.hostname)) return;   // API: never touched
+  if (/^script\.google(usercontent)?\.com$/.test(url.hostname)) return;
   if (CDN_HOSTS.indexOf(url.hostname) !== -1) { e.respondWith(cdnCacheFirst(req)); return; }
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.endsWith('/admin.html')) return;       // admin is never cached
+  if (url.pathname.endsWith('/admin.html')) return;
 
   if (/\/tools\/vendor\//.test(url.pathname) || /\/(icon-\d+|favicon)\.png$/.test(url.pathname)) {
     e.respondWith(localCacheFirst(req)); return;

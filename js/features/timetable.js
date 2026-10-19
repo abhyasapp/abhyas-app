@@ -8,6 +8,7 @@ const TT = {
     const nameEl = document.getElementById('tt-name');
     const startEl = document.getElementById('tt-s');
     const endEl = document.getElementById('tt-e');
+    
     if(nameEl && startEl && endEl){
       const name = nameEl.value.trim();
       const start = startEl.value;
@@ -137,8 +138,8 @@ const TT = {
     if(leadEl) leadEl.value = S.tt.reminders.leadMinutes ?? 5;
 
     TT._startReminderChecker();
+    
     if(TT._clockTimer) clearInterval(TT._clockTimer);
-
     const tick = ()=>{
       const now = new Date();
       const cl = document.getElementById('tt-clock'); if(cl) cl.textContent = now.toLocaleTimeString();
@@ -158,50 +159,50 @@ const TT = {
     const todayEl = document.getElementById('tt-today');
     if(todayEl){
       const todaySessions = (S.tt.sessions||[]).filter(s=>s.day===todayDay).sort((a,b)=>sessionStart(a).localeCompare(sessionStart(b)));
-      todayEl.innerHTML = todaySessions.length ? todaySessions.map(s=>{
-        const isNow = sessionStart(s)<=nowHHMM && nowHHMM<sessionEnd(s);
-        return `
-        <div class="tt-row" style="${isNow?'background:rgba(245,166,35,.08);border-radius:8px;padding-left:.4rem':''}">
-          <div class="tt-ti">${sessionStart(s)}${s.end?'–'+s.end:''}</div>
-          <div class="tt-na">${isNow?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ros);margin-right:.35rem"></span>':''}${esc(sessionName(s))}</div>
-          <button class="ib" data-on-click='TT.remove(${JSON.stringify(String(s.id))})' title="Remove this slot" aria-label="Remove this slot"><i class="ph ph-trash"></i></button>
-        </div>`;
-      }).join('') : '<div class="empty"><div class="empty-i"><i class="ph ph-calendar-blank"></i></div><p>Nothing scheduled today</p></div>';
+      
+      requestAnimationFrame(() => {
+        todayEl.innerHTML = todaySessions.length ? todaySessions.map(s=>{
+          const isNow = sessionStart(s)<=nowHHMM && nowHHMM<sessionEnd(s);
+          return `
+          <div class="tt-row" style="${isNow?'background:rgba(30,122,76,.08);border-radius:8px;padding-left:.4rem;border-left:3px solid var(--accent)':''}">
+            <div class="tt-ti">${sessionStart(s)}${s.end?'–'+s.end:''}</div>
+            <div class="tt-na">${isNow?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:.35rem;animation:npulse 2s infinite"></span>':''}${esc(sessionName(s))}</div>
+            <button class="ib" data-on-click='TT.remove(${JSON.stringify(String(s.id))})' title="Remove this slot" aria-label="Remove this slot"><i class="ph ph-trash"></i></button>
+          </div>`;
+        }).join('') : '<div class="empty"><div class="empty-i"><i class="ph ph-calendar-blank"></i></div><p>Nothing scheduled today</p></div>';
+      });
     }
 
     const weekEl = document.getElementById('tt-week');
     if(weekEl){
       const todayIdx = new Date().getDay();
-      weekEl.innerHTML = `
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <div style="display:grid;grid-template-columns:repeat(7,minmax(78px,1fr));gap:4px;margin-bottom:.5rem;min-width:560px">
-          ${DAYS.map((d,i)=>`
-            <div style="text-align:center;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;
-              color:${i===todayIdx?'var(--neon)':'var(--t3)'};
-              padding:.3rem .2rem;
-              border-bottom:2px solid ${i===todayIdx?'var(--neon)':'var(--bd)'}">
-              ${d.slice(0,3)}
-            </div>
-          `).join('')}
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(7,minmax(78px,1fr));gap:4px;align-items:start;min-width:560px">
-          ${DAYS.map((d,di)=>{
-            const sess = (S.tt.sessions||[]).filter(s=>s.day===di).sort((a,b)=>sessionStart(a).localeCompare(sessionStart(b)));
-            const isToday = di===todayIdx;
-            return `<div style="min-height:60px;background:${isToday?'rgba(0,229,255,.04)':'var(--bg1)'};border-radius:var(--r1);border:1px solid ${isToday?'rgba(0,229,255,.18)':'var(--bd)'};padding:.3rem .25rem">
-              ${sess.length ? sess.map(s=>`
-                <div style="background:${isToday?'rgba(0,229,255,.1)':'var(--surf2)'};border:1px solid ${isToday?'rgba(0,229,255,.25)':'var(--bd)'};border-radius:6px;padding:.28rem .35rem;margin-bottom:3px;cursor:default"
-                  title="${esc(sessionName(s))} ${sessionStart(s)}${s.end?'–'+s.end:''}">
-                  <div style="font-size:.6rem;font-weight:700;color:${isToday?'var(--neon)':'var(--t3)'}">${sessionStart(s)}</div>
-                  <div style="font-size:.65rem;font-weight:600;color:var(--t1);overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(sessionName(s))}</div>
-                  <button data-on-click='TT.remove(${JSON.stringify(String(s.id))})' style="background:none;border:none;color:var(--t3);font-size:.65rem;cursor:pointer;padding:0;float:right"><i class="ph ph-x"></i></button>
-                </div>
-              `).join('') : `<div style="text-align:center;color:var(--t3);font-size:.6rem;margin-top:.5rem">—</div>`}
-            </div>`;
-          }).join('')}
-        </div>
-        </div>
-      `;
+      
+      requestAnimationFrame(() => {
+        weekEl.innerHTML = `
+          <div class="tt-week-scroll">
+          <div class="tt-week-grid">
+            ${DAYS.map((d,i)=>`
+              <div class="tt-dayhd ${i===todayIdx?'today':''}">
+                ${d.slice(0,3)}
+              </div>
+            `).join('')}
+            ${DAYS.map((d,di)=>{
+              const sess = (S.tt.sessions||[]).filter(s=>s.day===di).sort((a,b)=>sessionStart(a).localeCompare(sessionStart(b)));
+              const isToday = di===todayIdx;
+              return `<div class="tt-daycol ${isToday?'today':''}">
+                ${sess.length ? sess.map(s=>`
+                  <div class="tt-chip" title="${esc(sessionName(s))} ${sessionStart(s)}${s.end?'–'+s.end:''}">
+                    <div class="tt-chip-t">${sessionStart(s)}</div>
+                    <div class="tt-chip-n">${esc(sessionName(s))}</div>
+                    <button data-on-click='TT.remove(${JSON.stringify(String(s.id))})' class="tt-chip-x"><i class="ph ph-x"></i></button>
+                  </div>
+                `).join('') : `<div class="tt-empty-col">—</div>`}
+              </div>`;
+            }).join('')}
+          </div>
+          </div>
+        `;
+      });
     }
   },
 

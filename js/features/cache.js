@@ -15,6 +15,7 @@ const CACHE = {
     const tag = document.getElementById('cache-tag');
     const txt = document.getElementById('cache-txt');
     const grid = document.getElementById('cache-grid');
+    
     if(tag && txt && grid){
       let cachedCount = 0;
       refs.forEach(r=>{ if(_isCached(r.key)) cachedCount++; });
@@ -23,19 +24,23 @@ const CACHE = {
                       : 'Not cached';
       tag.className = 'ctag ' + (cachedCount===refs.length && refs.length ? 'tg' : cachedCount>0 ? 'ta' : 'tr');
       txt.textContent = `${cachedCount} of ${refs.length} question ${refs.length===1?'set':'sets'} cached on this device for offline use.`;
+      
       const levels = ChapterData.levels();
       const picked = new Set(CACHE._picked(levels));
-      grid.innerHTML = levels.map(lv=>{
-        const lvRefs = refs.filter(r=>r.lv===lv);
-        const lvCached = lvRefs.filter(r=>_isCached(r.key)).length;
-        return `<label class="ci" style="cursor:pointer;display:block">
-          <div class="flex center between" style="gap:var(--sp-2)">
-            <div class="ci-n" style="margin:0">${esc(ChapterData.levelLabel(lv))}</div>
-            <input type="checkbox" class="dl-group" value="${esc(lv)}" ${picked.has(lv)?'checked':''} aria-label="Select ${esc(ChapterData.levelLabel(lv))} for download" data-on-change="CACHE.pick()">
-          </div>
-          <div class="ci-s"><div class="cd ${lvCached===lvRefs.length&&lvRefs.length?'y':'n'}"></div>${lvCached}/${lvRefs.length} cached</div></label>`;
-      }).join('');
-      CACHE._syncPickBtn(refs, cachedKeys);
+      
+      requestAnimationFrame(() => {
+        grid.innerHTML = levels.map(lv=>{
+          const lvRefs = refs.filter(r=>r.lv===lv);
+          const lvCached = lvRefs.filter(r=>_isCached(r.key)).length;
+          return `<label class="ci" style="cursor:pointer;display:block">
+            <div class="flex center between" style="gap:var(--sp-2)">
+              <div class="ci-n" style="margin:0">${esc(ChapterData.levelLabel(lv))}</div>
+              <input type="checkbox" class="dl-group" value="${esc(lv)}" ${picked.has(lv)?'checked':''} aria-label="Select ${esc(ChapterData.levelLabel(lv))} for download" data-on-change="CACHE.pick()">
+            </div>
+            <div class="ci-s"><div class="cd ${lvCached===lvRefs.length&&lvRefs.length?'y':'n'}"></div>${lvCached}/${lvRefs.length} cached</div></label>`;
+        }).join('');
+        CACHE._syncPickBtn(refs, cachedKeys);
+      });
     }
 
     const el = document.getElementById('cache-list');
@@ -44,16 +49,18 @@ const CACHE = {
       if(!keys.length){
         el.innerHTML = `<div class="empty"><div class="empty-i"><i class="ph ph-cloud-slash"></i></div><p>Nothing cached yet</p><p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">Open any chapter while online to cache it automatically, or use "Cache All" below.</p></div>`;
       } else {
-        el.innerHTML = keys.map(k=>{
-          const parts = k.split('_');
-          const label = parts.length>=4 ? `${parts[0]} · Ch${parts[1]} · ${parts[2]} · ${parts[3]}` : k;
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;background:var(--b0);border-radius:8px;margin-bottom:.3rem;font-size:.78rem">
-            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"><i class="ph ph-package"></i> ${esc(label)}</div>
-            <button class="ib cache-rm-btn" data-key="${escAttrJs(k)}" title="Remove from cache" aria-label="Remove from cache"><i class="ph ph-trash"></i></button>
-          </div>`;
-        }).join('');
-        el.querySelectorAll('.cache-rm-btn').forEach(btn=>{
-          btn.onclick = ()=> CACHE.remove(btn.dataset.key);
+        requestAnimationFrame(() => {
+          el.innerHTML = keys.map(k=>{
+            const parts = k.split('_');
+            const label = parts.length>=4 ? `${parts[0]} · Ch${parts[1]} · ${parts[2]} · ${parts[3]}` : k;
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;background:var(--b0);border-radius:8px;margin-bottom:.3rem;font-size:.78rem">
+              <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"><i class="ph ph-package"></i> ${esc(label)}</div>
+              <button class="ib cache-rm-btn" data-key="${escAttrJs(k)}" title="Remove from cache" aria-label="Remove from cache"><i class="ph ph-trash"></i></button>
+            </div>`;
+          }).join('');
+          el.querySelectorAll('.cache-rm-btn').forEach(btn=>{
+            btn.onclick = ()=> CACHE.remove(btn.dataset.key);
+          });
         });
       }
     }
@@ -115,12 +122,16 @@ const CACHE = {
     const refs = ChapterData.allFileRefs().filter(r => !only || only.has(r.lv));
     if(!refs.length){ toast('No content configured to cache'); return; }
     if(!S.online){ toast('❌ You need to be online to download the cache'); return; }
+    
+    if (navigator.vibrate) navigator.vibrate(10);
+
     const pb = document.getElementById('cpb');
     const pf = document.getElementById('cpf');
     const txt = document.getElementById('cptxt');
     if(pb) pb.style.display = '';
     let done = 0, failed = 0, fetched = 0, fatal = '', rlStreak = 0;
     const startedAt = Date.now();
+    
     const etaText = () => {
       if(fetched < 3) return '';
       const perFile = (Date.now() - startedAt) / fetched;
@@ -128,13 +139,21 @@ const CACHE = {
       if(leftSec < 45) return ' · under a minute left';
       return ` · about ${Math.ceil(leftSec/60)} min left`;
     };
+    
     if(CACHE._running){ toast('A download is already running'); return; }
     CACHE._running = true; CACHE._paused = false; CACHE._stop = false;
     CACHE._ctl(true);
-    const paint = () => {
+    
+    let _lastPaint = 0;
+    const paint = (force) => {
+      const now = Date.now();
+      if (!force && now - _lastPaint < 100) return; // Throttle to 10fps
+      _lastPaint = now;
+      
       if(txt) txt.textContent = `Downloading ${Math.min(done+1, refs.length)} of ${refs.length}${etaText()}`;
       if(pf) pf.style.width = `${(done/refs.length)*100}%`;
     };
+    
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     const isFatal = m => /session expired|access has ended/i.test(m || '');
     const isValid = v => !!v && !(typeof v === 'object' && !Array.isArray(v) && v.success === false);
@@ -145,7 +164,7 @@ const CACHE = {
         await QUIZ._fetch(ref.fid, ref.key);
         fetched++;
       }catch(err){
-        if(isFatal(err && err.message)){ fatal = err.message; failed++; CACHE._stop = true; done++; paint(); return; }
+        if(isFatal(err && err.message)){ fatal = err.message; failed++; CACHE._stop = true; done++; paint(true); return; }
         if(txt) txt.textContent = `Retrying ${ref.subtopic || ref.name}…`;
         try{
           await sleep(2000);
@@ -189,7 +208,7 @@ const CACHE = {
         }catch(err){
           if(isFatal(err && err.message)){
             fatal = err.message; CACHE._stop = true;
-            failed += batch.length; done += batch.length; paint();
+            failed += batch.length; done += batch.length; paint(true);
             return;
           }
           await singles(batch);
@@ -216,11 +235,13 @@ const CACHE = {
         }
       }
     };
-    paint();
+    
+    paint(true);
     await Promise.all(Array.from({length: Math.min(CACHE._poolSize(), refs.length)}, worker));
     const stopped = CACHE._stop && done < refs.length;
     CACHE._running = false; CACHE._paused = false; CACHE._ctl(false);
     const ok = done - failed;
+    
     if(fatal){
       if(txt) txt.textContent = `${fatal} ${ok} of ${refs.length} saved.`;
       toast(`Download stopped — ${fatal}`, 6000);
@@ -310,6 +331,7 @@ const CACHE = {
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const isCellular = conn && (conn.type === 'cellular' || /^(slow-2g|2g|3g)$/i.test(conn.effectiveType || ''));
     const saver = conn && conn.saveData;
+    
     if (isCellular || saver) {
       const lastOffer = _load('abhyas_autosync_offered_at', 0);
       if (Date.now() - lastOffer > 24*60*60*1000) {

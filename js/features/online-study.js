@@ -13,46 +13,56 @@ function prettySub(name){
 
 const ON = {
   onLv(){
+    if (navigator.vibrate) navigator.vibrate(5);
     const lv = document.getElementById('on-lv').value;
     const cs = document.getElementById('on-ch');
     cs.innerHTML = '<option value="">📘 Select Chapter…</option>'; cs.disabled = !lv;
     const bs = document.getElementById('on-bk'); bs.innerHTML = '<option value="">📚 Select Book…</option>'; bs.disabled = true;
     const ts = document.getElementById('on-to'); ts.innerHTML = '<option value="">📑 Select Subtopic…</option>'; ts.disabled = true;
+    
     if (lv){
-      Object.entries(ChapterData.chapters(lv)).forEach(([k,n])=>{
-        const fc = ChapterData.fileCount(lv,k);
-        const o = document.createElement('option'); o.value = k; o.textContent = `Ch${k}: ${n}${fc?'':' (coming soon)'}`; cs.appendChild(o);
+      requestAnimationFrame(() => {
+        Object.entries(ChapterData.chapters(lv)).forEach(([k,n])=>{
+          const fc = ChapterData.fileCount(lv,k);
+          const o = document.createElement('option'); o.value = k; o.textContent = `Ch${k}: ${n}${fc?'':' (coming soon)'}`; cs.appendChild(o);
+        });
       });
     }
     ONPROG.render();
   },
   onCh(){
+    if (navigator.vibrate) navigator.vibrate(5);
     const lv = document.getElementById('on-lv').value, ch = document.getElementById('on-ch').value;
     const bs = document.getElementById('on-bk');
     bs.innerHTML = '<option value="">📚 Select Book…</option>'; bs.disabled = true;
     const ts = document.getElementById('on-to'); ts.innerHTML = '<option value="">📑 Select Subtopic…</option>'; ts.disabled = true;
+    
     if (lv && ch){
       const books = ChapterData.books(lv,ch);
       if (!Object.keys(books).length){
         bs.innerHTML = '<option value="">No books yet for this chapter</option>';
         toast('ℹ️ This chapter has no question files yet');
       } else {
-        Object.keys(books).forEach(book=>{
-          const fc = ChapterData.fileCount(lv,ch,book);
-          const o = document.createElement('option'); o.value = book; o.textContent = `${book}${fc?'':' (coming soon)'}`; bs.appendChild(o);
+        requestAnimationFrame(() => {
+          Object.keys(books).forEach(book=>{
+            const fc = ChapterData.fileCount(lv,ch,book);
+            const o = document.createElement('option'); o.value = book; o.textContent = `${book}${fc?'':' (coming soon)'}`; bs.appendChild(o);
+          });
+          bs.disabled = false;
+          const _bk = Object.keys(books);
+          bs.style.display = _bk.length === 1 ? 'none' : '';
+          if (_bk.length === 1){ bs.value = _bk[0]; ON.onBook(); return; }
         });
-        bs.disabled = false;
-        const _bk = Object.keys(books);
-        bs.style.display = _bk.length === 1 ? 'none' : '';
-        if (_bk.length === 1){ bs.value = _bk[0]; ON.onBook(); return; }
       }
     }
     ONPROG.render();
   },
   async onBook(){
+    if (navigator.vibrate) navigator.vibrate(5);
     const lv = document.getElementById('on-lv').value, ch = document.getElementById('on-ch').value, book = document.getElementById('on-bk').value;
     const ts = document.getElementById('on-to');
     ts.innerHTML = '<option value="">📑 Select Subtopic…</option>'; ts.disabled = true;
+    
     if (lv && ch && book){
       const files = ChapterData.files(lv,ch,book);
       if (!Object.keys(files).length){
@@ -62,34 +72,38 @@ const ON = {
         const isOfflineMode = !S.online || S.forcedOffline;
         const cachedKeys = new Set(await QDB.keys());
         let anyEnabled = false;
-        Object.entries(files).forEach(([n,id])=>{
-          if (!id) return;
-          const cacheKey = `${lv}_${ch}_${book}_${n}`;
-          const isCached = cachedKeys.has(cacheKey);
-          const o = document.createElement('option');
-          o.value = id;
-          o.dataset.key = cacheKey;
-          o.dataset.sub = n;
-          if (isOfflineMode && !isCached){
-            o.textContent = `🔒 ${prettySub(n)} (not cached)`;
-            o.disabled = true;
-            o.style.color = 'var(--t3)';
-          } else {
-            o.textContent = isCached ? `📦 ${prettySub(n)}` : prettySub(n);
-            anyEnabled = true;
+        
+        requestAnimationFrame(() => {
+          Object.entries(files).forEach(([n,id])=>{
+            if (!id) return;
+            const cacheKey = `${lv}_${ch}_${book}_${n}`;
+            const isCached = cachedKeys.has(cacheKey);
+            const o = document.createElement('option');
+            o.value = id;
+            o.dataset.key = cacheKey;
+            o.dataset.sub = n;
+            if (isOfflineMode && !isCached){
+              o.textContent = `🔒 ${prettySub(n)} (not cached)`;
+              o.disabled = true;
+              o.style.color = 'var(--t3)';
+            } else {
+              o.textContent = isCached ? `📦 ${prettySub(n)}` : prettySub(n);
+              anyEnabled = true;
+            }
+            ts.appendChild(o);
+          });
+          ts.disabled = false;
+          if (isOfflineMode && !anyEnabled){
+            ts.innerHTML = '<option value="">No cached files for this book</option>';
+            toast('📡 You\'re offline — no cached files in this book. Cache them first while online.');
           }
-          ts.appendChild(o);
         });
-        ts.disabled = false;
-        if (isOfflineMode && !anyEnabled){
-          ts.innerHTML = '<option value="">No cached files for this book</option>';
-          toast('📡 You\'re offline — no cached files in this book. Cache them first while online.');
-        }
       }
     }
     ONPROG.render();
   },
   start(mode){
+    if (navigator.vibrate) navigator.vibrate(10);
     const ts = document.getElementById('on-to');
     const fid = ts.value, opt = ts.options[ts.selectedIndex], key = opt?.dataset?.key;
     const ch = document.getElementById('on-ch').value, lv = document.getElementById('on-lv').value, book = document.getElementById('on-bk').value;
@@ -128,6 +142,7 @@ const ONPROG = {
       danger: true
     });
     if (!ok) return;
+    
     let removedTotal = 0, removedCorrectTotal = 0;
     S.prog.sessions.forEach(s=>{
       if (!s.qres || !s.qres.length) return;
@@ -255,24 +270,26 @@ const ONPROG = {
         ? ` <button class="fw-reset" title="Reset progress for this file" aria-label="Reset progress for this file" data-fid="${esc(fid)}" data-on-click="ONPROG.resetFile(this.dataset.fid)"><i class="ph ph-trash"></i></button>`
         : '';
 
-      bodyEl.innerHTML = `
-        <div class="prog-grid">
-          <div class="sc"><div class="sv tcy">${scoped.practised}</div><div class="stat-lbl">Practised</div></div>
-          <div class="sc"><div class="sv ta2">${scoped.attempted}</div><div class="stat-lbl">Attempted</div></div>
-          <div class="sc"><div class="sv tc2">${scoped.correct}</div><div class="stat-lbl">Correct</div></div>
-          <div class="sc"><div class="sv tb2">${scoped.wrong}</div><div class="stat-lbl">Wrong</div></div>
-        </div>
-        ${info.needsConfirm ? confirmBtn : `
-          <div class="pb-w" style="margin-top:.65rem">
-            <div class="pb-l">
-              <span>${metricLabel} coverage (compiled)</span>
-              <span>${metricVal} / ${total || '?'} (${pct}%)${scopeResetBtn}</span>
-            </div>
-            <div class="pb"><div class="pb-f" style="width:${pct}%;background:${barColor}"></div></div>
-          </div>`}
-        ${unknownNote}
-        ${info.needsConfirm ? '' : filewiseHtml}
-      `;
+      requestAnimationFrame(() => {
+        bodyEl.innerHTML = `
+          <div class="prog-grid">
+            <div class="sc"><div class="sv tcy">${scoped.practised}</div><div class="stat-lbl">Practised</div></div>
+            <div class="sc"><div class="sv ta2">${scoped.attempted}</div><div class="stat-lbl">Attempted</div></div>
+            <div class="sc"><div class="sv tc2">${scoped.correct}</div><div class="stat-lbl">Correct</div></div>
+            <div class="sc"><div class="sv tb2">${scoped.wrong}</div><div class="stat-lbl">Wrong</div></div>
+          </div>
+          ${info.needsConfirm ? confirmBtn : `
+            <div class="pb-w" style="margin-top:.65rem">
+              <div class="pb-l">
+                <span>${metricLabel} coverage (compiled)</span>
+                <span>${metricVal} / ${total || '?'} (${pct}%)${scopeResetBtn}</span>
+              </div>
+              <div class="pb"><div class="pb-f" style="width:${pct}%;background:${barColor}"></div></div>
+            </div>`}
+          ${unknownNote}
+          ${info.needsConfirm ? '' : filewiseHtml}
+        `;
+      });
     };
 
     if (known.unknown === 0){ paint(known); return; }

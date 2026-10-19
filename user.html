@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://*.supabase.co https://script.googleusercontent.com https://accounts.google.com https://*.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; frame-src https://accounts.google.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://*.supabase.co https://script.googleusercontent.com https://accounts.google.com https://*.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://fcm.googleapis.com; frame-src https://accounts.google.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#080B14" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
@@ -26,21 +26,11 @@
 <script defer src="tools/vendor/katex/auto-render.min.js"></script>
 <link rel="stylesheet" href="tools/vendor/phosphor/phosphor-regular.css">
 <link rel="icon" type="image/png" href="favicon.png">
+<!-- Google Identity Services for Drive Backup -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════════════
    ABHYAS · student app · v2 (iOS-tier)
-   
-   Design language changes from v1:
-   • Card radius      18 → 20px (iOS "large group"), inner 14 → 16
-   • Hairlines        1px → 0.5px, via --hairline-w
-   • Button heights   38 → 44 (primary), 34 → 36 (compact)
-   • Section headers  small caps + .06em tracking, 11px
-   • Shadows          tighter spread, higher offset
-   • Font stack       SF Pro-first
-   • Every bar uses   tabular-nums
-   • Every card uses  the .card--section left accent for the "this is a section header" pattern
-   
-   All class names and IDs from v1 are preserved, so no JS breaks.
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root{
@@ -1453,7 +1443,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
 </style>
 <script src="js/core/config.js"></script>
 <script src="js/core/actions.js"></script>
-<!-- Shim: globals referenced by markup (HOMEFOCUS, HEADERMENU, ACT.go/autosync, PUSH, CLOUD_UI) -->
+<!-- Shim: globals referenced by markup (HOMEFOCUS, HEADERMENU, ACT.go/autosync) -->
 <script>
 (function () {
   'use strict';
@@ -1488,19 +1478,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
       toggleMode: function () { window.HOMEFOCUS.setMode(m() === 'detailed' ? 'simple' : 'detailed'); }
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint, { once: true }); else paint();
-  }
-  if (typeof window.PUSH === 'undefined') {
-    window.PUSH = {
-      init: function () { return false; },
-      enable: function () { if (typeof toast === 'function') toast('Push notifications are not configured yet.'); },
-      disable: function () {}, refreshButtonUI: function () {}, silentRefresh: function () {},
-      subscribe: function () { return Promise.resolve({ success: false }); },
-      unsubscribe: function () { return Promise.resolve({ success: false }); }
-    };
-  }
-  if (typeof window.CLOUD_UI === 'undefined') {
-    var g = function () { if (typeof toast === 'function') toast('Drive backup is not available in this build.'); };
-    window.CLOUD_UI = { signIn: g, signOut: g, backup: g, restore: g, render: function () {} };
   }
 })();
 </script></head>
@@ -1546,7 +1523,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
           <button class="tb-menu-item" role="menuitem" type="button" data-keep-open data-on-click="UI.theme()"><i class="ph ph-circle-half"></i><span>Light or dark</span></button>
           <button class="tb-menu-item" role="menuitem" type="button" data-on-click="PWA.toggleFullscreen()"><i class="ph ph-corners-out"></i><span>Full screen</span></button>
           <button class="tb-menu-item" role="menuitem" type="button" id="installBtn" data-on-click="PWA.install()" style="display:none"><i class="ph ph-device-mobile"></i><span>Install the app</span></button>
-          <!-- NEW: Logout other devices in top menu -->
           <button class="tb-menu-item danger" role="menuitem" type="button" data-on-click="AUTH.logoutOtherDevices()"><i class="ph ph-devices"></i><span>Log out other devices</span></button>
           <button class="tb-menu-item danger" role="menuitem" type="button" data-on-click="AUTH.logout()"><i class="ph ph-sign-out"></i><span>Sign out</span></button>
         </div>
@@ -1581,9 +1557,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
     <main id="main" tabindex="-1">
     <div class="inner">
 
-      <!-- ═══════════════════════════════════════════════════════
-           HOME (v2 · customizable grid)
-           ═══════════════════════════════════════════════════════ -->
+      <!-- HOME -->
       <div class="view on" id="view-home">
         <div id="home-alerts">
           <div id="backup-nudge-slot"></div>
@@ -1611,9 +1585,8 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
           <div id="daily10-slot"></div>
         </div>
 
-        <div id="home-grid"><!-- cards mounted here by HOME_LAYOUT.render() --></div>
-
-        <div id="home-detail"><!-- secondary cards when user picks "Detailed" mode --></div>
+        <div id="home-grid"></div>
+        <div id="home-detail"></div>
 
         <div style="display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3)">
           <button class="btn btn-quiet" type="button" data-on-click="HOME_LAYOUT.openCustomize()">
@@ -1622,8 +1595,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
           <button class="home-mode" id="home-mode-btn" type="button" data-on-click="HOMEFOCUS.toggleMode()" aria-pressed="false">Show more on Home</button>
         </div>
 
-        <!-- Hidden source nodes: existing Home modules write into these.
-             HOME_LAYOUT moves the rendered content into cards at runtime. -->
         <div hidden aria-hidden="true">
           <section class="today-card" id="today-card">
             <div class="greet-line">
@@ -1657,19 +1628,14 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- ═══════════════════════════════════════════════════════
-           60-DAY SPRINT (new page)
-           ═══════════════════════════════════════════════════════ -->
+      <!-- SPRINT -->
       <div class="view" id="view-sprint">
         <div class="sprint-page">
           <button class="sprint-back" type="button" data-on-click="UI.go('home')"><i class="ph ph-arrow-left"></i> Home</button>
-
           <div class="phase-row">
             <span class="phase-chip"><span class="dot"></span><span id="sprint-phase-label">Learn phase</span></span>
             <span class="phase-meta" id="sprint-day-meta">Day 1 of 60</span>
           </div>
-
-          <!-- TODAY -->
           <section class="today-card" aria-labelledby="sprint-today-h">
             <div class="section-head"><h2 id="sprint-today-h">Today</h2><span class="hint" id="sprint-today-date">—</span></div>
             <div class="today-top">
@@ -1681,8 +1647,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
             </div>
             <div class="bar" id="sprint-today-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
           </section>
-
-          <!-- TARGETS + LIST -->
           <section class="card">
             <div class="section-head"><h2>Today's targets</h2><span class="hint">Resets at 04:00</span></div>
             <div class="targets">
@@ -1694,8 +1658,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
             <div class="section-head" style="margin-top:6px;margin-bottom:6px"><h2>Today's list</h2><span class="hint">Tap Start to begin</span></div>
             <div class="list" id="sprint-today-list"></div>
           </section>
-
-          <!-- WEEK -->
           <section class="card">
             <div class="section-head"><h2>This week</h2><span class="hint" id="sprint-week-hint">—</span></div>
             <div class="week" id="sprint-week" role="group" aria-label="Weekly activity"></div>
@@ -1703,15 +1665,12 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
               <i class="ph ph-user"></i> Take today off
             </button>
           </section>
-
-          <!-- JOURNEY -->
           <section class="card journey-card">
             <div class="journey-title">
               <h2>60-day journey</h2>
               <span class="day-count" id="sprint-day-count">Day 1 / 60</span>
             </div>
             <div class="journey-sub" id="sprint-journey-sub">—</div>
-
             <div class="phase active" id="sprint-phase-learn">
               <div class="phase-hd"><span class="phase-name">Learn</span><span class="phase-range">Day 1–35</span><span class="phase-state">In progress</span></div>
               <div class="bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
@@ -1724,7 +1683,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
               <div class="phase-hd"><span class="phase-name">Mock</span><span class="phase-range">Day 53–60</span><span class="phase-state">Upcoming</span></div>
               <div class="bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
             </div>
-
             <div class="pace">
               <span class="pace-item ok" id="sprint-pace-verdict"><i class="ph ph-check-circle"></i> <strong>On track</strong> for exam day</span>
               <span class="pace-item" id="sprint-exam-date"><i class="ph ph-calendar"></i> Exam <strong>—</strong></span>
@@ -1733,9 +1691,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- ═══════════════════════════════════════════════════════
-           WEEKLY
-           ═══════════════════════════════════════════════════════ -->
+      <!-- WEEKLY -->
       <div class="view" id="view-weekly">
         <div class="pg-head" data-head="weekly"></div>
         <div class="card" id="weekly-sets-outer" style="display:none">
@@ -1751,9 +1707,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- ═══════════════════════════════════════════════════════
-           HOURLY CHALLENGE
-           ═══════════════════════════════════════════════════════ -->
+      <!-- HOURLY -->
       <div class="view" id="view-hourly">
         <div class="pg-head" data-head="hourly"></div>
         <div class="card">
@@ -1774,9 +1728,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- ═══════════════════════════════════════════════════════
-           QUESTION OF THE DAY
-           ═══════════════════════════════════════════════════════ -->
+      <!-- SUBJ-QOTD -->
       <div class="view" id="view-subj-qotd">
         <div class="pg-head" data-head="subj-qotd"></div>
         <div id="syllabus-mock-slot"></div>
@@ -1785,7 +1737,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- MY SUBMISSIONS -->
+      <!-- SUBJ-MINE -->
       <div class="view" id="view-subj-mine">
         <div class="pg-head" data-head="subj-mine"></div>
         <div class="card" style="margin-bottom:var(--sp-3)">
@@ -1799,7 +1751,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- MODEL ANSWERS & NOTES -->
+      <!-- STUDY DOCS -->
       <div class="view" id="view-studydocs">
         <div class="pg-head" data-head="studydocs"></div>
         <div class="card sd-bar" style="margin-bottom:var(--sp-3)">
@@ -1811,7 +1763,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- FULL PAPER -->
+      <!-- SUBJ-EXAM -->
       <div class="view" id="view-subj-exam">
         <div class="pg-head" data-head="subj-exam"></div>
         <div id="subj-exam-body">
@@ -1835,7 +1787,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- BROWSE QUESTIONS -->
+      <!-- SUBJ-LIST -->
       <div class="view" id="view-subj-list">
         <div class="pg-head" data-head="subj-list"></div>
         <div class="toolbar">
@@ -1845,7 +1797,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         <div id="subj-list-body"><div class="card"><div class="empty"><div class="empty-i"><i class="ph ph-circle-notch"></i></div><p>Loading…</p></div></div></div>
       </div>
 
-      <!-- CHAPTERS (online study) -->
+      <!-- ONLINE -->
       <div class="view" id="view-online">
         <div class="pg-head" data-head="online"></div>
         <div id="on-offline-warn" class="banner banner-danger" style="display:none">
@@ -1883,7 +1835,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- OPEN A FILE -->
+      <!-- LOCAL -->
       <div class="view" id="view-local">
         <div class="pg-head" data-head="local"></div>
         <div class="card">
@@ -1903,7 +1855,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- MIXED PRACTICE -->
+      <!-- PSYCHO -->
       <div class="view" id="view-psycho">
         <div class="pg-head" data-head="psycho"></div>
         <div class="psy-hero">
@@ -1929,7 +1881,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- SAVED -->
+      <!-- BOOKMARKS -->
       <div class="view" id="view-bookmarks">
         <div class="pg-head" data-head="bookmarks"></div>
         <div class="card">
@@ -1946,7 +1898,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- WEAK SPOTS -->
+      <!-- WRONG -->
       <div class="view" id="view-wrong">
         <div class="pg-head" data-head="wrong"></div>
         <div class="tabbar" id="ws-tabs" role="tablist">
@@ -1979,7 +1931,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
           <button data-tab="heatmap" role="tab">Trends</button>
           <button data-tab="coverage" role="tab">Chapters</button>
         </div>
-
         <div id="prog-tab-accuracy">
           <div class="g4" id="prog-stats" style="margin-bottom:var(--sp-4)"></div>
           <div id="predict-card-2" style="margin-bottom:var(--sp-4)"></div>
@@ -1992,7 +1943,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
           <div id="badges-strip-2"></div>
           <div id="forecast-slot-2"></div>
         </div>
-
         <div id="prog-tab-heatmap" hidden>
           <section class="card" id="insights-card" style="margin-bottom:var(--sp-4)"></section>
           <div id="heatmap-body"></div>
@@ -2008,7 +1958,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
             </div>
           </div>
         </div>
-
         <div id="prog-tab-coverage" hidden>
           <div class="card">
             <div class="card-hd"><h3>Accuracy by chapter</h3></div>
@@ -2026,7 +1975,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- DOWNLOADS -->
+      <!-- OFFLINE -->
       <div class="view" id="view-offline">
         <div class="pg-head" data-head="offline"></div>
         <div class="card">
@@ -2059,7 +2008,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         <div class="card"><div class="card-hd"><h3>Saved sets</h3></div><div id="cache-list"></div></div>
       </div>
 
-      <!-- DATA & BACKUP -->
+      <!-- DATA -->
       <div class="view" id="view-data">
         <div class="pg-head" data-head="data"></div>
         <details class="grp" open>
@@ -2075,7 +2024,6 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
               </div>
             </div>
             
-            <!-- NEW: Security Card (Logout other devices) -->
             <div class="card">
               <div class="card-hd"><h3>Security</h3><span class="ctag tr">Careful</span></div>
               <p class="t-callout mb3">If you've signed in on another device or a shared computer, you can sign out of all other sessions. Your current session will remain active.</p>
@@ -2173,7 +2121,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </details>
       </div>
 
-      <!-- STUDY PLAN / TIMETABLE -->
+      <!-- TIMETABLE -->
       <div class="view" id="view-timetable">
         <div class="pg-head" data-head="timetable"></div>
         <div class="g2-grid" style="align-items:start">
@@ -2228,7 +2176,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         </div>
       </div>
 
-      <!-- QUIZ (flashcard + exam + result) -->
+      <!-- QUIZ -->
       <div id="quiz-wrap" style="display:none">
         <div id="fc-wrap">
           <div class="qbar">
@@ -2344,7 +2292,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
   <div class="bn-sheet-grid" id="bn-sheet-grid"></div>
 </div>
 
-<!-- HOME CUSTOMIZE SHEET (new) -->
+<!-- HOME CUSTOMIZE SHEET -->
 <div class="mbg" id="mbg-home-customize" role="dialog" aria-modal="true" aria-labelledby="home-customize-title" data-on-click="event.target===this&&HOME_LAYOUT.closeCustomize()">
   <div class="mbox" data-on-click="event.stopPropagation()">
     <div class="mhd">
@@ -2360,7 +2308,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
         <button class="home-customize-preset" type="button" data-on-click="HOME_LAYOUT.applyPreset('all')">Everything<small>All cards on</small></button>
       </div>
       <div class="section-head"><h2>Cards</h2><span class="hint">Tap ↑ ↓ to reorder</span></div>
-      <div class="home-customize-list" id="home-customize-list"><!-- rendered by HOME_LAYOUT.openCustomize() --></div>
+      <div class="home-customize-list" id="home-customize-list"></div>
       <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-4)">
         <button class="btn btn-quiet" style="flex:1" type="button" data-on-click="HOME_LAYOUT.reset()">Reset</button>
         <button class="btn btn-solid" style="flex:1" type="button" data-on-click="HOME_LAYOUT.closeCustomize()">Done</button>
@@ -2384,8 +2332,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
-     SCRIPTS — handoff Step 1 block (new split architecture)
-     Load order matters. Do not add/remove without a specific reason.
+     SCRIPTS
      ═══════════════════════════════════════════════════════════════════════ -->
 <script src="tools/vendor/confetti/confetti.browser.js" defer></script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -2425,7 +2372,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
 <script src="js/data/subjective-data.js"></script>
 <script src="js/data/content-index.js"></script>
 
-<!-- app modules (unchanged from before) -->
+<!-- app modules -->
 <script src="js/features/pdf-viewer.js"></script>
 <!-- features -->
 <script src="js/features/pwa.js"></script>
@@ -2463,8 +2410,8 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
 <script src="js/features/hourly.js"></script>
 <script src="js/features/syllabus.js"></script>
 <script src="js/features/home-ui.js"></script>
-<script src="js/features/home-layout.js"></script><!-- NEW: home grid + customize -->
-<script src="js/features/sprint.js"></script><!-- NEW: 60-day sprint page -->
+<script src="js/features/home-layout.js"></script>
+<script src="js/features/sprint.js"></script>
 <script src="js/features/shell-ui.js"></script>
 <script src="js/features/shell-hooks.js"></script>
 <script src="js/features/subj-bank.js"></script>
@@ -2475,6 +2422,10 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
 <script src="js/features/subj-exam.js"></script>
 <script src="js/features/subj-list.js"></script>
 <script src="js/features/subj-public.js"></script>
+
+<!-- NEW: Real integrations for Push and Drive -->
+<script src="js/features/push.js"></script>
+<script src="js/features/cloud-drive.js"></script>
 
 <!-- tail -->
 <script src="js/report/userreport.js"></script>

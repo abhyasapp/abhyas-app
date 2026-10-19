@@ -1,28 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════════════
    js/features/pdf-viewer.js — the shared in-app PDF viewer.
    Two modes: view-only (student) and annotate (admin marking).
-
-   Depends on (call-time only, all optional):
-     window.pdfjsLib   — renders pages to canvas (falls back to <embed> if absent)
-     window.PDFLib     — produces overlays (annotation is disabled if absent)
-
-   Public API:
-     PDFVIEW.open({ title, load, filename?, annotate? })  → Promise<void>
-        load()      → { base64, filename }
-        annotate?   → { saveLabel, autosave, onSave(overlays, info) }
-        overlays[].page    = page number (1-indexed)
-        overlays[].dataUrl = PNG data URL, page-sized
-        info               = { bytes: Uint8Array, pageCount: number }
-
-     PDFVIEW.close()
-     PDFVIEW.isOpen()            → boolean
-     PDFVIEW.isAnnotating()      → boolean
-     PDFVIEW.hasUnsavedMarks()   → boolean   (used by admin beforeunload)
    ═══════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const MAX_RENDER_DIM = 2000; // px; caps canvas memory on long papers
+  const MAX_RENDER_DIM = 2000;
 
   const state = {
     open: false,
@@ -37,18 +20,22 @@
     nextBtn: null,
     saveBtn: null,
     closeBtn: null,
-    ctx: null,          // { title, load, filename, annotate }
-    doc: null,          // pdfjs document (when available)
-    bytes: null,        // Uint8Array of the original PDF
+    ctx: null,
+    doc: null,
+    bytes: null,
     pageCount: 1,
     current: 1,
     renderTask: null,
     drawing: false,
     lastPoint: null,
-    overlays: new Map()  // page → canvas (offscreen, full page size)
+    overlays: new Map(),
+    scale: 1,
+    translateX: 0,
+    translateY: 0,
+    touchStartDist: 0,
+    touchStartScale: 1
   };
 
-  /* ── DOM construction ─────────────────────────────────────────────── */
   function _build() {
     if (state.root) return;
     const root = document.createElement('div');
@@ -77,12 +64,16 @@
       '</div>' +
       '<div id="pdfview-body" style="flex:1;overflow:auto;display:flex;' +
         'align-items:flex-start;justify-content:center;padding:1rem">' +
-        '<div id="pdfview-wrap" style="position:relative;max-width:100%">' +
-          '<canvas id="pdfview-canvas" style="display:block;max-width:100%;height:auto"></canvas>' +
+        '<div id="pdfview-wrap" style="position:relative;max-width:100%;transform-origin:top center;">' +
+          '<canvas id="pdfview-canvas" style="display:block;max-width:100%;height:auto;box-shadow:0 4px 12px rgba(0,0,0,.5)"></canvas>' +
           '<canvas id="pdfview-ink" style="position:absolute;inset:0;width:100%;' +
             'height:100%;pointer-events:none;touch-action:none"></canvas>' +
         '</div>' +
-      '</div>';
+      '</div>' +
+      '<div id="pdfview-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);z-index:10">' +
+        '<div style="width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:#f59e0b;border-radius:50%;animation:spin 1s linear infinite"></div>' +
+      '</div>' +
+      '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
 
     document.body.appendChild(root);
 
@@ -102,12 +93,45 @@
     state.saveBtn.addEventListener('click', _save);
     document.addEventListener('keydown', _onKey);
 
-    /* Ink drawing for annotate mode. */
+    // Ink drawing
     state.ink.addEventListener('pointerdown', _inkStart);
     state.ink.addEventListener('pointermove', _inkMove);
     state.ink.addEventListener('pointerup', _inkEnd);
     state.ink.addEventListener('pointercancel', _inkEnd);
     state.ink.addEventListener('pointerleave', _inkEnd);
+
+    // Pinch to Zoom
+    state.canvasWrap.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        state.touchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        state.touchStartScale = state.scale;
+      }
+    }, { passive: true });
+    
+    state.canvasWrap.addEventListener('touchmove', e => {
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        const newScale = Math.max(1, Math.min(3, state.touchStartScale * (dist / state.touchStartDist)));
+        state.scale = newScale;
+        state.canvasWrap.style.transform = `scale(${state.scale})`;
+      }
+    }, { passive: true });
+    
+    state.canvasWrap.addEventListener('touchend', () => {
+      state.touchStartDist = 0;
+      state.touchStartScale = state.scale;
+    }, { passive: true });
+
+    // Double tap to zoom
+    let lastTap = 0;
+    state.canvasWrap.addEventListener('touchend', e => {
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        state.scale = state.scale > 1 ? 1 : 2;
+        state.canvasWrap.style.transform = `scale(${state.scale})`;
+      }
+      lastTap = now;
+    }, { passive: true });
   }
 
   function _onKey(e) {
@@ -117,7 +141,6 @@
     else if (e.key === 'ArrowRight') { e.preventDefault(); _goTo(state.current + 1); }
   }
 
-  /* ── Ink overlay helpers ─────────────────────────────────────────── */
   function _ensureOverlay(n) {
     if (state.overlays.has(n)) return state.overlays.get(n);
     const src = state.canvas;
@@ -160,8 +183,11 @@
   function _localPoint(e) {
     const c = state.canvas;
     const r = c.getBoundingClientRect();
-    const x = (e.clientX - r.left) * (c.width / r.width);
-    const y = (e.clientY - r.top) * (c.height / r.height);
+    // Adjust for scale
+    const scaleX = c.width / (r.width / state.scale);
+    const scaleY = c.height / (r.height / state.scale);
+    const x = (e.clientX - r.left) * scaleX;
+    const y = (e.clientY - r.top) * scaleY;
     return { x, y };
   }
 
@@ -178,12 +204,16 @@
     if (overlay) cx.drawImage(overlay, 0, 0);
   }
 
-  /* ── PDF rendering ───────────────────────────────────────────────── */
   function _hasPdfJs() { return typeof window.pdfjsLib !== 'undefined'; }
 
   async function _renderPage(n) {
     if (!state.doc) return;
     if (n < 1 || n > state.pageCount) return;
+    
+    // Reset zoom on page change
+    state.scale = 1;
+    state.canvasWrap.style.transform = 'scale(1)';
+    
     state.current = n;
     state.pageLabel.textContent = n + ' / ' + state.pageCount;
     state.prevBtn.disabled = n <= 1;
@@ -206,13 +236,14 @@
     try { await state.renderTask.promise; } catch (e) { /* cancelled */ }
     state.renderTask = null;
 
-    /* Size the ink canvas to match, then repaint any marks already on this page. */
     _paintInk();
   }
 
-  function _goTo(n) { _renderPage(n); }
+  function _goTo(n) { 
+    if (navigator.vibrate) navigator.vibrate(5);
+    _renderPage(n); 
+  }
 
-  /* ── Public API ──────────────────────────────────────────────────── */
   const PDFVIEW = {
     async open(opts) {
       if (!opts || typeof opts.load !== 'function') {
@@ -227,6 +258,8 @@
       state.current = 1;
       state.doc = null;
       state.bytes = null;
+      state.scale = 1;
+      state.canvasWrap.style.transform = 'scale(1)';
 
       state.root.querySelector('#pdfview-title').textContent = opts.title || 'PDF';
       state.saveBtn.style.display = state.annotating ? '' : 'none';
@@ -237,8 +270,10 @@
       state.root.style.display = 'flex';
       state.open = true;
       document.body.style.overflow = 'hidden';
+      
+      const loader = document.getElementById('pdfview-loading');
+      if (loader) loader.style.display = 'flex';
 
-      /* Fetch the PDF bytes. */
       let payload;
       try {
         payload = await opts.load();
@@ -253,17 +288,16 @@
         return;
       }
 
-      /* base64 → Uint8Array */
       const bin = atob(payload.base64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       state.bytes = bytes;
 
-      /* pdfjs render, or <embed> fallback. */
       if (_hasPdfJs()) {
         try {
           state.doc = await window.pdfjsLib.getDocument({ data: bytes.slice() }).promise;
           state.pageCount = state.doc.numPages;
+          if (loader) loader.style.display = 'none';
           await _renderPage(1);
           return;
         } catch (e) {
@@ -271,7 +305,7 @@
         }
       }
 
-      /* Fallback: <embed> — no annotation, but the student still sees the paper. */
+      // Fallback
       state.annotating = false;
       state.saveBtn.style.display = 'none';
       state.ink.style.pointerEvents = 'none';
@@ -288,6 +322,7 @@
       state.pageLabel.textContent = '';
       state.prevBtn.disabled = state.nextBtn.disabled = true;
       state._fallbackUrl = url;
+      if (loader) loader.style.display = 'none';
     },
 
     close() {
@@ -295,7 +330,6 @@
       if (state.annotating && state.unsaved) {
         if (!confirm('You have unsaved marks. Close without saving?')) return;
       }
-      /* Restore canvases in case fallback swapped in an <embed>. */
       if (state._fallbackUrl) {
         try { URL.revokeObjectURL(state._fallbackUrl); } catch (e) {}
         state._fallbackUrl = null;
@@ -327,7 +361,6 @@
     hasUnsavedMarks() { return state.unsaved; }
   };
 
-  /* ── Save handler (annotate mode only) ───────────────────────────── */
   async function _save() {
     if (!state.annotating || !state.ctx || !state.ctx.annotate || !state.bytes) return;
     if (typeof window.PDFLib === 'undefined') {

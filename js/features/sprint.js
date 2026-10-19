@@ -1,14 +1,5 @@
 /* ===================================================================
- * js/features/sprint.js
- *
- * The rich 60-day sprint page + Home strip. Exposed as SPRINT_PAGE so it
- * never collides with js/features/today-plan.js which defines window.SPRINT.
- *
- * Storage keys:
- *   abhyas_sprint_start    ISO date "2026-10-01"
- *   abhyas_sprint_exam     ISO date "2027-01-15"
- *   abhyas_sprint_rest     JSON array of ISO dates
- *   abhyas_sprint_off      JSON array of ISO dates (taken off)
+ * js/features/sprint.js — 60-day sprint page + Home strip.
  * =================================================================== */
 (function () {
   'use strict';
@@ -131,7 +122,6 @@
         else if (s.type === 'drill' || s.mode === 'drill' || s.scope === 'drill') drillDone += count;
         else newDone += count;
         
-        // Safely assume s.time / s.dur is in seconds, convert to minutes
         const sec = Number(s.time || s.dur || s.duration || s.elapsed || 0);
         timeDoneMins += Math.round(sec / 60); 
       }
@@ -265,6 +255,7 @@
     _setHtml('sprint-today-cap',
       '<strong>' + doneN + ' of 4</strong> targets done<br>' +
       '<span class="streak"><i class="ph ph-flame"></i> <span id="sprint-streak">' + _streak() + '</span>-day streak</span>');
+    
     const bar = document.querySelector('#sprint-today-bar > i');
     if (bar) bar.style.width = pct + '%';
     const barHost = document.getElementById('sprint-today-bar');
@@ -294,6 +285,7 @@
     _setText('sprint-day-count', 'Day ' + day + ' / 60');
     _setText('sprint-journey-sub',
       daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' to exam · finishes ' + _fmtDate(exam));
+    
     PHASES.forEach(p => {
       const el = document.getElementById('sprint-phase-' + p.name.toLowerCase());
       if (!el) return;
@@ -305,6 +297,7 @@
         progress = Math.round((day - p.from + 1) / (p.to - p.from + 1) * 100);
         state = 'In progress';
       } else el.classList.add('future');
+      
       const stateEl = el.querySelector('.phase-state');
       if (stateEl) stateEl.textContent = state;
       const fill = el.querySelector('.bar > i');
@@ -323,6 +316,7 @@
         ? '<i class="ph ph-check-circle"></i> <strong>On track</strong> for exam day'
         : '<i class="ph ph-warning"></i> <strong>Behind</strong> — catch up today';
     }
+    
     const examEl = document.getElementById('sprint-exam-date');
     if (examEl) examEl.innerHTML = '<i class="ph ph-calendar"></i> Exam <strong>' + _fmtDate(exam) + '</strong>';
   }
@@ -330,21 +324,25 @@
   function _renderTodayList(t) {
     const host = document.getElementById('sprint-today-list');
     if (!host) return;
+    
     const rows = [
       { icon: 'ph-chart-line', cls: '',        title: 'New questions', sub: t.new.target + ' to go · about ' + _fmtMinutes(Math.round(t.new.target * 0.9)), label: 'Start',  click: "UI.go('online')" },
       { icon: 'ph-arrows-clockwise', cls: 'review', title: 'Review due', sub: t.reviews.target + ' question' + (t.reviews.target === 1 ? '' : 's') + ' · spaced repetition', label: 'Review', click: "REV.start('wr','flashcard',true)" },
       { icon: 'ph-lightning', cls: 'drill', title: 'Drill', sub: t.drill.target + ' from your weak chapters', label: 'Drill', click: "PSY.start('weak')" },
     ];
-    host.innerHTML = rows.map(r =>
-      '<div class="list-row">' +
-        '<div class="row-ic ' + r.cls + '"><i class="ph ' + r.icon + '"></i></div>' +
-        '<div class="row-body">' +
-          '<div class="row-title">' + _esc(r.title) + '</div>' +
-          '<div class="row-sub">' + _esc(r.sub) + '</div>' +
-        '</div>' +
-        '<button class="row-btn' + (r.label === 'Review' ? ' ghost' : '') + '" type="button" data-on-click="' + r.click + '">' + _esc(r.label) + '</button>' +
-      '</div>'
-    ).join('');
+    
+    requestAnimationFrame(() => {
+      host.innerHTML = rows.map(r =>
+        '<div class="list-row">' +
+          '<div class="row-ic ' + r.cls + '"><i class="ph ' + r.icon + '"></i></div>' +
+          '<div class="row-body">' +
+            '<div class="row-title">' + _esc(r.title) + '</div>' +
+            '<div class="row-sub">' + _esc(r.sub) + '</div>' +
+          '</div>' +
+          '<button class="row-btn' + (r.label === 'Review' ? ' ghost' : '') + '" type="button" data-on-click="' + r.click + '">' + _esc(r.label) + '</button>' +
+        '</div>'
+      ).join('');
+    });
   }
 
   function _renderWeek() {
@@ -352,19 +350,23 @@
     if (!host) return;
     const days = _studyDaysLast7();
     let done = 0, possible = 0;
-    host.innerHTML = days.map(d => {
-      const cls = ['day'];
-      if (d.today) cls.push('today');
-      if (d.studied) { cls.push('full'); done++; possible++; }
-      else if (d.rest) { cls.push('rest'); }
-      else if (d.off)  { cls.push('off'); }
-      else if (d.future) {}
-      else { possible++; }
-      return '<div class="' + cls.join(' ') + '">' +
-        '<div class="day-lbl">' + d.lbl + '</div>' +
-        '<div class="day-dot"></div>' +
-      '</div>';
-    }).join('');
+    
+    requestAnimationFrame(() => {
+      host.innerHTML = days.map(d => {
+        const cls = ['day'];
+        if (d.today) cls.push('today');
+        if (d.studied) { cls.push('full'); done++; possible++; }
+        else if (d.rest) { cls.push('rest'); }
+        else if (d.off)  { cls.push('off'); }
+        else if (d.future) {}
+        else { possible++; }
+        return '<div class="' + cls.join(' ') + '">' +
+          '<div class="day-lbl">' + d.lbl + '</div>' +
+          '<div class="day-dot"></div>' +
+        '</div>';
+      }).join('');
+    });
+    
     const hint = document.getElementById('sprint-week-hint');
     if (hint) hint.textContent = done + ' of ' + possible + ' days';
   }

@@ -4,8 +4,6 @@
 // (esc, escAttrJs), core/toast.js (toast), core/scope.js (fidFromUid),
 // core/study-docs.js (studyDocsForChapter, subjChapterName, STUDYDOC_LABELS),
 // features/study-docs.js (STUDYDOCS).
-// PDFVIEW, ABHYAS_CONFIG, SUBJ, SUBJ_BUILDER, SUBJ_QUEUE, ChapterData are
-// referenced at call time only.
 
 window.MY_SUBJ = {
   _loading: false,
@@ -32,7 +30,9 @@ window.MY_SUBJ = {
     if (this._loading) return;
     this._loading = true;
 
-    box.innerHTML = '<div class="card"><div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div></div>';
+    box.innerHTML = `<div class="card">
+      <div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div>
+    </div>`;
 
     const user = this._user();
     const url = this._url();
@@ -76,6 +76,7 @@ window.MY_SUBJ = {
       });
       const res = await r.json();
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not load your submissions.');
+      
       this._items = (res.submissions || []).slice().sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
       this._loaded = true;
       this.render();
@@ -120,11 +121,14 @@ window.MY_SUBJ = {
         '</div></div>';
       return;
     }
-    box.innerHTML = this._items.map(s => this._renderCard(s)).join('');
-    if (!this._modelChecked && typeof STUDYDOCS !== 'undefined' && this._items.some(s => s.chapterId)) {
-      this._modelChecked = true;
-      STUDYDOCS.ensureLoaded().then(() => { if (STUDYDOCS.docs.length) this.render(); });
-    }
+    
+    requestAnimationFrame(() => {
+      box.innerHTML = this._items.map(s => this._renderCard(s)).join('');
+      if (!this._modelChecked && typeof STUDYDOCS !== 'undefined' && this._items.some(s => s.chapterId)) {
+        this._modelChecked = true;
+        STUDYDOCS.ensureLoaded().then(() => { if (STUDYDOCS.docs.length) this.render(); });
+      }
+    });
   },
 
   _renderCard(s){
@@ -189,8 +193,6 @@ window.MY_SUBJ = {
     '</div>';
   },
 
-  /* The backend endpoint is getMySubmissionPdf — it streams the bytes of a
-     submission you own, so the Drive files themselves stay private. */
   async openPdf(id, label){
     const user = this._user();
     const url = this._url();
@@ -208,8 +210,6 @@ window.MY_SUBJ = {
       return res;
     };
 
-    /* The in-app viewer keeps the student inside the app, is not affected by
-       pop-up blockers, and reads properly on a phone. */
     if (window.PDFVIEW) {
       PDFVIEW.open({
         title: label || 'My answer paper',
@@ -306,21 +306,22 @@ window.SUBJ_BUILDER = {
       this._populated = true;
       return;
     }
-    const byGroup = {};
-    refs.forEach(r => { const g = r.group || 'A'; (byGroup[g] = byGroup[g] || []).push(r); });
-    box.innerHTML = Object.keys(byGroup).sort().map(gk =>
-      '<div class="t-cap" style="font-weight:700;padding:.35rem .5rem .1rem">Group ' + esc(gk) + '</div>' +
-      byGroup[gk].map(r =>
-        '<label class="ch-item" style="cursor:pointer">' +
-          '<input type="checkbox" class="eb-ch" value="' + window.escAttrJs(r.chapterId) + '" checked>' +
-          '<span class="ch-name" style="color:var(--ink)">' + esc(r.name) + '</span>' +
-        '</label>'
-      ).join('')
-    ).join('');
-    this._populated = true;
+    
+    requestAnimationFrame(() => {
+      const byGroup = {};
+      refs.forEach(r => { const g = r.group || 'A'; (byGroup[g] = byGroup[g] || []).push(r); });
+      box.innerHTML = Object.keys(byGroup).sort().map(gk =>
+        '<div class="t-cap" style="font-weight:700;padding:.35rem .5rem .1rem">Group ' + esc(gk) + '</div>' +
+        byGroup[gk].map(r =>
+          '<label class="ch-item" style="cursor:pointer">' +
+            '<input type="checkbox" class="eb-ch" value="' + window.escAttrJs(r.chapterId) + '" checked>' +
+            '<span class="ch-name" style="color:var(--ink)">' + esc(r.name) + '</span>' +
+          '</label>'
+        ).join('')
+      ).join('');
+      this._populated = true;
+    });
   },
-  /* subjective.js rate-limits a custom paper to one every six hours. Showing
-     the remaining time beats letting someone press Build and get refused. */
   _updateCooldownUI(){
     const btn = $('exam-builder-go');
     const note = $('exam-builder-note');

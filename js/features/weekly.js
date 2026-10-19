@@ -94,10 +94,12 @@ const WEEKLY = {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action, username: S.user.username, token: S.user.token })
       }, 15000).then(r => r.json()).catch(() => ({ success: false }));
+      
       const [setsRes, attemptsRes] = await Promise.all([
         post('listWeeklySets'),
         post('getMyWeeklyAttempts')
       ]);
+      
       if (setsRes.success) this.sets = setsRes.sets || [];
       if (attemptsRes.success && Array.isArray(attemptsRes.attempts)) {
         for (const a of attemptsRes.attempts) {
@@ -130,53 +132,57 @@ const WEEKLY = {
     const outer = document.getElementById('weekly-sets-outer');
     const box = document.getElementById('weekly-sets-card');
     if (!box || !outer) return;
+    
     if (!this.sets.length) { outer.style.display = 'none'; box.innerHTML = ''; return; }
     outer.style.display = '';
-    box.innerHTML = this.sets.map(s => {
-      const attempted = this.attempts[s.id];
-      const idJson = JSON.stringify(String(s.id));
+    
+    requestAnimationFrame(() => {
+      box.innerHTML = this.sets.map(s => {
+        const attempted = this.attempts[s.id];
+        const idJson = JSON.stringify(String(s.id));
 
-      if (!s.released) {
-        const when = s.releaseAt ? new Date(s.releaseAt) : null;
-        const whenTxt = when ? when.toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'soon';
-        return `<div class="qb-btn" style="width:100%;justify-content:flex-start;opacity:.6;cursor:default">
-          <i class="ph ph-lock-simple"></i> ${esc(s.title)} <span style="opacity:.7">— unlocks ${whenTxt}</span>
-        </div>`;
-      }
+        if (!s.released) {
+          const when = s.releaseAt ? new Date(s.releaseAt) : null;
+          const whenTxt = when ? when.toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'soon';
+          return `<div class="qb-btn" style="width:100%;justify-content:flex-start;opacity:.6;cursor:default">
+            <i class="ph ph-lock-simple"></i> ${esc(s.title)} <span style="opacity:.7">— unlocks ${whenTxt}</span>
+          </div>`;
+        }
 
-      if (attempted) {
-        const lastRetake = this._loadRetakes()[s.id];
-        const shown = lastRetake || attempted;
-        const isRetake = !!lastRetake;
-        const canRetake = s.status !== 'archived';
-        const lkLast = this.loksewaScore(shown);
-        const lkOff  = this.loksewaScore(attempted);
-        const lastPct = lkLast ? lkLast.pct : (Number(shown.pct) || 0);
-        const offPct  = lkOff  ? lkOff.pct  : (Number(attempted.pct) || 0);
-        const tag = isRetake
-          ? '↻ Last practice ' + lastPct + '% · Official ' + offPct + '%'
-          : '✓ ' + lastPct + '%' + (attempted.standing ? ' · Rank ' + attempted.standing.rank + '/' + attempted.standing.total : '');
-        const hint = canRetake ? ' · Tap to review or retest' : ' · Tap to review';
-        return `<div class="qb-btn ok" style="cursor:pointer;width:100%;justify-content:space-between;align-items:center;opacity:.92" data-on-click='WEEKLY.open(${idJson})'>
-          <span><i class="ph ph-check-circle"></i> ${esc(s.title)}${s.chapterLabel?` <span style="opacity:.6">— ${esc(s.chapterLabel)}</span>`:''}</span>
-          <span class="ctag tg" style="font-size:.62rem;font-weight:700">${tag}${hint}</span>
-        </div>`;
-      }
+        if (attempted) {
+          const lastRetake = this._loadRetakes()[s.id];
+          const shown = lastRetake || attempted;
+          const isRetake = !!lastRetake;
+          const canRetake = s.status !== 'archived';
+          const lkLast = this.loksewaScore(shown);
+          const lkOff  = this.loksewaScore(attempted);
+          const lastPct = lkLast ? lkLast.pct : (Number(shown.pct) || 0);
+          const offPct  = lkOff  ? lkOff.pct  : (Number(attempted.pct) || 0);
+          const tag = isRetake
+            ? '↻ Last practice ' + lastPct + '% · Official ' + offPct + '%'
+            : '✓ ' + lastPct + '%' + (attempted.standing ? ' · Rank ' + attempted.standing.rank + '/' + attempted.standing.total : '');
+          const hint = canRetake ? ' · Tap to review or retest' : ' · Tap to review';
+          return `<div class="qb-btn ok" style="cursor:pointer;width:100%;justify-content:space-between;align-items:center;opacity:.92" data-on-click='WEEKLY.open(${idJson})'>
+            <span><i class="ph ph-check-circle"></i> ${esc(s.title)}${s.chapterLabel?` <span style="opacity:.6">— ${esc(s.chapterLabel)}</span>`:''}</span>
+            <span class="ctag tg" style="font-size:.62rem;font-weight:700">${tag}${hint}</span>
+          </div>`;
+        }
 
-      const open = this.examOpen(s);
-      const closeAt = this.examCloseAt(s);
-      if (open) {
-        return `<div class="qb-btn ok" style="cursor:pointer;width:100%;justify-content:space-between;align-items:center" data-on-click='WEEKLY.open(${idJson})'>
+        const open = this.examOpen(s);
+        const closeAt = this.examCloseAt(s);
+        if (open) {
+          return `<div class="qb-btn ok" style="cursor:pointer;width:100%;justify-content:space-between;align-items:center" data-on-click='WEEKLY.open(${idJson})'>
+            <span><i class="ph ph-note-pencil"></i> ${esc(s.title)}${s.chapterLabel?` <span style="opacity:.6">— ${esc(s.chapterLabel)}</span>`:''}</span>
+            <span class="mono" id="weekly-countdown-${esc(s.id)}" data-close="${closeAt}" style="font-size:.68rem;font-weight:700;color:var(--ros)" title="Time left — one attempt only">${fmtHMS(Math.max(0,Math.round((closeAt-Date.now())/1000)))}</span>
+          </div>`;
+        }
+
+        return `<div class="qb-btn" style="cursor:pointer;width:100%;justify-content:space-between;align-items:center;opacity:.75" data-on-click='WEEKLY.open(${idJson})'>
           <span><i class="ph ph-note-pencil"></i> ${esc(s.title)}${s.chapterLabel?` <span style="opacity:.6">— ${esc(s.chapterLabel)}</span>`:''}</span>
-          <span class="mono" id="weekly-countdown-${esc(s.id)}" data-close="${closeAt}" style="font-size:.68rem;font-weight:700;color:var(--ros)" title="Time left — one attempt only">${fmtHMS(Math.max(0,Math.round((closeAt-Date.now())/1000)))}</span>
+          <span style="font-size:.62rem;opacity:.75">Practice</span>
         </div>`;
-      }
-
-      return `<div class="qb-btn" style="cursor:pointer;width:100%;justify-content:space-between;align-items:center;opacity:.75" data-on-click='WEEKLY.open(${idJson})'>
-        <span><i class="ph ph-note-pencil"></i> ${esc(s.title)}${s.chapterLabel?` <span style="opacity:.6">— ${esc(s.chapterLabel)}</span>`:''}</span>
-        <span style="font-size:.62rem;opacity:.75">Practice</span>
-      </div>`;
-    }).join('');
+      }).join('');
+    });
   },
 
   async _loadStandings() {
@@ -210,7 +216,9 @@ const WEEKLY = {
       }, 15000);
       res = await r.json();
     } catch (e) { return 'go'; }
+    
     if (!res || !res.success) return 'go';
+    
     if (res.alreadyAttempted && res.attempt) {
       this.attempts[s.id] = res.attempt; this._saveAttempts(); this._renderHomeCard();
       toast('Already submitted. Showing your recorded result.', 4000);
@@ -248,6 +256,7 @@ const WEEKLY = {
     if (this._tickTimer) { clearInterval(this._tickTimer); this._tickTimer = null; }
     const anyCountdown = this.sets.some(s => s.released && !this.attempts[s.id] && this.examCloseAt(s) !== null);
     if (!anyCountdown) return;
+    
     this._tickTimer = setInterval(() => {
       let anyExpired = false;
       let anyLive = false;
@@ -316,6 +325,7 @@ const WEEKLY = {
 
     toast(`📝 Graded exam — one official attempt. Retests are practice only.`, 5000);
     if (await WEEKLY._startOnServer(s) === 'stop') return;
+    
     QUIZ.load(s.fileId, `weekly_${s.id}`, 'exam', s.title, {
       weeklyId: s.id, weeklyTitle: s.title, weeklyFirstAttempt: true
     });

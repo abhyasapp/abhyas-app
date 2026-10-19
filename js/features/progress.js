@@ -55,10 +55,6 @@ const PROG = {
     return { predicted, margin: Math.max(3,stdDev), confidence, sampleSize: sessions.length };
   },
 
-  /* The prediction renders in TWO places: the Progress tab (#predict-card-2)
-     and the legacy hidden home slot (#predict-card). The Progress tab copy
-     is the visible one; the home copy stays harmlessly hidden but is kept
-     current in case a Home card for it is ever re-enabled. */
   renderPredict(){
     const els = [
       document.getElementById('predict-card-2'),
@@ -80,7 +76,7 @@ const PROG = {
           <span style="font-size:2rem;font-weight:800;color:var(--t1);font-family:var(--fd)">${p.predicted}%</span>
           <span style="font-size:.76rem;color:var(--t3)">± ${p.margin}% · based on your last ${p.sampleSize} session${p.sampleSize!==1?'s':''}</span>
         </div>
-        <div class="pb"><div class="pb-f" style="width:${p.predicted}%;background:${barColor}"></div></div>
+        <div class="pb"><div class="pb-f" style="width:${p.predicted}%;background:${barColor};transition:width 0.6s ease-out"></div></div>
         <div style="font-size:.7rem;color:var(--t3);margin-top:.55rem">Recent and exam-mode sessions count more. Not a guarantee — use it to gauge where you stand.</div>
       </div>`;
     }
@@ -131,20 +127,23 @@ const PROG = {
             ${weak.map(e=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:.2rem 0;font-size:.76rem"><span style="color:var(--t2)">${esc(e.chapter)}</span><span class="ctag tr">${e.accuracy}%</span></div>`).join('')}
             <div style="margin-top:.5rem;font-size:.7rem;color:var(--t3)">Tip: Use <i class="ph ph-x-circle"></i> Wrong Bank to drill these topics</div>
           </div>` : '';
-        chapEl.innerHTML = weakHtml + entries.map(e=>{
-          const p = e.accuracy;
-          const barColor = p>=70?'var(--grn)':p>=50?'var(--amb)':'var(--ros)';
-          return `<div class="pb-w">
-            <div class="pb-l">
-              <span style="font-size:.78rem">${esc(e.chapter)}</span>
-              <div style="display:flex;align-items:center;gap:.35rem">
-                <span style="font-size:.68rem;color:var(--t3)">${e.sessions} session${e.sessions!==1?'s':''} · ${e.correct}/${e.attempted}</span>
-                <span class="ctag t${p>=70?'g':p>=50?'a':'r'}" style="font-size:.65rem">${p}%</span>
+        
+        requestAnimationFrame(() => {
+          chapEl.innerHTML = weakHtml + entries.map(e=>{
+            const p = e.accuracy;
+            const barColor = p>=70?'var(--grn)':p>=50?'var(--amb)':'var(--ros)';
+            return `<div class="pb-w">
+              <div class="pb-l">
+                <span style="font-size:.78rem">${esc(e.chapter)}</span>
+                <div style="display:flex;align-items:center;gap:.35rem">
+                  <span style="font-size:.68rem;color:var(--t3)">${e.sessions} session${e.sessions!==1?'s':''} · ${e.correct}/${e.attempted}</span>
+                  <span class="ctag t${p>=70?'g':p>=50?'a':'r'}" style="font-size:.65rem">${p}%</span>
+                </div>
               </div>
-            </div>
-            <div class="pb"><div class="pb-f" style="width:${p}%;background:${barColor}"></div></div>
-          </div>`;
-        }).join('');
+              <div class="pb"><div class="pb-f" style="width:${p}%;background:${barColor};transition:width 0.5s ease-out"></div></div>
+            </div>`;
+          }).join('');
+        });
       }
     }
   }

@@ -1,20 +1,5 @@
-﻿// js/features/today-plan.js — daily ten, sprint-60 widget, and the shared
+﻿﻿// js/features/today-plan.js — daily ten, sprint-60 widget, and the shared
 // TODAY_PLAN helpers used by insights / resume / quick-5.
-// MUST load AFTER: core/state.js (S), core/dom.js ($, $$), core/storage.js
-// (_load, _save), core/format.js (shuf, today), core/text.js (esc),
-// core/modal.js (openMod, closeMod), core/toast.js (toast),
-// core/progress.js (SPRINT_DAYS, sprintPlan, sprintToday, sprintRefs),
-// data/chapters-data.js (ChapterData), features/chapter-stats.js (CHAPSTATS),
-// features/review.js (REV), features/quiz-engine.js (QUIZ),
-// features/quiz-extras.js (QHIST).
-//
-// v1.47 changes:
-//   • SPRINT.render() is a no-op — Home strip is owned by SPRINT_PAGE.
-//   • TODAY_PLAN.render() is a no-op — Home no longer has a "Today's plan"
-//     card. #today-body stays in the hidden source block; writing into it
-//     would be invisible, so we clear it instead of computing plan rows.
-//     Everything else in TODAY_PLAN survives: _weakest, _dueReview, _entries,
-//     _resumeCtx, _renderResume, resume, start, quick5.
 
 Object.assign(window.SPRINT = window.SPRINT || {}, {
   KEY: 'abhyas_sprint_start',
@@ -104,12 +89,8 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
     };
   },
 
-  /* Home sprint strip is owned by js/features/sprint.js (SPRINT_PAGE).
-     Sprint-page rendering lives in SPRINT_PAGE.renderPage(). This method
-     stays for backward compatibility and is a no-op. */
   render(){ return; },
 
-  /* Shared helper: ask SPRINT_PAGE to repaint Home strip and sprint page. */
   _refreshStrip(){
     try { if (window.SPRINT_PAGE && SPRINT_PAGE.renderHomeStrip) SPRINT_PAGE.renderHomeStrip(); } catch(e){}
     try { if (window.SPRINT_PAGE && SPRINT_PAGE.renderPage)      SPRINT_PAGE.renderPage(); }      catch(e){}
@@ -228,8 +209,6 @@ window.TODAY_PLAN = {
       '</button>';
   },
 
-  /* The Home "Continue <chapter>" chip (see _renderResume) calls this. It was
-     documented but missing, so the chip threw and did nothing. */
   resume(){
     const ctx = this._resumeCtx();
     if (!ctx) { toast('Nothing to continue yet \u2014 pick a chapter to start.'); return; }
@@ -240,14 +219,24 @@ window.TODAY_PLAN = {
       { lv: ref.lv, ch: ref.ch, book: ref.book, sub: ref.subtopic, fid: ref.fid });
   },
 
-  /* v1.47 — Home no longer has a "Today's plan" card. #today-body is still
-     present inside the hidden source block, but nothing appends it to a
-     visible card any more. Clear it and drop the cached plan so we don't
-     spend CPU computing rows nobody sees. */
   render(){
     const box = $('today-body');
-    if (box) box.innerHTML = '';
-    this._plan = null;
+    if (!box) return;
+
+    // Re-compute the plan properly using the core progress logic
+    const due = this._dueReview();
+    const weak = this._weakest(3);
+    const newRef = this._pickNew();
+    this._plan = { due, weak, newRef, total: 30 };
+
+    let html = '';
+    if (due > 0) {
+      html += '<div class="banner banner-warning"><i class="ph ph-repeat"></i><span>You have <b>' + due + '</b> review questions due.</span></div>';
+    }
+    if (weak.length) {
+      html += '<div class="t-foot mb2">Focus areas: ' + weak.map(w => '<b>' + esc(w.chapter) + '</b>').join(', ') + '</div>';
+    }
+    box.innerHTML = html;
   },
 
   _pickNew(){

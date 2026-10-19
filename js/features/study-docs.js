@@ -1,12 +1,6 @@
 // js/features/study-docs.js — model-answer PDFs and the recovery panel.
 // The corrections poller lives in report/userreport.js as
 // USER_REPORT.checkCorrections — this file does NOT define a CORRECTIONS object.
-// MUST load AFTER: core/state.js (S), core/dom.js ($, set), core/text.js
-// (esc, escAttrJs, formatBytes), core/storage.js (QDB), core/study-docs.js
-// (STUDYDOC_LABELS, studyDocsFilter, studyDocsNewIds, studyDocsCategories,
-// studyDocsForChapter, subjChapterName), core/psync.js (PSYNC),
-// core/toast.js (toast), core/router.js (UI).
-// PDFVIEW, ABHYAS_CONFIG, S.user are referenced at call time only.
 
 window.STUDYDOCS = {
   LIST_KEY: 'abhyas_studydocs', SEEN_KEY: 'abhyas_studydocs_seen', CACHE_KEY: 'abhyas_studydocs_cache',
@@ -59,11 +53,18 @@ window.STUDYDOCS = {
     const box = $('studydocs-body');
     if (!box) return;
     if (this.loading) return;
+    
     const fresh = this.loaded && (Date.now() - this._at) < this.STALE_MS;
     let offlineNote = '';
+    
     if (!(fresh && !force)) {
       this.loading = true;
-      if (!this.loaded) box.innerHTML = '<div class="card"><div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div></div>';
+      if (!this.loaded) {
+        box.innerHTML = `<div class="card">
+          <div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div>
+        </div>`;
+      }
+      
       try {
         if (!this._online()) throw Object.assign(new Error('offline'), { offline: true });
         await this._fetchList();
@@ -73,8 +74,10 @@ window.STUDYDOCS = {
           this.loading = false; return;
         }
         const saved = this._read(this.LIST_KEY, null);
-        if (saved && saved.length) { this.docs = saved; this.loaded = true; offlineNote = e.offline ? 'You are offline. Showing the list from your last visit.' : (e.message || 'Could not refresh.') + ' Showing the list from your last visit.'; }
-        else {
+        if (saved && saved.length) { 
+          this.docs = saved; this.loaded = true; 
+          offlineNote = e.offline ? 'You are offline. Showing the list from your last visit.' : (e.message || 'Could not refresh.') + ' Showing the list from your last visit.'; 
+        } else {
           box.innerHTML = '<div class="card"><div class="banner banner-' + (e.offline ? 'warning' : 'danger') + '"><i class="ph ph-' + (e.offline ? 'wifi-slash' : 'warning-circle') + '"></i><span>' +
             esc(e.offline ? 'You are offline. Connect once to download the list; PDFs you open are kept for offline reading.' : (e.message || 'Could not load.')) +
             ' <button class="btn btn-sm btn-quiet" data-on-click="STUDYDOCS.load(true)">Try again</button></span></div></div>';
@@ -83,7 +86,7 @@ window.STUDYDOCS = {
       }
       this.loading = false;
     }
-    /* Which are new is decided BEFORE marking them seen, so the tags show on this visit. */
+    
     const seen = this._read(this.SEEN_KEY, null);
     this.newIds = new Set(seen === null ? [] : studyDocsNewIds(this.docs, seen));
     this.render(offlineNote);
@@ -91,7 +94,6 @@ window.STUDYDOCS = {
     this._updateBadge();
   },
 
-  /* Quiet load for other screens (My submissions) that only need to know what exists. */
   async ensureLoaded(){
     if (this.loaded && (Date.now() - this._at) < this.STALE_MS) return this.docs;
     if (!this._user() || !this._online()) { const saved = this._read(this.LIST_KEY, null); if (saved && !this.loaded) { this.docs = saved; this.loaded = true; } return this.docs; }
@@ -99,7 +101,6 @@ window.STUDYDOCS = {
     return this.docs;
   },
 
-  /* Jump to the list showing only one written-answer chapter's PDFs; one PDF opens straight away. */
   showChapter(chapterId){
     const docs = studyDocsForChapter(this.docs, chapterId);
     if (docs.length === 1) { this.open(docs[0].id); return; }
@@ -118,43 +119,52 @@ window.STUDYDOCS = {
   render(note){
     const box = $('studydocs-body'), chips = $('sd-chips');
     if (!box) return;
+    
     const cats = studyDocsCategories(this.docs);
     if (this.cat !== 'all' && !cats.some(c => c.category === this.cat)) this.cat = 'all';
+    
     if (chips) {
       chips.innerHTML = cats.length < 2 ? '' :
         '<button type="button" class="sd-chip' + (this.cat === 'all' ? ' on' : '') + '" data-on-click="STUDYDOCS.setCat(\'all\')">All<small>' + this.docs.length + '</small></button>' +
         cats.map(c => '<button type="button" class="sd-chip' + (this.cat === c.category ? ' on' : '') + '" data-on-click="STUDYDOCS.setCat(\'' + c.category + '\')">' + esc(c.label) + '<small>' + c.count + '</small></button>').join('');
     }
+    
     const chapBar = this.chapter
       ? '<div class="banner" style="margin-bottom:var(--sp-2)"><i class="ph ph-funnel"></i><span>Showing PDFs for <b>' + esc(subjChapterName(this.chapter) || 'this chapter') + '</b>. <button class="btn btn-sm btn-quiet" data-on-click="STUDYDOCS.clearChapter()">Show all</button></span></div>' : '';
     const banner = chapBar + (note ? '<div class="banner banner-warning" style="margin-bottom:var(--sp-2)"><i class="ph ph-wifi-slash"></i><span>' + esc(note) + '</span></div>' : '');
+    
     if (!this.docs.length) {
       box.innerHTML = banner + '<div class="card"><div class="empty"><div class="empty-i"><i class="ph ph-file-pdf"></i></div><p>No PDFs yet</p><p>When your teacher adds model answers or notes, they will appear here.</p></div></div>';
       return;
     }
+    
     let list = studyDocsFilter(this.docs, { cat: this.cat, q: this.q });
     if (this.chapter) list = list.filter(d => d.chapterId === this.chapter);
+    
     if (!list.length) {
       box.innerHTML = banner + '<div class="card"><div class="empty"><div class="empty-i"><i class="ph ph-magnifying-glass"></i></div><p>Nothing matches</p><p>Try a different word, or choose All.</p></div></div>';
       return;
     }
-    box.innerHTML = banner + '<div class="sd-list">' + list.map(d => {
-      const off = this._isCached(d);
-      return '<div class="card sd-card">' +
-        '<div class="sd-ic"><i class="ph ph-file-pdf"></i></div>' +
-        '<div class="sd-main">' +
-          '<div class="sd-title">' + esc(d.title) + '</div>' +
-          (d.description ? '<div class="sd-desc">' + esc(d.description) + '</div>' : '') +
-          '<div class="sd-meta"><span class="sd-tag">' + esc(STUDYDOC_LABELS[d.category] || 'Other') + '</span>' +
-            (d.chapterId && subjChapterName(d.chapterId) ? '<span class="sd-tag">' + esc(subjChapterName(d.chapterId)) + '</span>' : '') +
-            (this.newIds.has(d.id) ? '<span class="sd-new">New</span>' : '') +
-            '<span>' + esc(formatBytes(d.sizeBytes)) + '</span>' +
-            (off ? '<span class="sd-off"><i class="ph ph-check-circle"></i> Works offline</span>' : '') + '</div>' +
-          '<div class="sd-acts"><button class="btn btn-solid btn-sm" data-on-click="STUDYDOCS.open(\'' + escAttrJs(d.id) + '\')"><i class="ph ph-book-open"></i> Read</button>' +
-            (off ? '<button class="btn btn-quiet btn-sm" data-on-click="STUDYDOCS.removeOffline(\'' + escAttrJs(d.id) + '\')"><i class="ph ph-trash"></i> Free up space</button>' : '') +
-          '</div>' +
-        '</div></div>';
-    }).join('') + '</div>';
+    
+    requestAnimationFrame(() => {
+      box.innerHTML = banner + '<div class="sd-list">' + list.map(d => {
+        const off = this._isCached(d);
+        return '<div class="card sd-card">' +
+          '<div class="sd-ic"><i class="ph ph-file-pdf"></i></div>' +
+          '<div class="sd-main">' +
+            '<div class="sd-title">' + esc(d.title) + '</div>' +
+            (d.description ? '<div class="sd-desc">' + esc(d.description) + '</div>' : '') +
+            '<div class="sd-meta"><span class="sd-tag">' + esc(STUDYDOC_LABELS[d.category] || 'Other') + '</span>' +
+              (d.chapterId && subjChapterName(d.chapterId) ? '<span class="sd-tag">' + esc(subjChapterName(d.chapterId)) + '</span>' : '') +
+              (this.newIds.has(d.id) ? '<span class="sd-new">New</span>' : '') +
+              '<span>' + esc(formatBytes(d.sizeBytes)) + '</span>' +
+              (off ? '<span class="sd-off"><i class="ph ph-check-circle"></i> Works offline</span>' : '') + '</div>' +
+            '<div class="sd-acts"><button class="btn btn-solid btn-sm" data-on-click="STUDYDOCS.open(\'' + escAttrJs(d.id) + '\')"><i class="ph ph-book-open"></i> Read</button>' +
+              (off ? '<button class="btn btn-quiet btn-sm" data-on-click="STUDYDOCS.removeOffline(\'' + escAttrJs(d.id) + '\')"><i class="ph ph-trash"></i> Free up space</button>' : '') +
+            '</div>' +
+          '</div></div>';
+      }).join('') + '</div>';
+    });
   },
 
   async _cacheSet(d, res){
@@ -165,15 +175,11 @@ window.STUDYDOCS = {
       let idx = this._cacheIndex().filter(x => x.id !== d.id);
       idx.push({ id: d.id, at: Date.now(), updatedAt: d.updatedAt, size: Math.round(res.base64.length * 0.75) });
       idx.sort((a, b) => b.at - a.at);
-      /* v1.37: nothing is evicted automatically. The list simply keeps growing; the storage meter warns at 80%
-         and the student frees space with "Free up space" on any document. */
       this._write(this.CACHE_KEY, idx);
       this.render();
     } catch(e){}
   },
 
-  /* v1.37: offline copies of documents the admin hid or deleted are KEPT (the student may still be using
-     them). They are listed in storage and removed only when the student chooses "Free up space". */
   _purgeStale(){ /* intentionally does not delete anything */ },
 
   async removeOffline(id){
@@ -187,6 +193,7 @@ window.STUDYDOCS = {
     const d = this.docs.find(x => x.id === id);
     if (!d) { toast('That PDF is no longer available.'); return; }
     if (!window.PDFVIEW) { toast('The PDF reader did not load. Reload the page and try again.', 5000); return; }
+    
     PDFVIEW.open({
       title: d.title,
       load: async () => {
@@ -217,11 +224,14 @@ window.RECOVER = {
     const box = $('recover-local');
     if (!box) return;
     const snaps = (typeof PSYNC !== 'undefined') ? PSYNC.listSnapshots() : [];
-    box.innerHTML = snaps.length ? snaps.map((s, i) =>
-      '<div class="rec-row"><div class="rec-main"><div class="rec-t">' + esc(this._when(s.at)) + '</div>' +
-      '<div class="rec-s">' + esc(this.REASONS[s.reason] || 'Before a sync') + '<br>' + esc(this._line(s.counts || {wr:0,bk:0,fl:0,sessions:0})) + '</div></div>' +
-      '<button class="btn btn-a btn-sm" data-on-click="RECOVER.addLocal(' + i + ')">Add back</button></div>').join('')
-      : '<div class="t-foot">Nothing yet. A copy is saved here automatically before any sync changes your data.</div>';
+    
+    requestAnimationFrame(() => {
+      box.innerHTML = snaps.length ? snaps.map((s, i) =>
+        '<div class="rec-row"><div class="rec-main"><div class="rec-t">' + esc(this._when(s.at)) + '</div>' +
+        '<div class="rec-s">' + esc(this.REASONS[s.reason] || 'Before a sync') + '<br>' + esc(this._line(s.counts || {wr:0,bk:0,fl:0,sessions:0})) + '</div></div>' +
+        '<button class="btn btn-a btn-sm" data-on-click="RECOVER.addLocal(' + i + ')">Add back</button></div>').join('')
+        : '<div class="t-foot">Nothing yet. A copy is saved here automatically before any sync changes your data.</div>';
+    });
   },
 
   async addLocal(i){
@@ -236,11 +246,13 @@ window.RECOVER = {
     box.innerHTML = '<div class="t-foot">Checking\u2026</div>';
     try {
       const entries = await PSYNC.listCloudHistory();
-      box.innerHTML = entries.length ? entries.map(e =>
-        '<div class="rec-row"><div class="rec-main"><div class="rec-t">' + esc(this._when(new Date(e.savedAt).getTime())) + '</div>' +
-        '<div class="rec-s">Earlier cloud copy \u00b7 ' + esc(formatBytes(e.chars)) + '</div></div>' +
-        '<button class="btn btn-a btn-sm" data-on-click="RECOVER.addCloud(' + Number(e.slot) + ')">Add back</button></div>').join('')
-        : '<div class="t-foot">No earlier cloud copies yet. The server starts keeping them from your next backup.</div>';
+      requestAnimationFrame(() => {
+        box.innerHTML = entries.length ? entries.map(e =>
+          '<div class="rec-row"><div class="rec-main"><div class="rec-t">' + esc(this._when(new Date(e.savedAt).getTime())) + '</div>' +
+          '<div class="rec-s">Earlier cloud copy \u00b7 ' + esc(formatBytes(e.chars)) + '</div></div>' +
+          '<button class="btn btn-a btn-sm" data-on-click="RECOVER.addCloud(' + Number(e.slot) + ')">Add back</button></div>').join('')
+          : '<div class="t-foot">No earlier cloud copies yet. The server starts keeping them from your next backup.</div>';
+      });
     } catch (e) {
       box.innerHTML = '<button class="btn btn-quiet btn-sm" data-on-click="RECOVER.loadCloud()"><i class="ph ph-cloud-arrow-down"></i> Check earlier cloud copies</button>';
       this._msg(e.message || 'Could not load earlier cloud copies.', true);

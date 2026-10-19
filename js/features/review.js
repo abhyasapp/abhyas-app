@@ -176,91 +176,111 @@ const REV = {
   renderList(kind) {
     let arr = REV._store(kind);
     REV._loadFilters();
+    
     const _inputId = kind === 'bk' ? 'bk-search' : kind === 'fl' ? 'fl-search' : 'wr-search';
     const _input = document.getElementById(_inputId);
     if (_input && _input.value !== REV._filters[kind]) _input.value = REV._filters[kind];
+    
     const filter = this._filters[kind] || '';
     if (filter) arr = arr.filter(q => this._matches(q, filter));
     if (kind === 'wr') REV._updateMasteredBtn();
+    
     const el = document.getElementById(REV._listEl(kind));
     if (!el) return;
+    
     if (!arr.length) {
       const copy = kind === 'bk'
         ? { i: '<i class="ph ph-star"></i>', t: 'No bookmarks yet', s: 'Tap the star on any question while studying to save it here.' }
         : kind === 'fl'
         ? { i: '<i class="ph ph-flag"></i>', t: 'No flagged questions yet', s: 'Tap the flag on a question you want to come back to.' }
         : { i: '<i class="ph ph-x-circle"></i>', t: 'No wrong answers yet', s: 'Questions you miss land here automatically, ready for spaced review.' };
-      el.innerHTML = `<div class="empty"><div class="empty-i">${copy.i}</div><p>${copy.t}</p><p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">${copy.s}</p></div>`;
+      
+      el.innerHTML = `<div class="empty">
+        <div class="empty-i">${copy.i}</div>
+        <p>${copy.t}</p>
+        <p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">${copy.s}</p>
+      </div>`;
       return;
     }
+
     if (kind === 'wr') arr = [...arr].sort((a, b) => (a._nextDue ?? 0) - (b._nextDue ?? 0));
-    el.innerHTML = arr.map((q, i) => {
-      const opts = (q.options || []).map((o, j) => {
-        const c = String(j) === String(q.correct) || j === Number(q.correct);
-        return `<div class="eo${c ? ' shc' : ''}">${String.fromCharCode(65 + j)}) ${esc(o)}</div>`;
-      }).join('');
-      const uidJson = JSON.stringify(String(q.uid || ''));
-      const kindJson = JSON.stringify(kind);
-      const tagPicker = kind === 'bk' ? `
-        <select class="sel-c" style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem;width:auto" data-on-change='REV.setTag(${uidJson}, this.value)'>
-          <option value="">🏷 No tag</option>
-          ${BK_TAGS.map(t => `<option value="${t}" ${q.tag === t ? 'selected' : ''}>${t}</option>`).join('')}
-        </select>` : '';
-      const reasonPicker = kind === 'wr' ? (() => {
-        const r = q._reason || (q._misconception ? 'careless' : '');
-        return `<select class="sel-c" style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem;width:auto" data-on-change='WRONGBY.setReason(${uidJson}, this.value)'>
-          <option value="">Why did I miss this?</option>
-          <option value="careless" ${r === 'careless' ? 'selected' : ''}>Careless</option>
-          <option value="concept"  ${r === 'concept'  ? 'selected' : ''}>Concept gap</option>
-        </select>`;
-      })() : '';
-      const notePicker = kind === 'wr' ? (() => {
-        const n = (typeof QNOTE !== 'undefined') ? QNOTE.get(q.uid) : String(q._note || '');
-        return `<div style="margin-top:.4rem">` +
-          `<input class="input" type="text" maxlength="500" ` +
-          `placeholder="Your note on this question (optional)" ` +
-          `value="${escAttrJs(n)}" ` +
-          `data-on-change='WRONGBY.setNote(${uidJson}, this.value)' ` +
-          `style="font-size:var(--fs-foot)">` +
-        `</div>`;
-      })() : '';
-      let missBadge = '';
-      if (kind === 'wr' && typeof WRONGBY !== 'undefined') {
-        const mc = WRONGBY.missCount(q.uid);
-        if (mc >= 3) missBadge = `<span class="ctag tr" style="margin-left:.3rem" title="You have missed this question ${mc} times"><i class="ph ph-warning"></i> missed ${mc}\u00d7</span>`;
-      }
-      let srBadge = '';
-      if (kind === 'wr') {
-        const isDue = (q._nextDue == null) || q._nextDue <= Date.now();
-        const streak = q._streak || 0;
-        if (isDue) srBadge = `<span class="ctag tr" style="margin-left:.3rem"><i class="ph ph-repeat"></i> Due now</span>`;
-        else {
-          const daysLeft = Math.ceil((q._nextDue - Date.now()) / (24 * 60 * 60 * 1000));
-          srBadge = `<span class="ctag ta" style="margin-left:.3rem">⏳ Due in ${daysLeft}d</span>`;
+    
+    requestAnimationFrame(() => {
+      el.innerHTML = arr.map((q, i) => {
+        const opts = (q.options || []).map((o, j) => {
+          const c = String(j) === String(q.correct) || j === Number(q.correct);
+          return `<div class="eo${c ? ' shc' : ''}">${String.fromCharCode(65 + j)}) ${esc(o)}</div>`;
+        }).join('');
+        
+        const uidJson = JSON.stringify(String(q.uid || ''));
+        const kindJson = JSON.stringify(kind);
+        
+        const tagPicker = kind === 'bk' ? `
+          <select class="sel-c" style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem;width:auto" data-on-change='REV.setTag(${uidJson}, this.value)'>
+            <option value="">🏷 No tag</option>
+            ${BK_TAGS.map(t => `<option value="${t}" ${q.tag === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>` : '';
+        
+        const reasonPicker = kind === 'wr' ? (() => {
+          const r = q._reason || (q._misconception ? 'careless' : '');
+          return `<select class="sel-c" style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem;width:auto" data-on-change='WRONGBY.setReason(${uidJson}, this.value)'>
+            <option value="">Why did I miss this?</option>
+            <option value="careless" ${r === 'careless' ? 'selected' : ''}>Careless</option>
+            <option value="concept"  ${r === 'concept'  ? 'selected' : ''}>Concept gap</option>
+          </select>`;
+        })() : '';
+        
+        const notePicker = kind === 'wr' ? (() => {
+          const n = (typeof QNOTE !== 'undefined') ? QNOTE.get(q.uid) : String(q._note || '');
+          return `<div style="margin-top:.4rem">` +
+            `<input class="input" type="text" maxlength="500" ` +
+            `placeholder="Your note on this question (optional)" ` +
+            `value="${escAttrJs(n)}" ` +
+            `data-on-change='WRONGBY.setNote(${uidJson}, this.value)' ` +
+            `style="font-size:var(--fs-foot)">` +
+          `</div>`;
+        })() : '';
+        
+        let missBadge = '';
+        if (kind === 'wr' && typeof WRONGBY !== 'undefined') {
+          const mc = WRONGBY.missCount(q.uid);
+          if (mc >= 3) missBadge = `<span class="ctag tr" style="margin-left:.3rem" title="You have missed this question ${mc} times"><i class="ph ph-warning"></i> missed ${mc}\u00d7</span>`;
         }
-        if (streak > 0) srBadge += `<span class="ctag tg" style="margin-left:.3rem"><i class="ph ph-check"></i>×${streak}</span>`;
-      }
-      return `<div class="qcard" style="margin-bottom:.5rem">
-        <div class="qm"><span class="qn mono">#${i + 1}</span>
-          ${q.tag ? `<span class="ctag ta" style="margin-left:.3rem"><i class="ph ph-tag"></i> ${esc(q.tag)}</span>` : ''}
-          ${srBadge}
-          ${missBadge}
-          ${q._withdrawn ? `<span class="ctag tr" style="margin-left:.3rem" title="This question was removed from the question bank"><i class="ph ph-prohibit"></i> Withdrawn</span>` : ''}
-          ${(q._corrected && Date.now() - q._corrected < 14 * 24 * 60 * 60 * 1000) ? `<span class="ctag tg" style="margin-left:.3rem" title="Your teacher corrected this question"><i class="ph ph-check-circle"></i> Corrected</span>` : ''}
-          ${qReportHtml(q, `USER_REPORT.reportList(${kindJson},${uidJson})`)}
-          ${qSearchHtml(q)}
-          <button class="ib" data-on-click='REV._removeOne(${kindJson},${uidJson})' title="Remove from review" aria-label="Remove from review"><i class="ph ph-trash"></i></button>
-        </div>
-        <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
-        ${qImgHtml(q)}
-        <div style="margin-top:.3rem">${opts}</div>
-        ${q.explanation ? `<div class="expl show" style="margin-top:.45rem">${esc(q.explanation)}</div>` : ''}
-        ${tagPicker}
-        ${reasonPicker}
-        ${notePicker}
-      </div>`;
-    }).join('');
-    renderMath(el);
+        
+        let srBadge = '';
+        if (kind === 'wr') {
+          const isDue = (q._nextDue == null) || q._nextDue <= Date.now();
+          const streak = q._streak || 0;
+          if (isDue) srBadge = `<span class="ctag tr" style="margin-left:.3rem"><i class="ph ph-repeat"></i> Due now</span>`;
+          else {
+            const daysLeft = Math.ceil((q._nextDue - Date.now()) / (24 * 60 * 60 * 1000));
+            srBadge = `<span class="ctag ta" style="margin-left:.3rem">⏳ Due in ${daysLeft}d</span>`;
+          }
+          if (streak > 0) srBadge += `<span class="ctag tg" style="margin-left:.3rem"><i class="ph ph-check"></i>×${streak}</span>`;
+        }
+        
+        return `<div class="qcard" style="margin-bottom:.5rem">
+          <div class="qm"><span class="qn mono">#${i + 1}</span>
+            ${q.tag ? `<span class="ctag ta" style="margin-left:.3rem"><i class="ph ph-tag"></i> ${esc(q.tag)}</span>` : ''}
+            ${srBadge}
+            ${missBadge}
+            ${q._withdrawn ? `<span class="ctag tr" style="margin-left:.3rem" title="This question was removed from the question bank"><i class="ph ph-prohibit"></i> Withdrawn</span>` : ''}
+            ${(q._corrected && Date.now() - q._corrected < 14 * 24 * 60 * 60 * 1000) ? `<span class="ctag tg" style="margin-left:.3rem" title="Your teacher corrected this question"><i class="ph ph-check-circle"></i> Corrected</span>` : ''}
+            ${qReportHtml(q, `USER_REPORT.reportList(${kindJson},${uidJson})`)}
+            ${qSearchHtml(q)}
+            <button class="ib" data-on-click='REV._removeOne(${kindJson},${uidJson})' title="Remove from review" aria-label="Remove from review"><i class="ph ph-trash"></i></button>
+          </div>
+          <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
+          ${qImgHtml(q)}
+          <div style="margin-top:.3rem">${opts}</div>
+          ${q.explanation ? `<div class="expl show" style="margin-top:.45rem">${esc(q.explanation)}</div>` : ''}
+          ${tagPicker}
+          ${reasonPicker}
+          ${notePicker}
+        </div>`;
+      }).join('');
+      renderMath(el);
+    });
   },
 
   _removeOne(kind, uid) {

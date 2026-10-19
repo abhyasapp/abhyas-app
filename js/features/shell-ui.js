@@ -1,14 +1,15 @@
 // js/features/shell-ui.js — bottom nav sheet, admin switch, sidebar
 // customizations, announcements, text-size, focus mode.
-// MUST load AFTER: core/state.js (S), core/dom.js ($, $$, set), core/text.js (esc, escAttrJs),
-// core/toast.js (toast), core/nav.js (NAV). Uses _setAdminVisible (shell-hooks.js),
-// TUTORIAL, ACT.later, PSYNC, UI, ABHYAS_CONFIG, APPS at call time only.
 
 window.BN = {
   _activeKey: null,
   open(key){
     const sec = NAV.sheet(key);
     if (!sec) return;
+    
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(10);
+
     set('bn-sheet-title-el', sec.title);
     $('bn-sheet-icon').className = 'ph ' + sec.icon;
 
@@ -44,6 +45,8 @@ window.BN = {
     $('bn-sheet-backdrop').classList.add('show');
     document.body.style.overflow = 'hidden';
     this._activeKey = key;
+    
+    // Focus the first item for accessibility
     setTimeout(() => { const f = $('bn-sheet-grid').querySelector('button'); if (f) f.focus(); }, 60);
   },
   close(){
@@ -137,19 +140,16 @@ window.APP_SWITCH = {
 };
 
 window.SIDEBAR = {
-  /* v1.26: nothing to relocate — the More tools section was removed and
-     the utilities moved onto the Progress page. Kept as an empty list so
-     the module stays a safe no-op. */
   SECONDARY: [],
   _expanded: false,
   init(){
     const target = document.getElementById('sb-more-items');
     if (!target || target.dataset.init === '1') return;
     target.dataset.init = '1';
-    /* v1.25: purge any leftover Focus-mode button from a device that
-       still had one. */
+    
     const focusBtn = document.getElementById('nav-focus');
     if (focusBtn && focusBtn.parentNode) focusBtn.parentNode.removeChild(focusBtn);
+    
     this.SECONDARY.forEach(id => {
       const el = document.getElementById(id);
       if (!el || !el.parentNode) return;
@@ -158,7 +158,7 @@ window.SIDEBAR = {
       target.appendChild(clone);
       el.style.display = 'none';
     });
-    /* Hide any section whose items all moved to More tools. */
+    
     document.querySelectorAll('#sb .sb-sec').forEach(sec => {
       const items = sec.querySelectorAll('.sb-item');
       if (!items.length) return;
@@ -184,13 +184,21 @@ window.ANNOUNCE = {
   _text: '',
   async load(){
     if (Date.now() - this._last < 5 * 60 * 1000) { this.render(); return; }
-    let url = '', online = true;
-    try { url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || ''; } catch(e){}
+    
+    let online = true;
     try { online = !!(S.online && !S.forcedOffline); } catch(e){}
-    if (!url || !online) { this.render(); return; }
+    if (!online) { this.render(); return; }
+    
     this._last = Date.now();
     try {
-      const r = await fetch(url + '?action=getPublicInfo', { cache: 'no-store' });
+      // FIX: Route via netFetch instead of direct fetch to GAS
+      const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
+      const r = await netFetch(url, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'getpublicinfo' })
+      }, 10000);
+      
       const res = await r.json();
       if (res && res.success) {
         this._text = String(res.announcement || '').trim();

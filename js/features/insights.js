@@ -3,7 +3,6 @@
 // core/format.js (shuf), core/insights.js (insightsData, localISODate),
 // core/net.js (netFetch, APPS), data/chapters-data.js (ChapterData),
 // features/progress.js (PROG), features/streak.js (STREAK), features/chapter-stats.js (CHAPSTATS).
-// References QSEARCH, WRONGBY, QHIST, TODAY_PLAN._weakest at call time only.
 
 window.INSIGHTS = {
   GOAL: 40,
@@ -13,19 +12,19 @@ window.INSIGHTS = {
     const max = Math.max(this.GOAL, ...days.map(d => d.q), 1);
     const bw = (W - padL * 2) / n, plotH = H - padB - padT;
     const y = v => padT + plotH - (v / max) * plotH;
+    
     const bars = days.map((d, i) => {
       const h = Math.max(d.q ? 2 : 0, (d.q / max) * plotH), x = padL + i * bw + 2;
       const col = d.q >= this.GOAL ? 'var(--grn)' : d.q > 0 ? 'var(--accent)' : 'transparent';
-      return '<rect x="' + x.toFixed(1) + '" y="' + (padT + plotH - h).toFixed(1) + '" width="' + (bw - 4).toFixed(1) +
-        '" height="' + h.toFixed(1) + '" rx="3" fill="' + col + '"' + (d.isToday ? ' opacity="1"' : ' opacity=".85"') + '></rect>' +
-        '<text x="' + (x + (bw - 4) / 2).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle" font-size="8" fill="var(--t3)"' +
-        (d.isToday ? ' font-weight="700"' : '') + '>' + d.label.charAt(0) + '</text>';
+      return `<rect x="${x.toFixed(1)}" y="${(padT + plotH - h).toFixed(1)}" width="${(bw - 4).toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${col}" style="transition:height 0.5s ease-out, y 0.5s ease-out"${d.isToday ? ' opacity="1"' : ' opacity=".85"'}></rect>` +
+        `<text x="${(x + (bw - 4) / 2).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="8" fill="var(--t3)"${d.isToday ? ' font-weight="700"' : ''}>${d.label.charAt(0)}</text>`;
     }).join('');
+    
     const gy = y(this.GOAL).toFixed(1);
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Questions answered per day over the last 14 days">' +
-      '<line x1="0" x2="' + W + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--t3)" stroke-width=".8" stroke-dasharray="3 3" opacity=".6"></line>' +
-      '<text x="' + (W - 2) + '" y="' + (Number(gy) - 3) + '" text-anchor="end" font-size="8" fill="var(--t3)">goal ' + this.GOAL + '</text>' +
-      bars + '</svg>';
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Questions answered per day over the last 14 days" style="overflow:visible">` +
+      `<line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="var(--t3)" stroke-width=".8" stroke-dasharray="3 3" opacity=".6"></line>` +
+      `<text x="${W - 2}" y="${Number(gy) - 3}" text-anchor="end" font-size="8" fill="var(--t3)">goal ${this.GOAL}</text>` +
+      bars + `</svg>`;
   },
 
   _line(points){
@@ -33,13 +32,12 @@ window.INSIGHTS = {
     const W = 320, H = 110, p = 10, n = points.length;
     const x = i => p + (i / (n - 1)) * (W - p * 2), y = v => p + (1 - v / 100) * (H - p * 2);
     const path = points.map((pt, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(pt.pct).toFixed(1)).join(' ');
-    const dots = points.map((pt, i) => '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(pt.pct).toFixed(1) + '" r="' + (i === n - 1 ? 4 : 2.5) +
-      '" fill="' + (pt.pct >= 70 ? 'var(--grn)' : pt.pct >= 50 ? 'var(--amb)' : 'var(--ros)') + '"></circle>').join('');
+    const dots = points.map((pt, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(pt.pct).toFixed(1)}" r="${i === n - 1 ? 4 : 2.5}" fill="${pt.pct >= 70 ? 'var(--grn)' : pt.pct >= 50 ? 'var(--amb)' : 'var(--ros)'}"></circle>`).join('');
     const py = y(70).toFixed(1);
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Score of your last ' + n + ' sessions">' +
-      '<line x1="' + p + '" x2="' + (W - p) + '" y1="' + py + '" y2="' + py + '" stroke="var(--grn)" stroke-width=".8" stroke-dasharray="3 3" opacity=".6"></line>' +
-      '<text x="' + (W - p) + '" y="' + (Number(py) - 3) + '" text-anchor="end" font-size="8" fill="var(--t3)">70% target</text>' +
-      '<path d="' + path + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>' + dots + '</svg>';
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Score of your last ${n} sessions" style="overflow:visible">` +
+      `<line x1="${p}" x2="${W - p}" y1="${py}" y2="${py}" stroke="var(--grn)" stroke-width=".8" stroke-dasharray="3 3" opacity=".6"></line>` +
+      `<text x="${W - p}" y="${Number(py) - 3}" text-anchor="end" font-size="8" fill="var(--t3)">70% target</text>` +
+      `<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>` + dots + `</svg>`;
   },
 
   _strip(cells){
@@ -47,37 +45,40 @@ window.INSIGHTS = {
     const out = cells.map((c, i) => {
       const col = Math.floor(i / 7), row = i % 7;
       const fill = c.active ? (c.q >= this.GOAL ? 'var(--grn)' : 'var(--accent)') : 'var(--t3)';
-      return '<rect x="' + col * (size + gap) + '" y="' + row * (size + gap) + '" width="' + size + '" height="' + size + '" rx="3" fill="' + fill +
-        '" opacity="' + (c.active ? '1' : '.18') + '"><title>' + c.date + (c.active ? ' \u2713' : '') + '</title></rect>';
+      return `<rect x="${col * (size + gap)}" y="${row * (size + gap)}" width="${size}" height="${size}" rx="3" fill="${fill}" opacity="${c.active ? '1' : '.18'}"><title>${c.date}${c.active ? ' \u2713' : ''}</title></rect>`;
     }).join('');
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:260px" role="img" aria-label="Study days over the last 12 weeks">' + out + '</svg>';
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:260px" role="img" aria-label="Study days over the last 12 weeks">${out}</svg>`;
   },
 
   _delta(label, cur, prev, unit){
-    if (prev === null || cur === null) return '<div class="t-cap">' + label + ': <b>' + (cur === null ? '\u2014' : cur + unit) + '</b></div>';
+    if (prev === null || cur === null) return `<div class="t-cap">${label}: <b>${cur === null ? '\u2014' : cur + unit}</b></div>`;
     const d = cur - prev, cls = d > 0 ? 'ok' : d < 0 ? 'low' : 'mid', arrow = d > 0 ? '\u25B2' : d < 0 ? '\u25BC' : '\u25AC';
-    return '<div class="t-cap">' + label + ': <b>' + cur + unit + '</b> <span class="pct ' + cls + '">' + arrow + ' ' + Math.abs(d) + unit + ' vs last week</span></div>';
+    return `<div class="t-cap">${label}: <b>${cur}${unit}</b> <span class="pct ${cls}">${arrow} ${Math.abs(d)}${unit} vs last week</span></div>`;
   },
 
   render(){
     const box = $('insights-card');
     if (!box) return;
     const d = insightsData((S.prog && S.prog.sessions) || [], (S.stk && S.stk.days) || [], new Date());
+    
     if (!d.recent.length && !d.activeDays12w) {
-      box.innerHTML = '<div class="card-hd"><h3><i class="ph ph-chart-line-up"></i> Insights</h3></div>' +
-        '<div class="empty"><p>Finish a quiz and your daily activity, score trend and study streak will appear here.</p></div>';
+      box.innerHTML = `<div class="card-hd"><h3><i class="ph ph-chart-line-up"></i> Insights</h3></div>` +
+        `<div class="empty"><p>Finish a quiz and your daily activity, score trend and study streak will appear here.</p></div>`;
       return;
     }
-    box.innerHTML =
-      '<div class="card-hd"><h3><i class="ph ph-chart-line-up"></i> Insights</h3></div>' +
-      '<div class="t-cap" style="margin-bottom:6px"><b>Questions per day</b> \u00b7 last 14 days</div>' + this._bars(d.last14) +
-      '<div style="margin:10px 0 14px">' +
-        this._delta('Questions this week', d.weekQuestions, d.prevWeekQuestions, '') +
-        this._delta('Accuracy this week', d.accWeek, d.accPrev, '%') +
-        '<div class="t-cap">Study time this week: <b>' + (d.weekMinutes >= 60 ? Math.floor(d.weekMinutes / 60) + ' h ' + (d.weekMinutes % 60) + ' min' : d.weekMinutes + ' min') + '</b></div>' +
-      '</div>' +
-      (d.recent.length > 1 ? '<div class="t-cap" style="margin-bottom:6px"><b>Score trend</b> \u00b7 last ' + d.recent.length + ' sessions</div>' + this._line(d.recent) : '') +
-      '<div class="t-cap" style="margin:14px 0 6px"><b>Consistency</b> \u00b7 ' + d.activeDays12w + ' study days in 12 weeks' + (d.streak ? ' \u00b7 \ud83d\udd25 ' + d.streak + '-day streak' : '') + '</div>' + this._strip(d.cells);
+    
+    requestAnimationFrame(() => {
+      box.innerHTML =
+        `<div class="card-hd"><h3><i class="ph ph-chart-line-up"></i> Insights</h3></div>` +
+        `<div class="t-cap" style="margin-bottom:6px"><b>Questions per day</b> \u00b7 last 14 days</div>` + this._bars(d.last14) +
+        `<div style="margin:10px 0 14px">` +
+          this._delta('Questions this week', d.weekQuestions, d.prevWeekQuestions, '') +
+          this._delta('Accuracy this week', d.accWeek, d.accPrev, '%') +
+          `<div class="t-cap">Study time this week: <b>${d.weekMinutes >= 60 ? Math.floor(d.weekMinutes / 60) + ' h ' + (d.weekMinutes % 60) + ' min' : d.weekMinutes + ' min'}</b></div>` +
+        `</div>` +
+        (d.recent.length > 1 ? `<div class="t-cap" style="margin-bottom:6px"><b>Score trend</b> \u00b7 last ${d.recent.length} sessions</div>` + this._line(d.recent) : '') +
+        `<div class="t-cap" style="margin:14px 0 6px"><b>Consistency</b> \u00b7 ${d.activeDays12w} study days in 12 weeks${d.streak ? ' \u00b7 \ud83d\udd25 ' + d.streak + '-day streak' : ''}</div>` + this._strip(d.cells);
+    });
   }
 };
 
@@ -179,19 +180,22 @@ window.BADGES_UI = {
     if (changed) _save(LS.PROG, S.prog);
     const earned = this.DEFS.filter(d => S.prog.badges[d.id]).length;
     if (!earned && this.DEFS.length === 0) { slot.innerHTML = ''; return; }
-    slot.innerHTML =
-      '<div class="card"><div class="card-hd"><h3><i class="ph ph-medal"></i> Achievements</h3>' +
-        '<span class="t-cap">' + earned + ' / ' + this.DEFS.length + '</span></div>' +
-        '<div tabindex="0" role="group" aria-label="Achievements" style="display:flex;gap:var(--sp-3);overflow-x:auto;padding-bottom:var(--sp-2)">' +
-          this.DEFS.map(d => {
-            const got = !!S.prog.badges[d.id];
-            return '<div title="' + esc(d.name) + (got ? ' (earned)' : ' (locked)') + '" style="flex-shrink:0;width:82px;text-align:center">' +
-              '<div style="font-size:1.5rem;opacity:' + (got ? 1 : 0.4) + ';color:' + (got ? 'var(--accent)' : 'var(--ink-3)') + '">' +
-                '<i class="ph ' + d.icon + '"></i></div>' +
-              '<div class="t-cap" style="margin-top:2px;line-height:1.25">' + esc(d.name) + '</div>' +
-            '</div>';
-          }).join('') +
-        '</div></div>';
+    
+    requestAnimationFrame(() => {
+      slot.innerHTML =
+        '<div class="card"><div class="card-hd"><h3><i class="ph ph-medal"></i> Achievements</h3>' +
+          '<span class="t-cap">' + earned + ' / ' + this.DEFS.length + '</span></div>' +
+          '<div tabindex="0" role="group" aria-label="Achievements" style="display:flex;gap:var(--sp-3);overflow-x:auto;padding-bottom:var(--sp-2)">' +
+            this.DEFS.map(d => {
+              const got = !!S.prog.badges[d.id];
+              return '<div title="' + esc(d.name) + (got ? ' (earned)' : ' (locked)') + '" style="flex-shrink:0;width:82px;text-align:center">' +
+                '<div style="font-size:1.5rem;opacity:' + (got ? 1 : 0.4) + ';color:' + (got ? 'var(--accent)' : 'var(--ink-3)') + '">' +
+                  '<i class="ph ' + d.icon + '"></i></div>' +
+                '<div class="t-cap" style="margin-top:2px;line-height:1.25">' + esc(d.name) + '</div>' +
+              '</div>';
+            }).join('') +
+          '</div></div>';
+    });
   }
 };
 
@@ -238,18 +242,20 @@ window.WEEKLY_BOARD = {
     const topPct = Math.max(1, 100 - pct);
     const beat = Math.max(0, st.total - st.rank);
 
-    slot.innerHTML =
-      '<section class="card" style="border-color:var(--accent-line)">' +
-        '<div class="card-hd"><h3><i class="ph ' + icon + '"></i> Weekly leaderboard</h3>' +
-          '<span class="ctag ta">' + esc(s.title) + '</span></div>' +
-        '<div class="stats-row" style="margin-bottom:var(--sp-3)">' +
-          '<div class="scard"><div class="sv ta2">' + st.rank + '</div><div class="stat-lbl">Your rank</div></div>' +
-          '<div class="scard"><div class="sv">' + st.total + '</div><div class="stat-lbl">Attempts</div></div>' +
-          '<div class="scard"><div class="sv tcy">' + (a.pct || 0) + '%</div><div class="stat-lbl">Your score</div></div>' +
-          '<div class="scard"><div class="sv">' + (st.avgPct || 0) + '%</div><div class="stat-lbl">Average</div></div>' +
-        '</div>' +
-        '<p class="t-foot">Top ' + topPct + '% of students. You beat ' + beat + ' of them.</p>' +
-      '</section>';
+    requestAnimationFrame(() => {
+      slot.innerHTML =
+        '<section class="card" style="border-color:var(--accent-line)">' +
+          '<div class="card-hd"><h3><i class="ph ' + icon + '"></i> Weekly leaderboard</h3>' +
+            '<span class="ctag ta">' + esc(s.title) + '</span></div>' +
+          '<div class="stats-row" style="margin-bottom:var(--sp-3)">' +
+            '<div class="scard"><div class="sv ta2">' + st.rank + '</div><div class="stat-lbl">Your rank</div></div>' +
+            '<div class="scard"><div class="sv">' + st.total + '</div><div class="stat-lbl">Attempts</div></div>' +
+            '<div class="scard"><div class="sv tcy">' + (a.pct || 0) + '%</div><div class="stat-lbl">Your score</div></div>' +
+            '<div class="scard"><div class="sv">' + (st.avgPct || 0) + '%</div><div class="stat-lbl">Average</div></div>' +
+          '</div>' +
+          '<p class="t-foot">Top ' + topPct + '% of students. You beat ' + beat + ' of them.</p>' +
+        '</section>';
+    });
   }
 };
 
@@ -271,7 +277,7 @@ window.SERVER_PROG = {
     if (this._loading) return;
     this._loading = true;
 
-    listEl.innerHTML = '<div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div>';
+    listEl.innerHTML = '<div class="sk-block"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>';
 
     let online = true;
     try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); } catch(e){}
@@ -405,33 +411,35 @@ window.SERVER_PROG = {
       return;
     }
 
-    listEl.innerHTML = rows.map(r => {
-      const pct = r.pct;
-      const barColor = pct === null ? 'var(--sep-strong)' : pct >= 75 ? 'var(--success)' : pct >= 40 ? 'var(--accent)' : 'var(--info)';
-      const acc = r.attempted ? Math.round((r.correct / r.attempted) * 100) : 0;
-      const chapter = r.ch && typeof ChapterData !== 'undefined' ? ChapterData.chapterName(r.lv, r.ch) : r.ch;
-      return '<div class="srv-row">' +
-        '<div class="srv-row-top">' +
-          '<div class="grow">' +
-            '<div class="srv-name">' + esc(r.subtopic || r.fid) + '</div>' +
-            '<div class="srv-sub">' + esc(r.book || '') + (chapter ? ' · ' + esc(chapter) : '') + '</div>' +
+    requestAnimationFrame(() => {
+      listEl.innerHTML = rows.map(r => {
+        const pct = r.pct;
+        const barColor = pct === null ? 'var(--sep-strong)' : pct >= 75 ? 'var(--success)' : pct >= 40 ? 'var(--accent)' : 'var(--info)';
+        const acc = r.attempted ? Math.round((r.correct / r.attempted) * 100) : 0;
+        const chapter = r.ch && typeof ChapterData !== 'undefined' ? ChapterData.chapterName(r.lv, r.ch) : r.ch;
+        return '<div class="srv-row">' +
+          '<div class="srv-row-top">' +
+            '<div class="grow">' +
+              '<div class="srv-name">' + esc(r.subtopic || r.fid) + '</div>' +
+              '<div class="srv-sub">' + esc(r.book || '') + (chapter ? ' · ' + esc(chapter) : '') + '</div>' +
+            '</div>' +
+            '<div class="right" style="flex-shrink:0">' +
+              (pct === null
+                ? '<span class="mono t-foot">' + r.practised + ' done</span>'
+                : '<span class="mono" style="font-size:var(--fs-t3);font-weight:700">' + pct + '%</span>' +
+                  '<div class="t-cap mono">' + r.practised + '/' + r.total + '</div>') +
+            '</div>' +
           '</div>' +
-          '<div class="right" style="flex-shrink:0">' +
-            (pct === null
-              ? '<span class="mono t-foot">' + r.practised + ' done</span>'
-              : '<span class="mono" style="font-size:var(--fs-t3);font-weight:700">' + pct + '%</span>' +
-                '<div class="t-cap mono">' + r.practised + '/' + r.total + '</div>') +
+          '<div class="pb"><div class="pb-f" style="width:' + (pct ?? Math.min(100, r.practised)) + '%;background:' + barColor + ';transition:width 0.4s ease-out"></div></div>' +
+          '<div class="srv-meta">' +
+            '<span>' + r.attempted + ' attempts</span>' +
+            '<span style="color:var(--success)">' + r.correct + ' correct</span>' +
+            '<span style="color:var(--danger)">' + r.wrong + ' missed</span>' +
+            (r.attempted ? '<span>' + acc + '% accuracy</span>' : '') +
           '</div>' +
-        '</div>' +
-        '<div class="pb"><div class="pb-f" style="width:' + (pct ?? Math.min(100, r.practised)) + '%;background:' + barColor + '"></div></div>' +
-        '<div class="srv-meta">' +
-          '<span>' + r.attempted + ' attempts</span>' +
-          '<span style="color:var(--success)">' + r.correct + ' correct</span>' +
-          '<span style="color:var(--danger)">' + r.wrong + ' missed</span>' +
-          (r.attempted ? '<span>' + acc + '% accuracy</span>' : '') +
-        '</div>' +
-      '</div>';
-    }).join('');
+        '</div>';
+      }).join('');
+    });
   }
 };
 
@@ -466,16 +474,19 @@ window.CALENDAR = {
     let html = '';
     for (let i = 0; i < cells.length; i += 7){ html += '<div class="cal-week">' + cells.slice(i, i + 7).join('') + '</div>'; }
     const activeDays = Object.keys(byDay).length;
-    box.innerHTML =
-      '<div class="card">' +
-        '<div class="card-hd"><h3><i class="ph ph-calendar-check"></i> Study calendar</h3>' +
-          '<span class="t-cap">' + activeDays + ' day' + (activeDays === 1 ? '' : 's') + ' studied</span></div>' +
-        '<div class="cal-grid">' + html + '</div>' +
-        '<div class="cal-legend"><span class="t-cap">Less</span>' +
-          '<span class="cal-cell cal-0"></span><span class="cal-cell cal-1"></span>' +
-          '<span class="cal-cell cal-2"></span><span class="cal-cell cal-3"></span>' +
-          '<span class="cal-cell cal-4"></span><span class="t-cap">More</span></div>' +
-      '</div>';
+    
+    requestAnimationFrame(() => {
+      box.innerHTML =
+        '<div class="card">' +
+          '<div class="card-hd"><h3><i class="ph ph-calendar-check"></i> Study calendar</h3>' +
+            '<span class="t-cap">' + activeDays + ' day' + (activeDays === 1 ? '' : 's') + ' studied</span></div>' +
+          '<div class="cal-grid">' + html + '</div>' +
+          '<div class="cal-legend"><span class="t-cap">Less</span>' +
+            '<span class="cal-cell cal-0"></span><span class="cal-cell cal-1"></span>' +
+            '<span class="cal-cell cal-2"></span><span class="cal-cell cal-3"></span>' +
+            '<span class="cal-cell cal-4"></span><span class="t-cap">More</span></div>' +
+        '</div>';
+    });
   }
 };
 
@@ -512,23 +523,23 @@ window.FORECAST = {
       lines.push({ label: label, seen: seen, totalQ: totalQ, remaining: remaining, days: days, target: new Date(Date.now() + days * 86400000) });
     }
     if (!lines.length){ box.innerHTML = ''; return; }
-    box.innerHTML =
-      '<div class="card">' +
-        '<div class="card-hd"><h3><i class="ph ph-trend-up"></i> At this pace</h3></div>' +
-        '<p class="t-foot" style="margin-bottom:var(--sp-3);line-height:1.55">Based on the last 14 days \u2014 about <b>' + perDay.toFixed(1) + ' questions a day</b>.</p>' +
-        lines.map(function(l){
-          return '<div class="fc-line"><b>' + esc(l.label) + '</b> \u2014 ' + l.seen + ' of ' + l.totalQ + ' seen. ' +
-            (l.remaining === 0
-              ? '<span style="color:var(--success);font-weight:700">Complete</span>'
-              : 'Finish in <b>' + l.days + ' day' + (l.days === 1 ? '' : 's') + '</b> <span class="t-foot">(' + l.target.toLocaleDateString() + ')</span>') + '</div>';
-        }).join('') +
-      '</div>';
+    
+    requestAnimationFrame(() => {
+      box.innerHTML =
+        '<div class="card">' +
+          '<div class="card-hd"><h3><i class="ph ph-trend-up"></i> At this pace</h3></div>' +
+          '<p class="t-foot" style="margin-bottom:var(--sp-3);line-height:1.55">Based on the last 14 days \u2014 about <b>' + perDay.toFixed(1) + ' questions a day</b>.</p>' +
+          lines.map(function(l){
+            return '<div class="fc-line"><b>' + esc(l.label) + '</b> \u2014 ' + l.seen + ' of ' + l.totalQ + ' seen. ' +
+              (l.remaining === 0
+                ? '<span style="color:var(--success);font-weight:700">Complete</span>'
+                : 'Finish in <b>' + l.days + ' day' + (l.days === 1 ? '' : 's') + '</b> <span class="t-foot">(' + l.target.toLocaleDateString() + ')</span>') + '</div>';
+          }).join('') +
+        '</div>';
+    });
   }
 };
 
-/* The digest renders in TWO places: the Progress tab (#digest-slot-2) and the
-   Home grid card (#digest-slot, moved into a home card by HOME_LAYOUT). Both
-   get the same HTML so the same summary appears wherever the widget is shown. */
 window.DIGEST = {
   render(){
     const boxes = [
@@ -559,21 +570,23 @@ window.DIGEST = {
     const bestDay = Object.entries(dayCount).sort((a, b) => b[1] - a[1])[0];
     const worstChapter = Object.entries(chapMiss).sort((a, b) => b[1] - a[1])[0];
 
-    const html =
-      '<div class="card">' +
-        '<div class="card-hd"><h3><i class="ph ph-chart-bar"></i> This week</h3>' +
-          '<span class="ctag ta">last 7 days</span></div>' +
-        '<div class="g4" style="margin-bottom:var(--sp-3)">' +
-          '<div class="sc"><div class="sv tcy">' + answered + '</div><div class="stat-lbl">Answered</div></div>' +
-          '<div class="sc"><div class="sv ' + (pct >= 70 ? 'tc2' : pct >= 50 ? 'ta2' : 'tb2') + '">' + pct + '%</div><div class="stat-lbl">Accuracy</div></div>' +
-          '<div class="sc"><div class="sv">' + recent.length + '</div><div class="stat-lbl">Sessions</div></div>' +
-          '<div class="sc"><div class="sv">' + Object.keys(dayCount).length + '</div><div class="stat-lbl">Active days</div></div>' +
-        '</div>' +
-        (bestDay ? '<div class="t-foot">Best day: <b>' + esc(bestDay[0]) + '</b> (' + bestDay[1] + ' answered)</div>' : '') +
-        (worstChapter && worstChapter[1] > 0 ? '<div class="t-foot" style="margin-top:2px">Needs work: <b>' + esc(worstChapter[0]) + '</b> (' + worstChapter[1] + ' missed)</div>' : '') +
-      '</div>';
+    requestAnimationFrame(() => {
+      const html =
+        '<div class="card">' +
+          '<div class="card-hd"><h3><i class="ph ph-chart-bar"></i> This week</h3>' +
+            '<span class="ctag ta">last 7 days</span></div>' +
+          '<div class="g4" style="margin-bottom:var(--sp-3)">' +
+            '<div class="sc"><div class="sv tcy">' + answered + '</div><div class="stat-lbl">Answered</div></div>' +
+            '<div class="sc"><div class="sv ' + (pct >= 70 ? 'tc2' : pct >= 50 ? 'ta2' : 'tb2') + '">' + pct + '%</div><div class="stat-lbl">Accuracy</div></div>' +
+            '<div class="sc"><div class="sv">' + recent.length + '</div><div class="stat-lbl">Sessions</div></div>' +
+            '<div class="sc"><div class="sv">' + Object.keys(dayCount).length + '</div><div class="stat-lbl">Active days</div></div>' +
+          '</div>' +
+          (bestDay ? '<div class="t-foot">Best day: <b>' + esc(bestDay[0]) + '</b> (' + bestDay[1] + ' answered)</div>' : '') +
+          (worstChapter && worstChapter[1] > 0 ? '<div class="t-foot" style="margin-top:2px">Needs work: <b>' + esc(worstChapter[0]) + '</b> (' + worstChapter[1] + ' missed)</div>' : '') +
+        '</div>';
 
-    boxes.forEach(b => { b.innerHTML = html; });
+      boxes.forEach(b => { b.innerHTML = html; });
+    });
   }
 };
 

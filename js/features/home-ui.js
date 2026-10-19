@@ -1,14 +1,5 @@
 // js/features/home-ui.js — home notice stack, hint refresher, hard-question
 // badge, trial pill, exam-date accessor, share card.
-// MUST load AFTER: core/state.js, core/dom.js, core/text.js (esc, escAttrJs),
-// core/format.js (today), features/weekly.js (WEEKLY), features/quiz-extras.js
-// (via any UI that opens a quiz). All callers of things it exposes check
-// `typeof X !== 'undefined'` first, so this file being present is enough.
-// NOTE: every renderer that pulls in optional modules uses try/catch so a
-// missing dependency cannot stop the Home screen from painting.
-//
-// v1.47: Home sprint strip is owned by js/features/sprint.js (SPRINT_PAGE),
-// not by TODAY_PLAN. _refreshHints calls SPRINT_PAGE.renderHomeStrip().
 
 function _briefDuration(ms){
   if (ms < 0) return 'now';
@@ -82,23 +73,31 @@ function _renderDueStrip(){
   const items = _dueItems();
   if (!items.length) { box.hidden = true; box.innerHTML = ''; return; }
   box.hidden = false;
-  box.innerHTML = items.slice(0, 3).map(i =>
-    '<button class="due-item' + (i.urgent ? ' urgent' : '') + '" data-on-click="' + i.go + '">' +
-      '<span class="due-ic"><i class="ph ' + i.icon + '"></i></span>' +
-      '<span class="due-body">' +
-        '<span class="due-title">' + esc(i.title) + '</span>' +
-        '<span class="due-sub">' + esc(i.sub) + '</span>' +
-      '</span>' +
-      (i.meta ? '<span class="due-meta">' + esc(i.meta) + '</span>' : '') +
-    '</button>'
-  ).join('');
+  
+  requestAnimationFrame(() => {
+    box.innerHTML = items.slice(0, 3).map(i =>
+      '<button class="due-item' + (i.urgent ? ' urgent' : '') + '" data-on-click="' + i.go + '">' +
+        '<span class="due-ic"><i class="ph ' + i.icon + '"></i></span>' +
+        '<span class="due-body">' +
+          '<span class="due-title">' + esc(i.title) + '</span>' +
+          '<span class="due-sub">' + esc(i.sub) + '</span>' +
+        '</span>' +
+        (i.meta ? '<span class="due-meta">' + esc(i.meta) + '</span>' : '') +
+      '</button>'
+    ).join('');
+  });
 }
 
 function _renderMarquee(){
   const bar = $('home-marquee'), track = $('marquee-track');
   if (!bar || !track) return;
   const items = _dueItems().filter(i => i.urgent);
-  if (!items.length) { bar.style.display = 'none'; return; }
+  
+  if (!items.length) { 
+    bar.style.display = 'none'; 
+    return; 
+  }
+  
   const i = items[0];
   bar.style.display = '';
   bar.classList.add('urgent');
@@ -159,9 +158,13 @@ window.HARDQ = {
         if (o && o.map && Date.now() - o.at < 24*60*60*1000) { this._map = o.map; return; }
       }
     } catch(e){}
+    
+    // FIX: Only attempt fetch if we are definitively online, don't hang if offline
     if (!S.online || S.forcedOffline) return;
+    
     const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
     if (!url) return;
+    
     fetch(url + '?action=gethardquestions', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
@@ -170,7 +173,7 @@ window.HARDQ = {
           try { localStorage.setItem('abhyas_hardq', JSON.stringify({ at: Date.now(), map: d.map })); } catch(e){}
         }
       })
-      .catch(() => {});
+      .catch(() => {}); // silent fail
   },
   forUid(uid){ return (this._map && this._map[uid]) || 0; }
 };
@@ -186,9 +189,7 @@ function _renderHomeExtras(){
 }
 
 function _refreshHints(){
-  /* v1.25: focus mode removed — clear any leftover class. */
   try { document.documentElement.classList.remove('focus-mode'); } catch(e){}
-  /* v1.29: paint the reset-recovery card if a recent snapshot exists. */
   try { if (typeof RESET_SNAPSHOT !== 'undefined') RESET_SNAPSHOT.renderCard(); } catch(e){}
   try { if (typeof SIDEBAR   !== 'undefined') SIDEBAR.init(); } catch(e){}
   try { SB_HINTS.refresh(); } catch(e){}
@@ -198,7 +199,6 @@ function _refreshHints(){
   try { HARDQ.load(); } catch(e){}
   try { if (typeof SYLLABUS_MOCK     !== 'undefined') SYLLABUS_MOCK.render(); } catch(e){}
   try { if (typeof PRACTICE_RESUME   !== 'undefined') PRACTICE_RESUME.render(); } catch(e){}
-  /* Home sprint strip is owned by SPRINT_PAGE (js/features/sprint.js). */
   try { if (typeof SPRINT_PAGE !== 'undefined' && SPRINT_PAGE.renderHomeStrip) SPRINT_PAGE.renderHomeStrip(); } catch(e){}
   try { if (typeof DAILY10           !== 'undefined') DAILY10.render(); } catch(e){}
   try { if (typeof DIGEST            !== 'undefined') DIGEST.render(); } catch(e){}

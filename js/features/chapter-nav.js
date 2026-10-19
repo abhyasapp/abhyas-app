@@ -5,15 +5,12 @@
 // data/chapters-data.js (ChapterData), features/online-study.js (prettySub, ON),
 // features/quiz-engine.js (QUIZ), features/wrong-bank-ui.js (WRONGBY),
 // features/chapter-stats.js (CHAPSTATS), features/print-q.js (PRINT_Q).
-// WRONGBY, ON, QUIZ, PRINT_Q are used at call time only, so this file can load
-// before any of them — it never runs a call at parse.
 
 window.MASTERY = {
   _fids(lv, ch){ return ChapterData.chapterFileRefs(lv, ch).map(r => r.fid); },
   chapter(lv, ch){
     return chapterMastery({ fids: this._fids(lv, ch), fcount: S.fcount, cov: S.cov, wr: S.wr });
   },
-  /* the chapters the 60-day sprint is planned over: Level 7 and General Knowledge */
   filteredChapters(){
     const out = [];
     SPRINT_LEVELS.forEach(lv => {
@@ -73,31 +70,39 @@ window.CH_GRID = {
     const tabs = this.LEVELS.map(l =>
       '<button type="button" class="' + (l[0] === this.lv ? 'active' : '') + '" data-on-click="CH_GRID.setLevel(\'' + l[0] + '\')">' + esc(l[1]) + '</button>').join('');
     const chs = ChapterData.chapters(this.lv);
-    const cards = Object.keys(chs).map(ch => {
-      const refs = ChapterData.chapterFileRefs(this.lv, ch);
-      const has = refs.length > 0;
-      const st = this._stats(refs);
-      const pct = (st.complete && st.total) ? Math.min(100, Math.round(st.seen / st.total * 100)) : null;
-      const missed = (typeof WRONGBY !== 'undefined') ? WRONGBY.countForChapter(this.lv, ch) : 0;
-      const mst = has ? MASTERY.chapter(this.lv, ch) : null;
-      const done = !!mst && mst.state === 'complete';
-      const gate = (mst && mst.state === 'in-progress' && mst.needs.length) ? mst.needs[0] : '';
-      const meta = !has ? 'Coming soon'
-        : (done ? 'Complete \u00b7 ' + Math.round(mst.accuracy * 100) + '% accuracy \u00b7 ' : (pct !== null ? pct + '% seen \u00b7 ' : (st.seen ? st.seen + ' seen \u00b7 ' : ''))) + refs.length + (refs.length === 1 ? ' set' : ' sets') +
-          (missed ? ' \u00b7 ' + missed + ' missed' : '') + (gate ? ' \u00b7 ' + gate : '');
-      const missedBadge = missed
-        ? '<span class="ctag tr" style="position:absolute;top:.4rem;right:.4rem">' + missed + ' missed</span>'
-        : '';
-      return '<button type="button" class="chg-card" style="position:relative"' + (has ? '' : ' disabled') + ' data-on-click="CH_GRID.open(\'' + this.lv + '\',\'' + ch + '\')">' +
-        missedBadge +
-        '<span class="chg-name">' + (done ? '<i class="ph ph-seal-check" style="color:var(--success)" aria-label="Complete"></i> ' : '') + esc(chs[ch]) + '</span>' +
-        (has ? '<span class="pb" style="display:block"><span class="pb-f" style="display:block;width:' + (pct === null ? 0 : pct) + '%"></span></span>' : '') +
-        '<span class="chg-meta">' + esc(meta) + '</span></button>';
-    }).join('');
-    box.innerHTML = html + '<div class="chg-tabs">' + tabs + '</div><div class="chg-grid">' + cards + '</div>';
+    
+    requestAnimationFrame(() => {
+      const cards = Object.keys(chs).map(ch => {
+        const refs = ChapterData.chapterFileRefs(this.lv, ch);
+        const has = refs.length > 0;
+        const st = this._stats(refs);
+        const pct = (st.complete && st.total) ? Math.min(100, Math.round(st.seen / st.total * 100)) : null;
+        const missed = (typeof WRONGBY !== 'undefined') ? WRONGBY.countForChapter(this.lv, ch) : 0;
+        const mst = has ? MASTERY.chapter(this.lv, ch) : null;
+        const done = !!mst && mst.state === 'complete';
+        const gate = (mst && mst.state === 'in-progress' && mst.needs.length) ? mst.needs[0] : '';
+        const meta = !has ? 'Coming soon'
+          : (done ? 'Complete \u00b7 ' + Math.round(mst.accuracy * 100) + '% accuracy \u00b7 ' : (pct !== null ? pct + '% seen \u00b7 ' : (st.seen ? st.seen + ' seen \u00b7 ' : ''))) + refs.length + (refs.length === 1 ? ' set' : ' sets') +
+            (missed ? ' \u00b7 ' + missed + ' missed' : '') + (gate ? ' \u00b7 ' + gate : '');
+        const missedBadge = missed
+          ? '<span class="ctag tr" style="position:absolute;top:.4rem;right:.4rem">' + missed + ' missed</span>'
+          : '';
+        return '<button type="button" class="chg-card" style="position:relative"' + (has ? '' : ' disabled') + ' data-on-click="CH_GRID.open(\'' + this.lv + '\',\'' + ch + '\')">' +
+          missedBadge +
+          '<span class="chg-name">' + (done ? '<i class="ph ph-seal-check" style="color:var(--success)" aria-label="Complete"></i> ' : '') + esc(chs[ch]) + '</span>' +
+          (has ? '<span class="pb" style="display:block"><span class="pb-f" style="display:block;width:' + (pct === null ? 0 : pct) + '%"></span></span>' : '') +
+          '<span class="chg-meta">' + esc(meta) + '</span></button>';
+      }).join('');
+      
+      box.innerHTML = html + '<div class="chg-tabs">' + tabs + '</div><div class="chg-grid">' + cards + '</div>';
+    });
   },
 
-  setLevel(id){ this.lv = id; this.render(); },
+  setLevel(id){ 
+    if (navigator.vibrate) navigator.vibrate(5);
+    this.lv = id; 
+    this.render(); 
+  },
 
   async open(lv, ch){
     const refs = ChapterData.chapterFileRefs(lv, ch);
@@ -107,32 +112,38 @@ window.CH_GRID = {
     try { keys = new Set(await QDB.keys()); } catch(e){}
     const offline = !(S.online && !S.forcedOffline);
     const missedFor = fid => (typeof WRONGBY !== 'undefined') ? WRONGBY.countFor(fid) : 0;
-    const rows = refs.map(r => {
-      const st = this._stats([r]);
-      const cached = keys.has(r.key);
-      const blocked = offline && !cached;
-      const m = missedFor(r.fid);
-      return '<div class="row" style="padding:var(--sp-2) 0">' +
-        '<div class="row-main"><div class="t-callout" style="color:var(--ink);font-weight:600">' + esc(prettySub(r.subtopic)) + '</div>' +
-        '<div class="t-cap">' + (st.total ? st.seen + ' of ' + st.total + ' seen' : (st.seen ? st.seen + ' seen' : 'Not started')) +
-        (cached ? ' · saved on this device' : (blocked ? ' · needs a connection' : '')) +
-        (m ? ' · ' + m + ' missed' : '') + '</div></div>' +
-        '<button class="btn btn-sm btn-a" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'flashcard\')">Practise</button>' +
-        (m ? '<button class="btn btn-sm btn-r" type="button" data-on-click="closeMod();WRONGBY.startFile(\'' + escAttrJs(r.fid) + '\',false)">Missed (' + m + ')</button>' : '') +
-        '<button class="btn btn-sm btn-quiet" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'exam\')">Test</button>' +
-        '<button class="btn btn-sm ch-row-print" type="button" title="Print a revision sheet"' + (blocked ? ' disabled' : '') + ' data-on-click="PRINT_Q.sheet(\'' + escAttrJs(r.fid) + '\')"><i class="ph ph-printer"></i></button>' +
-        '</div>';
-    }).join('');
-    const head = refs.length > 1
-      ? '<div class="bg mb3"><button class="btn btn-solid" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'flashcard\')">Practise the whole chapter</button>' +
-        '<button class="btn btn-quiet" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'exam\')">Timed test</button></div>'
-      : '';
-    openMod(name, head + '<div class="rows">' + rows + '</div>');
+    
+    requestAnimationFrame(() => {
+      const rows = refs.map(r => {
+        const st = this._stats([r]);
+        const cached = keys.has(r.key);
+        const blocked = offline && !cached;
+        const m = missedFor(r.fid);
+        return '<div class="row" style="padding:var(--sp-2) 0">' +
+          '<div class="row-main"><div class="t-callout" style="color:var(--ink);font-weight:600">' + esc(prettySub(r.subtopic)) + '</div>' +
+          '<div class="t-cap">' + (st.total ? st.seen + ' of ' + st.total + ' seen' : (st.seen ? st.seen + ' seen' : 'Not started')) +
+          (cached ? ' · saved on this device' : (blocked ? ' · needs a connection' : '')) +
+          (m ? ' · ' + m + ' missed' : '') + '</div></div>' +
+          '<button class="btn btn-sm btn-a" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'flashcard\')">Practise</button>' +
+          (m ? '<button class="btn btn-sm btn-r" type="button" data-on-click="closeMod();WRONGBY.startFile(\'' + escAttrJs(r.fid) + '\',false)">Missed (' + m + ')</button>' : '') +
+          '<button class="btn btn-sm btn-quiet" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'exam\')">Test</button>' +
+          '<button class="btn btn-sm ch-row-print" type="button" title="Print a revision sheet"' + (blocked ? ' disabled' : '') + ' data-on-click="PRINT_Q.sheet(\'' + escAttrJs(r.fid) + '\')"><i class="ph ph-printer"></i></button>' +
+          '</div>';
+      }).join('');
+      
+      const head = refs.length > 1
+        ? '<div class="bg mb3"><button class="btn btn-solid" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'flashcard\')">Practise the whole chapter</button>' +
+          '<button class="btn btn-quiet" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'exam\')">Timed test</button></div>'
+        : '';
+        
+      openMod(name, head + '<div class="rows">' + rows + '</div>');
+    });
   },
 
   go(fid, mode){ closeMod(); this.startFid(fid, mode); },
 
   startFid(fid, mode){
+    if (navigator.vibrate) navigator.vibrate(10);
     const r = this._ref(fid);
     if (!r) { toast('That set is not available.'); return; }
     const name = ChapterData.chapterName(r.lv, r.ch) + ' \u2014 ' + r.book;
@@ -146,6 +157,7 @@ window.CH_GRID = {
     QUIZ._showLoader('Loading ' + refs.length + ' sets…');
     const all = [];
     let i = 0, done = 0, failed = 0;
+    
     const worker = async () => {
       while (i < refs.length) {
         const ref = refs[i++];
@@ -156,6 +168,7 @@ window.CH_GRID = {
         if (m) m.textContent = 'Loading sets (' + done + '/' + refs.length + ')…';
       }
     };
+    
     await Promise.all(Array.from({ length: Math.min(4, refs.length) }, worker));
     QUIZ._hideLoader();
     if (!all.length) { toast('Could not load this chapter. Download it while online first.', 5000); return; }
@@ -175,18 +188,22 @@ window.CHAP_VERDICTS = {
       box.innerHTML = '<p class="t-foot" style="padding:var(--sp-2) 0">Complete a few sessions to see which chapters are strongest.</p>';
       return;
     }
+    
     entries.sort((a, b) => a.accuracy - b.accuracy);
-    box.innerHTML = entries.slice(0, 5).map(e => {
-      const pct = e.accuracy;
-      const kind = pct >= 80 ? 'ready' : pct >= 60 ? 'needs' : 'weak';
-      const icon = pct >= 80 ? 'ph-check-circle' : pct >= 60 ? 'ph-warning-circle' : 'ph-x-circle';
-      return '<button class="chap-verdict ' + kind + '" data-on-click="CHAP_VERDICTS.go(\'' + escAttrJs(e.chapter) + '\')">' +
-        '<i class="ph ' + icon + ' mark"></i>' +
-        '<span class="lbl">' + esc(e.chapter) + '</span>' +
-        '<span class="t-cap mono">' + e.correct + '/' + e.attempted + '</span>' +
-        '<span class="t-cap" style="color:var(--ink-3);font-weight:650">' + pct + '%</span>' +
-      '</button>';
-    }).join('');
+    
+    requestAnimationFrame(() => {
+      box.innerHTML = entries.slice(0, 5).map(e => {
+        const pct = e.accuracy;
+        const kind = pct >= 80 ? 'ready' : pct >= 60 ? 'needs' : 'weak';
+        const icon = pct >= 80 ? 'ph-check-circle' : pct >= 60 ? 'ph-warning-circle' : 'ph-x-circle';
+        return '<button class="chap-verdict ' + kind + '" data-on-click="CHAP_VERDICTS.go(\'' + escAttrJs(e.chapter) + '\')">' +
+          '<i class="ph ' + icon + ' mark"></i>' +
+          '<span class="lbl">' + esc(e.chapter) + '</span>' +
+          '<span class="t-cap mono">' + e.correct + '/' + e.attempted + '</span>' +
+          '<span class="t-cap" style="color:var(--ink-3);font-weight:650">' + pct + '%</span>' +
+        '</button>';
+      }).join('');
+    });
   },
   go(chapter){
     try {
@@ -214,32 +231,35 @@ window.HEATMAP = {
     const levels = [['level7','Level 7 — Civil'], ['level5','Level 5 — Diploma'], ['gk','General Knowledge']];
     const stats = {};
     (typeof CHAPSTATS !== 'undefined' ? CHAPSTATS.entries() : []).forEach(e => { stats[e.chapter] = e; });
-    box.innerHTML = levels.map(([lv, name]) => {
-      const chs = ChapterData.chapters(lv);
-      const cards = Object.keys(chs).map(ch => {
-        const refs = ChapterData.chapterFileRefs(lv, ch);
-        if (!refs.length) return '';
-        const label = ChapterData.chapterName(lv, ch);
-        const s = stats[label];
-        const acc = s ? s.accuracy : null;
-        let seen = 0;
-        refs.forEach(r => { const c = S.cov && S.cov[r.fid]; if (c && c.a) seen += c.a; });
-        const cls = acc === null ? 'untouched' : acc >= 80 ? 'strong' : acc >= 60 ? 'workable' : 'weak';
-        const missed = (typeof WRONGBY !== 'undefined') ? WRONGBY.countForChapter(lv, ch) : 0;
-        const barColor = cls === 'strong' ? 'var(--success)'
-                       : cls === 'workable' ? 'var(--accent)'
-                       : cls === 'weak' ? 'var(--danger)'
-                       : 'var(--sep-strong)';
-        return '<button type="button" class="chg-card" style="border-left:4px solid ' + barColor + '" data-on-click="HEATMAP.go(\'' + lv + '\',\'' + ch + '\')">' +
-          '<span class="chg-name">' + esc(chs[ch]) + '</span>' +
-          '<span class="chg-meta">' +
-            (acc === null ? 'Not started' : acc + '% · ' + seen + ' answered') +
-            (missed ? ' · ' + missed + ' missed' : '') +
-          '</span></button>';
+    
+    requestAnimationFrame(() => {
+      box.innerHTML = levels.map(([lv, name]) => {
+        const chs = ChapterData.chapters(lv);
+        const cards = Object.keys(chs).map(ch => {
+          const refs = ChapterData.chapterFileRefs(lv, ch);
+          if (!refs.length) return '';
+          const label = ChapterData.chapterName(lv, ch);
+          const s = stats[label];
+          const acc = s ? s.accuracy : null;
+          let seen = 0;
+          refs.forEach(r => { const c = S.cov && S.cov[r.fid]; if (c && c.a) seen += c.a; });
+          const cls = acc === null ? 'untouched' : acc >= 80 ? 'strong' : acc >= 60 ? 'workable' : 'weak';
+          const missed = (typeof WRONGBY !== 'undefined') ? WRONGBY.countForChapter(lv, ch) : 0;
+          const barColor = cls === 'strong' ? 'var(--success)'
+                         : cls === 'workable' ? 'var(--accent)'
+                         : cls === 'weak' ? 'var(--danger)'
+                         : 'var(--sep-strong)';
+          return '<button type="button" class="chg-card" style="border-left:4px solid ' + barColor + '" data-on-click="HEATMAP.go(\'' + lv + '\',\'' + ch + '\')">' +
+            '<span class="chg-name">' + esc(chs[ch]) + '</span>' +
+            '<span class="chg-meta">' +
+              (acc === null ? 'Not started' : acc + '% · ' + seen + ' answered') +
+              (missed ? ' · ' + missed + ' missed' : '') +
+            '</span></button>';
+        }).join('');
+        if (!cards) return '';
+        return '<div class="section-head"><h2>' + esc(name) + '</h2></div><div class="chg-grid">' + cards + '</div>';
       }).join('');
-      if (!cards) return '';
-      return '<div class="section-head"><h2>' + esc(name) + '</h2></div><div class="chg-grid">' + cards + '</div>';
-    }).join('');
+    });
   },
   go(lv, ch){
     if (typeof CH_GRID !== 'undefined') { CH_GRID.lv = lv; CH_GRID.open(lv, ch); }

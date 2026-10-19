@@ -4,9 +4,6 @@
 // core/net.js (GETFILE_GATE, netFetch, APPS, qs), core/modal.js (ASK),
 // core/storage.js (QDB, _load, _save), core/constants.js (LS),
 // data/chapters-data.js (ChapterData), js/report/report-shared.js.
-// Uses CONTENT_CRYPTO, PROG, REV, CHAPSTATS, COV, STREAK, WEEKLY, HOME,
-// PSYNC, CACHE, PRINT_Q, QSEARCH, QHIST, QNOTE, HARDQ, USER_REPORT,
-// PREFS at call time only.
 
 const QUIZ = {
   CDN_BASE: (window.ABHYAS_CONFIG && window.ABHYAS_CONFIG.CONTENT_CDN_BASE) || '',
@@ -734,6 +731,7 @@ const QUIZ = {
   _renderFlashcard(){
     const q = S.quiz.qs[S.quiz.idx];
     if(!q)return;
+    if (navigator.vibrate) navigator.vibrate(5);
     try{
       document.getElementById('fc-chip').textContent = '⚡ ' + S.quiz.ch;
       document.getElementById('fc-ctr').textContent = `${S.quiz.idx+1}/${S.quiz.qs.length}`;
@@ -762,20 +760,23 @@ const QUIZ = {
       const ansIdx = S.quiz.ans[S.quiz.idx];
       const answered = ansIdx !== null;
       const optsEl = document.getElementById('fc-opts');
-      optsEl.innerHTML = q.options.map((opt,i)=>{
-        let cls='eo';
-        let isSelected = false;
-        if(answered){
-          const isCorrect = isOk(i, q.correct);
-          isSelected = i===ansIdx;
-          if(isCorrect) cls += ' shc';
-          else if(isSelected) cls += ' bad2';
-        }
-        const blocked = answered || S.quiz.reviewOnly;
-        return `<div class="${cls}" role="button" tabindex="${blocked?-1:0}" aria-pressed="${isSelected}" aria-label="Option ${String.fromCharCode(65+i)}: ${esc(opt)}${isSelected?', selected':''}" data-on-click="${blocked?'':'QUIZ.fcAnswer('+i+')'}" data-on-keydown="!${blocked}&&ACT.enterOrSpace(event)&&QUIZ.fcAnswer(${i})" style="${blocked?'cursor:default;pointer-events:none':''}">
-          <div class="ok">${String.fromCharCode(65+i)}</div><div>${esc(opt)}</div>
-        </div>`;
-      }).join('');
+      
+      requestAnimationFrame(() => {
+        optsEl.innerHTML = q.options.map((opt,i)=>{
+          let cls='eo';
+          let isSelected = false;
+          if(answered){
+            const isCorrect = isOk(i, q.correct);
+            isSelected = i===ansIdx;
+            if(isCorrect) cls += ' shc';
+            else if(isSelected) cls += ' bad2';
+          }
+          const blocked = answered || S.quiz.reviewOnly;
+          return `<div class="${cls}" role="button" tabindex="${blocked?-1:0}" aria-pressed="${isSelected}" aria-label="Option ${String.fromCharCode(65+i)}: ${esc(opt)}${isSelected?', selected':''}" data-on-click="${blocked?'':'QUIZ.fcAnswer('+i+')'}" data-on-keydown="!${blocked}&&ACT.enterOrSpace(event)&&QUIZ.fcAnswer(${i})" style="${blocked?'cursor:default;pointer-events:none':''}">
+            <div class="ok">${String.fromCharCode(65+i)}</div><div>${esc(opt)}</div>
+          </div>`;
+        }).join('');
+      });
 
       const expl = document.getElementById('fc-expl');
       if(answered && q.explanation){ expl.textContent = q.explanation; expl.classList.add('show'); }
@@ -858,6 +859,7 @@ const QUIZ = {
   fcAnswer(i){
     if(S.quiz.reviewOnly) return;
     if(S.quiz.ans[S.quiz.idx]!==null)return;
+    if (navigator.vibrate) navigator.vibrate(10);
     S.quiz.ans[S.quiz.idx]=i;
     const q=S.quiz.qs[S.quiz.idx];
     const correct=isOk(i,q.correct);
@@ -874,6 +876,10 @@ const QUIZ = {
     if(next<0)return;
     if(next>=S.quiz.qs.length){ QUIZ.fcFinish(); return; }
     S.quiz.idx=next;
+    
+    const qcard = document.querySelector('.qcard');
+    if (qcard) qcard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
     QUIZ._renderFlashcard();
   },
   _star(){
@@ -909,31 +915,35 @@ const QUIZ = {
     document.getElementById('ex-chip').textContent = '📝 ' + S.quiz.ch;
     document.getElementById('ex-tmr').textContent = fmt(S.quiz.left);
     const el = document.getElementById('ex-qs');
-    el.innerHTML = S.quiz.qs.map((q,qi)=>{
-      const savedAns = S.quiz.ans[qi];
-      return `
-      <div class="eqc${savedAns!==null?' answered':''}" id="eqc-${qi}">
-        <div class="qm"><span class="qn mono">Q${qi+1}</span><span style="display:inline-flex;gap:.3rem;align-items:center"><button type="button" class="ib mark-btn${S.quiz.marked && S.quiz.marked.has(qi) ? ' fl-on' : ''}" data-on-click="QUIZ.toggleMark(${qi})" title="Mark for review" aria-label="Mark question ${qi+1} for review"><i class="ph ph-flag"></i></button>${qReportHtml(q, `USER_REPORT.exam(${qi})`, `Report an issue with question ${qi+1}`)}${qSearchHtml(q)}</span></div>
-        <div class="qt" style="font-size:.85rem">${esc(q.q)}</div>
-        ${qImgHtml(q)}
-        ${q.options.map((opt,oi)=>{
-          const sel = savedAns===oi;
-          return `<div class="eo${sel?' sel':''}" role="button" tabindex="0" aria-pressed="${sel}" aria-label="Option ${String.fromCharCode(65+oi)}: ${esc(opt)}" data-on-click="QUIZ.exAnswer(${qi},${oi})" data-on-keydown="ACT.enterOrSpace(event)&&QUIZ.exAnswer(${qi},${oi})" id="eo-${qi}-${oi}">
-            <div class="ok">${String.fromCharCode(65+oi)}</div><div>${esc(opt)}</div>
-          </div>`;
-        }).join('')}
-        <button type="button" class="ex-clear" id="ex-clear-${qi}" data-on-click="QUIZ.clearAnswer(${qi})" aria-label="Clear response for question ${qi+1}"${savedAns===null||savedAns===undefined?' hidden':''}><i class="ph ph-eraser"></i> Clear response</button>
-      </div>
-    `}).join('');
-    renderMath(el);
-    const answeredCount = S.quiz.ans.filter(a=>a!==null).length;
-    document.getElementById('ex-ctr').textContent = `${answeredCount}/${S.quiz.qs.length}`;
-    document.getElementById('ex-ans').textContent = answeredCount;
-    document.getElementById('ex-pf').style.width = `${(answeredCount/S.quiz.qs.length)*100}%`;
-    QUIZ._updateSkippedNav();
+    
+    requestAnimationFrame(() => {
+      el.innerHTML = S.quiz.qs.map((q,qi)=>{
+        const savedAns = S.quiz.ans[qi];
+        return `
+        <div class="eqc${savedAns!==null?' answered':''}" id="eqc-${qi}">
+          <div class="qm"><span class="qn mono">Q${qi+1}</span><span style="display:inline-flex;gap:.3rem;align-items:center"><button type="button" class="ib mark-btn${S.quiz.marked && S.quiz.marked.has(qi) ? ' fl-on' : ''}" data-on-click="QUIZ.toggleMark(${qi})" title="Mark for review" aria-label="Mark question ${qi+1} for review"><i class="ph ph-flag"></i></button>${qReportHtml(q, `USER_REPORT.exam(${qi})`, `Report an issue with question ${qi+1}`)}${qSearchHtml(q)}</span></div>
+          <div class="qt" style="font-size:.85rem">${esc(q.q)}</div>
+          ${qImgHtml(q)}
+          ${q.options.map((opt,oi)=>{
+            const sel = savedAns===oi;
+            return `<div class="eo${sel?' sel':''}" role="button" tabindex="0" aria-pressed="${sel}" aria-label="Option ${String.fromCharCode(65+oi)}: ${esc(opt)}" data-on-click="QUIZ.exAnswer(${qi},${oi})" data-on-keydown="ACT.enterOrSpace(event)&&QUIZ.exAnswer(${qi},${oi})" id="eo-${qi}-${oi}">
+              <div class="ok">${String.fromCharCode(65+oi)}</div><div>${esc(opt)}</div>
+            </div>`;
+          }).join('')}
+          <button type="button" class="ex-clear" id="ex-clear-${qi}" data-on-click="QUIZ.clearAnswer(${qi})" aria-label="Clear response for question ${qi+1}"${savedAns===null||savedAns===undefined?' hidden':''}><i class="ph ph-eraser"></i> Clear response</button>
+        </div>
+      `}).join('');
+      renderMath(el);
+      const answeredCount = S.quiz.ans.filter(a=>a!==null).length;
+      document.getElementById('ex-ctr').textContent = `${answeredCount}/${S.quiz.qs.length}`;
+      document.getElementById('ex-ans').textContent = answeredCount;
+      document.getElementById('ex-pf').style.width = `${(answeredCount/S.quiz.qs.length)*100}%`;
+      QUIZ._updateSkippedNav();
+    });
   },
   exAnswer(qi, oi){
     if(!S.quiz.active)return;
+    if (navigator.vibrate) navigator.vibrate(5);
     const next = (S.quiz.ans[qi] === oi) ? null : oi;
     S.quiz.ans[qi] = next;
     const card = document.getElementById(`eqc-${qi}`);
@@ -1248,24 +1258,26 @@ const QUIZ = {
       }
     } catch (e) {}
 
-    document.getElementById('res-review').innerHTML = S.quiz.qs.map((q,i)=>{
-      const a = S.quiz.ans[i];
-      const correctPick = isOk(a,q.correct);
-      return `<div class="qcard" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
-        <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${correctPick?'Correct':a===null?'Skipped':'Wrong'}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}${qSearchHtml(q)}</div>
-        <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
-        ${qImgHtml(q)}
-        ${q.options.map((opt,oi)=>{
-          let cls='eo';
-          if(isOk(oi,q.correct)) cls+=' shc';
-          else if(oi===a) cls+=' bad2';
-          return `<div class="${cls}" style="cursor:default;pointer-events:none"><div class="ok">${String.fromCharCode(65+oi)}</div><div>${esc(opt)}</div></div>`;
-        }).join('')}
-        ${q.explanation?`<div class="expl show">${esc(q.explanation)}</div>`:''}
-        ${(typeof QNOTE !== 'undefined' && QNOTE.get(q.uid)) ? `<div class="qnote-box" style="margin-top:.5rem"><div class="qnote-hd"><i class="ph ph-note"></i> Your note</div><div class="qnote-text">${esc(QNOTE.get(q.uid))}</div></div>` : ''}
-      </div>`;
-    }).join('');
-    renderMath(document.getElementById('res-review'));
+    requestAnimationFrame(() => {
+      document.getElementById('res-review').innerHTML = S.quiz.qs.map((q,i)=>{
+        const a = S.quiz.ans[i];
+        const correctPick = isOk(a,q.correct);
+        return `<div class="qcard" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
+          <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${correctPick?'Correct':a===null?'Skipped':'Wrong'}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}${qSearchHtml(q)}</div>
+          <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
+          ${qImgHtml(q)}
+          ${q.options.map((opt,oi)=>{
+            let cls='eo';
+            if(isOk(oi,q.correct)) cls+=' shc';
+            else if(oi===a) cls+=' bad2';
+            return `<div class="${cls}" style="cursor:default;pointer-events:none"><div class="ok">${String.fromCharCode(65+oi)}</div><div>${esc(opt)}</div></div>`;
+          }).join('')}
+          ${q.explanation?`<div class="expl show">${esc(q.explanation)}</div>`:''}
+          ${(typeof QNOTE !== 'undefined' && QNOTE.get(q.uid)) ? `<div class="qnote-box" style="margin-top:.5rem"><div class="qnote-hd"><i class="ph ph-note"></i> Your note</div><div class="qnote-text">${esc(QNOTE.get(q.uid))}</div></div>` : ''}
+        </div>`;
+      }).join('');
+      renderMath(document.getElementById('res-review'));
+    });
 
     if(pct>=70 && window.confetti){ confetti({particleCount:90,spread:75,origin:{y:0.6}}); }
     const qres = S.quiz.qs
