@@ -2,8 +2,8 @@
 // constant other files depend on.
 // MUST load AFTER: core/config.js (abhyasEndpointFor), core/constants.js,
 // core/state.js, core/storage.js (QDB, _load, _save),
-// core/net.js (GETFILE_GATE, _backendUrl, _authParams).
-// Uses _backendUrl / _authParams / abhyasEndpointFor at call time.
+// core/net.js (GETFILE_GATE, _authParams).
+// Uses baseUrl (built from ABHYAS_CONFIG) / _authParams / abhyasEndpointFor at call time.
 
 /* ── Constants ── */
 const TIMERS = {
@@ -165,12 +165,13 @@ async function _fetchSubjFileFromNetwork(ref, cacheKey){
     : false;
   const actionName = isSupa ? 'getfile' : 'getFile';
   const timeout = isSupa ? 15000 : 25000;
+  const baseUrl = isSupa ? ABHYAS_CONFIG.SUPABASE_URL : ABHYAS_CONFIG.GAS_URL;
 
   let r;
   try {
     if (isSupa) {
       // Supabase edge fn expects POST body (avoids putting tokens in the URL)
-      r = await netFetch(_backendUrl(), {
+      r = await netFetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
@@ -188,9 +189,10 @@ async function _fetchSubjFileFromNetwork(ref, cacheKey){
         username: a.username,
         token: a.token
       }).toString();
-      r = await netFetch(_backendUrl() + '?' + query, {}, timeout);
+      r = await netFetch(baseUrl + '?' + query, {}, timeout);
     }
   } catch (e) {
+    if (!BANK.lastError) BANK.lastError = e && e.message;
     console.warn('[subj-bank] fetch failed/aborted — using cache', e && e.message);
     return [];
   }
