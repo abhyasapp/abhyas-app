@@ -2,17 +2,13 @@
 // confirm, toast, busy, focus-trap, state, and the small helpers.
 //
 // LOAD ORDER (admin.html):
-//   1. js/core/config.js      (ABHYAS_CONFIG — must be first)
+//   1. js/core/config.js      (ABHYAS_CONFIG, RETRY_CONFIG — must be first)
 //   2. js/core/text.js        (esc / escAttrJs / formatBytes / localISODate / driveFileId)
 //   3. js/core/loksewa.js     (normalizeLoksewaScheme / loksewaSchemeConflict)
 //   4. js/core/study-docs.js  (STUDYDOC_LABELS / subjChapterName)
 //   5. js/core/admin-nav.js   (ADMIN_NAV)
 //   6. THIS FILE              ($ / $$ / ADMIN / MODAL / …)
 //   7. js/admin/features/*       (loaded directly by admin.html)
-//
-// Any shared helper that also lives in js/core/* is declared only if not
-// already present, so this file is robust to admin.html dropping one of
-// those core files.
 
 /* ── shared helpers (guarded — js/core/* wins if it loaded first) ─────── */
 if (typeof esc !== 'function') {
@@ -78,8 +74,6 @@ function _paintThemeColor(colour) {
   document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', colour));
 }
 
-// $ / $$ — from js/core/dom.js when the shell loads it. Assign via `window.`
-// (not const) so this file does not clash with that file's top-level `const $`.
 if (typeof $ === 'undefined') {
   window.$  = id => document.getElementById(id);
   window.$$ = sel => Array.from(document.querySelectorAll(sel));
@@ -129,23 +123,6 @@ function copyText(text, label) {
 function setVal(id, v)  { const el = $(id); if (el) el.value       = (v == null ? '' : v);  return !!el; }
 function setText(id, v) { const el = $(id); if (el) el.textContent = (v == null ? '' : v);  return !!el; }
 function setHTML(id, v) { const el = $(id); if (el) el.innerHTML   = (v == null ? '' : v);  return !!el; }
-
-function togglePw(btn) {
-  const input = btn.closest('.pw-field').querySelector('input');
-  const show = input.type === 'password';
-  input.type = show ? 'text' : 'password';
-  btn.setAttribute('aria-pressed', show ? 'true' : 'false');
-  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-  btn.innerHTML = show ? '<i class="ph ph-eye-slash"></i>' : '<i class="ph ph-eye"></i>';
-}
-window.togglePw = togglePw;
-if (typeof window.toggleTheme !== 'function') {
-  window.toggleTheme = function () {
-    const dark = document.documentElement.classList.toggle('dark');
-    try { localStorage.setItem('abhyas_theme', JSON.stringify(dark ? 'dark' : 'light')); } catch (e) {}
-    _paintThemeColor(dark ? THEME_COLORS.dark : THEME_COLORS.light);
-  };
-}
 
 /* ── FSTATE + USER_SESSION + LS keys ──────────────────────────────────── */
 const FSTATE = {
@@ -200,6 +177,32 @@ const BUSY = {
   },
   reset() { this._n = 0; const el = $('busy'); if (el) el.classList.remove('on'); }
 };
+
+/* ── FALLBACK BANNER ── */
+const FALLBACK_BANNER = {
+  _shownAt: 0,
+  _timer: null,
+  show() {
+    this._shownAt = Date.now();
+    const banner = $('fallback-banner');
+    if (!banner) return;
+    banner.hidden = false;
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => this.hide(), 24000);
+  },
+  hide() {
+    const banner = $('fallback-banner');
+    if (banner) banner.hidden = true;
+    clearTimeout(this._timer);
+    this._timer = null;
+  },
+  installListener() {
+    if (window._fallbackListenerInstalled) return;
+    window._fallbackListenerInstalled = true;
+    window.addEventListener('abhyas:fallback', () => { try { FALLBACK_BANNER.show(); } catch (e) {} });
+  }
+};
+window.FALLBACK_BANNER = FALLBACK_BANNER;
 
 /* ── FOCUS_TRAP ── */
 const FOCUS_TRAP = {
@@ -337,6 +340,7 @@ const ADMIN = {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     _paintThemeColor(theme === 'dark' ? THEME_COLORS.dark : THEME_COLORS.light);
 
+    FALLBACK_BANNER.installListener();
     setTimeout(() => { const el = $('ad-user'); if (el && !el.value) el.focus(); }, 60);
 
     this._trySessionUnlock();
@@ -351,9 +355,13 @@ const ADMIN = {
       return;
     }
     this.creds = saved;
+    /* F5 must not bypass a pending forced password change — the flag is
+       persisted into LS_ADMIN in login() and read back here. */
+    this._forcedPwChange = !!saved.mustChangePassword;
     this._enterAdminMode().catch(err => {
       console.warn('[ADMIN] session unlock failed:', err && err.message);
       this.creds = null;
+      this._forcedPwChange = false;
       try { localStorage.removeItem(LS_ADMIN); } catch (e) {}
     });
   },
@@ -383,7 +391,8 @@ const ADMIN = {
       const creds = {
         user: adminUsername,
         token: adminToken,
-        expires: Date.now() + (Number(r.expiresInMs) || 86400000)
+        expires: Date.now() + (Number(r.expiresInMs) || 86400000),
+        mustChangePassword: !!r.mustChangePassword
       };
       try { localStorage.setItem(LS_ADMIN, JSON.stringify(creds)); } catch (e) {}
       this.creds = creds;
@@ -397,7 +406,6 @@ const ADMIN = {
   },
 
   unlock() { this._trySessionUnlock(); },
-
   logout() { this._leaveAdminMode(); },
 
   _leaveAdminMode() {
@@ -415,12 +423,16 @@ const ADMIN = {
     this._forcedPwChange = false;
     try { window.location.href = './'; } catch (e) {}
   },
-  
 
-  /* ── transport ── */
+  /* ── transport ──────────────────────────────────────────────────────
+     Routes through abhyasEndpointFor (config.js), falls back on:
+       • timeout / network error
+       • HTTP 5xx
+       • success:false + "unknown action" (safe — the handler never ran)
+     Normalizes getFile content → result so existing admin features keep
+     working without change. Sets _fallbackUsed so the UI banner can fire.
+     ──────────────────────────────────────────────────────────────────── */
   async post(action, params = {}, opts = {}) {
-    // Route: ported admin actions → Supabase, unported → GAS (auto-fallback).
-    // abhyasEndpointFor() from config.js decides. Default = supabase.
     const useSupabase = (
       typeof ABHYAS_CONFIG !== 'undefined' &&
       typeof abhyasEndpointFor === 'function' &&
@@ -430,14 +442,51 @@ const ADMIN = {
     const primaryUrl = useSupabase ? ABHYAS_CONFIG.SUPABASE_URL : GAS_URL;
     if (!primaryUrl) return { success: false, error: 'Backend URL is not configured.' };
 
-    const body = JSON.stringify(Object.assign({
-      action,
-      username:   this.creds ? this.creds.user  : '',
-      token:      this.creds ? this.creds.token : '',
-      adminToken: this.creds ? this.creds.token : ''
-    }, params || {}));
+       /* The console has only ever carried an admin token; both fields carry
+       the same value so admin-context getFile works on backends that
+       validate `token`. Splitting these requires adminLogin to return a
+       user token too — a backend change, not a client one.
 
-    const timeoutMs = opts.timeoutMs || 30000;
+       IMPORTANT: the actor's identity (username/token/adminToken) is
+       injected AFTER params, so a caller passing `params.username` can
+       never overwrite it. Otherwise the backend sees username="alice"
+       with admin's token → sessionInvalid → _leaveAdminMode() wipes the
+       session and reloads the page.
+
+       Actions whose `params.username` means "the TARGET of this action"
+       (not the actor) get that value moved to `targetUsername` instead. */
+    const TARGET_USERNAME_ACTIONS = new Set([
+      'adminGrantAccess',
+      'adminDeleteUser',
+      'adminUpdateUser',
+      'adminReviewPayment',
+      'adminDeletePayment',
+      'adminPromoteUserToAdmin',
+      'adminSetAdminPermissions',
+      'adminDeleteAdmin',
+      'adminCreateAdmin'
+    ]);
+    const _params = Object.assign({}, params || {});
+    if (TARGET_USERNAME_ACTIONS.has(action) && _params.username != null) {
+      if (_params.targetUsername == null) _params.targetUsername = _params.username;
+      delete _params.username;
+    }
+    /* adminLogin is the only action that establishes identity — it must
+       NOT receive the (empty) creds fields, or it would blank out the
+       login username the caller passed in. */
+    const _authFields = (action === 'adminLogin')
+      ? { action }
+      : {
+          action,
+          username:   this.creds ? this.creds.user  : '',
+          token:      this.creds ? this.creds.token : '',
+          adminToken: this.creds ? this.creds.token : ''
+        };
+    const body = JSON.stringify(Object.assign({}, _params, _authFields));
+
+    const timeoutMs = Number(opts.timeoutMs) > 0
+      ? Number(opts.timeoutMs)
+      : ((typeof RETRY_CONFIG !== 'undefined' && RETRY_CONFIG.timeouts && RETRY_CONFIG.timeouts.normal) || 30000);
 
     const _attempt = async (url) => {
       const ctrl = new AbortController();
@@ -450,6 +499,9 @@ const ADMIN = {
           signal: ctrl.signal
         });
         clearTimeout(timer);
+        if (r.status >= 500) {
+          return { success: false, error: 'The server replied with HTTP ' + r.status + '.', _httpError: true };
+        }
         if (!r.ok) return { success: false, error: 'The server replied with HTTP ' + r.status + '.' };
         return await r.json();
       } catch (e) {
@@ -458,26 +510,88 @@ const ADMIN = {
       }
     };
 
+    const _needsFallback = (res) => {
+      if (!res) return true;
+      if (res._httpError) return true;
+      if (res.success === false &&
+          /^unknown action|not deployed|not supported|not implemented/i.test(String(res.error || ''))) return true;
+      return false;
+    };
+
+    const fallbackUrl = useSupabase
+      ? GAS_URL
+      : (typeof ABHYAS_CONFIG !== 'undefined' ? ABHYAS_CONFIG.SUPABASE_URL : '');
+    /* Some actions mutate storage that lives in one specific backend: signed
+       upload URLs, submission PDF paths, weekly-set Drive files. Retrying
+       those on the other backend would leave an orphaned file in the primary
+       storage while the fallback records a path it cannot read. Callers that
+       touch that kind of data opt out with { fallback: false }. */
+    const allowFallback = opts.fallback !== false;
+    const canFallback = allowFallback && !!(fallbackUrl && fallbackUrl !== primaryUrl);
+
+    /* Normalize getFile so downstream code can keep reading res.result. */
+    const _normalizeGetFile = (res) => {
+      if (!res) return res;
+      if ((action === 'getFile' || action === 'getfile') &&
+          res.success && res.result == null && res.content != null) {
+        try {
+          res.result = typeof res.content === 'string' ? JSON.parse(res.content) : res.content;
+        } catch (e) {
+          console.warn('[admin] getFile content was not valid JSON:', e && e.message);
+        }
+      }
+      return res;
+    };
+
+    let primaryErr = null;
     try {
       let res = await _attempt(primaryUrl);
-      // Fallback: Supabase says "Unknown action" → retry on GAS.
-      if (useSupabase && res && res.success === false &&
-          /unknown action/i.test(String(res.error || '')) &&
-          GAS_URL && GAS_URL !== primaryUrl) {
-        console.warn('[admin]', action, 'not on Supabase — falling back to GAS');
-        res = await _attempt(GAS_URL);
+      if (canFallback && _needsFallback(res)) {
+        console.warn('[admin]', action, 'fell back to the other backend');
+        try {
+          const retry = await _attempt(fallbackUrl);
+          if (retry && (retry.success || !_needsFallback(retry))) {
+            try { retry._fallbackUsed = useSupabase ? 'gas' : 'supabase'; } catch (e) {}
+            try { window.dispatchEvent(new CustomEvent('abhyas:fallback')); } catch (e) {}
+            res = retry;
+          }
+        } catch (e) {
+          /* fallback fetch failed — keep the primary response */
+        }
       }
+      res = _normalizeGetFile(res);
       if (res && res.sessionInvalid) {
         this._leaveAdminMode();
         return { success: false, error: 'Your session has expired. Please sign in again.' };
       }
       return res || { success: false, error: 'The server sent an empty response.' };
     } catch (e) {
-      const msg = e && e.name === 'AbortError'
-        ? 'The request timed out — the server is taking too long.'
-        : (e && e.message) || 'Network error.';
-      return { success: false, error: msg };
+      primaryErr = e;
     }
+
+    /* Primary threw network / timeout. Try the other backend once. */
+    if (canFallback) {
+      try {
+        const res = await _attempt(fallbackUrl);
+        if (res) {
+          try { res._fallbackUsed = useSupabase ? 'gas' : 'supabase'; } catch (e) {}
+          try { window.dispatchEvent(new CustomEvent('abhyas:fallback')); } catch (e) {}
+          const norm = _normalizeGetFile(res);
+          if (norm && norm.sessionInvalid) {
+            this._leaveAdminMode();
+            return { success: false, error: 'Your session has expired. Please sign in again.' };
+          }
+          return norm;
+        }
+      } catch (fallbackErr) {
+        /* Both backends failed — report the primary error below. */
+      }
+    }
+
+    const msg = primaryErr && primaryErr.name === 'AbortError'
+      ? 'The request timed out — the server is taking too long.'
+      : (primaryErr && primaryErr.message) || 'Network error.';
+    return { success: false, error: msg };
   },
 
   /* ── permissions ── */
@@ -492,7 +606,6 @@ const ADMIN = {
         return;
       }
     } catch (e) {}
-    // No permissions endpoint deployed — stay permissive on the UI.
     this._perms = null;
   },
 
@@ -621,11 +734,14 @@ const ADMIN = {
   /* ── render helpers ── */
   renderStats(s) {
     if (!s) return;
-    // Normalize Supabase shape:
-    //   { users: {total, trial, active, expired, paymentPending},
-    //     payments: {total, pending, verified, rejected} }
-    // into the flat shape this method expects.
+    /* The Supabase shape is:
+         { users: {total, trial, active, expired, paymentPending},
+           payments: {total, pending, verified, rejected} }
+       The old version overwrote `s` and lost `payments` entirely, leaving
+       the three payment counters permanently at 0. Preserve both halves. */
+    let payments = null;
     if (s.users && typeof s.users === 'object') {
+      payments = s.payments || null;
       s = {
         totalUsers:      s.users.total,
         trialUsers:      s.users.trial,
@@ -636,6 +752,22 @@ const ADMIN = {
     }
     this.data.stats = s;
     const set = (id, v) => { const el = $(id); if (el) el.textContent = (v == null ? '—' : v); };
+
+    /* Accounts row (admin.html: st-users, st-trial, st-active, st-expired) */
+    set('st-users',   s.totalUsers);
+    set('st-trial',   s.trialUsers);
+    set('st-active',  s.activeUsers);
+    set('st-expired', s.expiredUsers);
+
+    /* Payments row (admin.html: st-pending, st-payments, st-verified, st-rejected) */
+    set('st-pending', s.pendingPayments);
+    if (payments) {
+      set('st-payments', payments.total);
+      set('st-verified', payments.verified);
+      set('st-rejected', payments.rejected);
+    }
+
+    /* Legacy IDs (harmless if not present in this build of admin.html) */
     set('stat-total',    s.totalUsers);
     set('stat-active',   s.activeUsers);
     set('stat-pending',  s.pendingPayments);
@@ -704,16 +836,14 @@ const ADMIN = {
     ), 'payments_' + localISODate(new Date()) + '.csv');
   },
 
-    /* ── screenshots ── */
+  /* ── screenshots ── */
   async renderScreenshot(containerId, url, username) {
     const box = $(containerId);
     if (!box) return;
-    // If we already have an absolute URL (a Supabase signed URL), use it.
     if (url && /^https?:\/\//i.test(url)) {
       box.innerHTML = '<img src="' + esc(url) + '" alt="Payment screenshot" style="max-width:100%;border-radius:8px;display:block" data-on-error="ACT.hideParent(this)">';
       return;
     }
-    // Otherwise ask the backend for a fresh signed URL by username.
     if (!username) { box.innerHTML = '<p class="t-foot">No screenshot was attached.</p>'; return; }
     box.innerHTML = '<span class="inline-loader">Loading the screenshot</span>';
     try {
@@ -779,7 +909,9 @@ const ADMIN = {
       const r = await this.post('adminChangePassword', { currentPassword: cur, newPassword: neu });
       if (!r.success) throw new Error(r.error || 'Could not change your password.');
       if (r.token && this.creds) {
-        this.creds = Object.assign({}, this.creds, { token: r.token });
+        /* The admin token was invalidated by the change — replace it AND
+           drop the pending forced-change marker in one write. */
+        this.creds = Object.assign({}, this.creds, { token: r.token, mustChangePassword: false });
         try { localStorage.setItem(LS_ADMIN, JSON.stringify(this.creds)); } catch (e) {}
       }
       this._forcedPwChange = false;
