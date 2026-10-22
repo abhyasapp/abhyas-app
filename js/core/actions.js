@@ -26,10 +26,10 @@
     let fn = _cache.get(code);
     if (fn) return fn;
     
-    // eslint-disable-next-line no-new-func -- the data-on-* dispatcher is the single intended use
-    try { 
-      // Wrap in strict mode and return the result properly
-      fn = new Function('event', '"use strict";\n' + code); 
+    try {
+      // Wrap in strict mode and return the result properly.
+      // eslint-disable-next-line no-new-func -- the data-on-* dispatcher is the single intended use
+      fn = new Function('event', '"use strict";\n' + code);
     }
     catch (e) {
       console.error('[actions] Failed to compile:', code, e);

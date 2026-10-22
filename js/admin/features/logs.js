@@ -6,16 +6,22 @@ const LOGS = {
   _t: null,
   debounced(){ clearTimeout(this._t); this._t = setTimeout(() => this.filter(), 250); },
   filter(){
-    const q = $('l-search').value.toLowerCase();
-    const f = $('l-filter').value;
+    const search = $('l-search'), filt = $('l-filter');
+    const q = (search && search.value || '').toLowerCase();
+    const f = (filt && filt.value) || 'all';
     ADMIN.state.lPage = 1;
     this.renderPage(this._rows(q, f));
   },
   _rows(q, f){
-    q = q ?? $('l-search').value.toLowerCase();
-    f = f ?? $('l-filter').value;
+    const search = $('l-search'), filt = $('l-filter');
+    q = q != null ? q : (search && search.value || '').toLowerCase();
+    f = f != null ? f : ((filt && filt.value) || 'all');
     return (ADMIN.data.logs || []).filter(l => {
-      const match = !q || (l.admin || '').toLowerCase().includes(q) || (l.target || '').toLowerCase().includes(q) || (l.action || '').toLowerCase().includes(q);
+      if (!l) return false;
+      const match = !q ||
+        (l.admin || '').toLowerCase().includes(q) ||
+        (l.target || '').toLowerCase().includes(q) ||
+        (l.action || '').toLowerCase().includes(q);
       return match && (f === 'all' || (l.action || '').toLowerCase().includes(f));
     });
   },
@@ -26,10 +32,11 @@ const LOGS = {
     if (ADMIN.state.lPage > total) ADMIN.state.lPage = total;
     const page = rows.slice((ADMIN.state.lPage - 1) * per, ADMIN.state.lPage * per);
     const el = $('logs-list');
+    if (!el) return;
     if (!page.length) {
       el.innerHTML = '<div class="empty"><i class="ph ph-clock-counter-clockwise"></i><div class="t">Nothing here</div>' +
         '<div class="d">' + ((ADMIN.data.logs || []).length ? 'No activity matches this search.' : 'Actions taken in this console will show up here.') + '</div></div>';
-      $('l-pg').innerHTML = '';
+      const pg = $('l-pg'); if (pg) pg.innerHTML = '';
       return;
     }
     el.innerHTML = page.map(l =>

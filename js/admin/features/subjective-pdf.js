@@ -1,7 +1,7 @@
 // js/admin/features/subjective-pdf.js — replace / fetch / annotate a
 // submission PDF.
 // MUST load AFTER: core.js (ADMIN, $, esc, escAttrJs, BUSY,
-// TOAST, MODAL, CONFIRM), app/pdf-viewer.js (PDFVIEW),
+// TOAST, MODAL, CONFIRM), js/features/pdf-viewer.js (PDFVIEW),
 // vendor/pdf-lib/pdf-lib.min.js (PDFLib), vendor/pdfjs/pdf.min.js (pdfjsLib).
 // Uses SUBJ_STORE, SUBJ_TABS, SUBJ_QOTD, SUBJ_EXAM at call time only.
 
@@ -70,28 +70,28 @@ const SUBJ_PDF = {
   },
 
   onFile(input){
-    const f = input.files && input.files[0];
+    const f = input && input.files && input.files[0];
     if (!f) return;
     if (f.size > 10 * 1024 * 1024) {
       TOAST.show('That file is over 10 MB', 'error', 5000);
       input.value = '';
-      $('pdf-replace-name').textContent = 'Choose the updated PDF';
+      const nameEl = $('pdf-replace-name'); if (nameEl) nameEl.textContent = 'Choose the updated PDF';
       this._file = null;
-      $('pdf-replace-go').disabled = true;
+      const goBtn = $('pdf-replace-go'); if (goBtn) goBtn.disabled = true;
       return;
     }
     const looksLikePdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
     if (!looksLikePdf) {
       TOAST.show('That is not a PDF', 'error', 5000);
       input.value = '';
-      $('pdf-replace-name').textContent = 'Choose the updated PDF';
+      const nameEl = $('pdf-replace-name'); if (nameEl) nameEl.textContent = 'Choose the updated PDF';
       this._file = null;
-      $('pdf-replace-go').disabled = true;
+      const goBtn = $('pdf-replace-go'); if (goBtn) goBtn.disabled = true;
       return;
     }
     this._file = f;
-    $('pdf-replace-name').textContent = f.name + ' · ' + (f.size / 1024).toFixed(0) + ' KB';
-    $('pdf-replace-go').disabled = false;
+    const nameEl = $('pdf-replace-name'); if (nameEl) nameEl.textContent = f.name + ' · ' + (f.size / 1024).toFixed(0) + ' KB';
+    const goBtn = $('pdf-replace-go'); if (goBtn) goBtn.disabled = false;
   },
 
   async commit(){
@@ -108,7 +108,7 @@ const SUBJ_PDF = {
     if (!ok) return;
 
     const btn = $('pdf-replace-go');
-    btn.classList.add('loading');
+    if (btn) btn.classList.add('loading');
     BUSY.start();
     try {
       /* Supabase takes raw base64 in `pdfData`, not a data URL in `fileData`. */
@@ -119,10 +119,14 @@ const SUBJ_PDF = {
         r.readAsDataURL(file);
       });
 
+      /* The submission row lives in one backend's storage. Retrying this
+         mutation on the other backend would leave a copy of the file there
+         while the student still sees the original. Disable fallback so a
+         failure surfaces as a clear error and nothing is silently orphaned. */
       const res = await ADMIN.post('adminReplaceSubmissionPdf', {
         id: ctx.id,
         pdfData: base64
-      });
+      }, { fallback: false });
       if (!res.success) throw new Error(res.error || 'Replace failed.');
 
       TOAST.show('PDF replaced — ' + ctx.username + ' now sees the updated version', 'success', 5000);
@@ -134,7 +138,7 @@ const SUBJ_PDF = {
       TOAST.show(e.message || 'Could not replace that PDF', 'error', 6000);
     }
     BUSY.stop();
-    btn.classList.remove('loading');
+    if (btn) btn.classList.remove('loading');
   }
 };
 
@@ -198,10 +202,12 @@ const PDF_ANNOTATE = {
       for (let i = 0; i < bytes.length; i += CHUNK) {
         binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
       }
+      /* Same reason as SUBJ_PDF.commit — never retry a storage mutation on
+         the other backend. */
       const res = await ADMIN.post('adminReplaceSubmissionPdf', {
         id: ctx.id,
         pdfData: btoa(binary)
-      });
+      }, { fallback: false });
       if (!res.success) throw new Error(res.error || 'The server refused the upload.');
 
       TOAST.show(ctx.username + ' can now see the marked paper', 'success', 5000);

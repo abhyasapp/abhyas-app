@@ -71,6 +71,11 @@ npm run audit        # duplicate symbols, orphan files, unused vendor files (rep
 Scripts are plain globals, so tests load them with `tests/helpers/load-globals.js`
 (a small `vm` sandbox) instead of importing them.
 
+`tests/pages.test.js` boots `index.html`, `user.html` and `admin.html` in jsdom with
+the real scripts and fails on any `SyntaxError`. A classic-script redeclaration
+(two files both declaring `const ADMIN`) silently kills the later file — and the
+feature with it — so this is the check that catches it.
+
 ## Roadmap (suggested)
 
 1. Tests for progress sync (`js/core/psync.js`), scoring and the quiz engine.

@@ -7,18 +7,19 @@
 const SUBJADMIN = {
   _preview: [],
   parse(){
-    const raw = $('sp-raw').value.trim();
+    const raw = ($('sp-raw') || {}).value ? $('sp-raw').value.trim() : '';
     if (!raw) return TOAST.show('Paste some question text first', 'warning');
-    if (typeof SUBJ_SMART === 'undefined') return TOAST.show('subjective.js has not loaded', 'error');
+    if (typeof SUBJ_SMART === 'undefined') return TOAST.show('subj-smart.js has not loaded', 'error');
     const items = SUBJ_SMART.preview(raw);
     if (!items.length) return TOAST.show('Nothing recognised — each question needs to start with a number, Qn. or a bullet', 'warning', 6000);
     this._preview = items.map(it => ({ ...it, keep:true, chapterId: it.suggestedChapter || 'structure', groupKey: it.suggestedGroup || 'A' }));
     this._render();
-    $('sp-commit').disabled = false;
-    $('sp-status').textContent = 'Found ' + plural(items.length, 'question') + ' — check them, then add';
+    const commitBtn = $('sp-commit'); if (commitBtn) commitBtn.disabled = false;
+    const status = $('sp-status'); if (status) status.textContent = 'Found ' + plural(items.length, 'question') + ' — check them, then add';
   },
   _render(){
     const wrap = $('sp-preview');
+    if (!wrap) return;
     const CH = (typeof SUBJECTIVE_CHAPTERS !== 'undefined') ? SUBJECTIVE_CHAPTERS : [];
     const kept = this._preview.filter(x => x.keep).length;
     wrap.innerHTML = '<div class="t-cap mb2">' + kept + ' of ' + this._preview.length + ' will be added. Low-confidence guesses have a red edge — check the chapter before adding.</div>' +
@@ -42,6 +43,18 @@ const SUBJADMIN = {
   _setMarks(i, v){ this._preview[i].marks = Math.max(1, Math.min(40, parseInt(v, 10) || 10)); },
   _drop(i){ this._preview[i].keep = !this._preview[i].keep; this._render(); },
 
+  /* getFile normalization — ADMIN.post already unwraps Supabase's
+     { success:true, content:"<json>" } into res.result. Read whichever
+     shape actually came back. */
+  _unwrap(res) {
+    if (!res || !res.success) return null;
+    if (res.result !== undefined && res.result !== null) return res.result;
+    if (typeof res.content === 'string') {
+      try { return JSON.parse(res.content); } catch (e) { return null; }
+    }
+    return null;
+  },
+
   async _onChapterChange(fileId){
     const sel = $('sp-section'), newInput = $('sp-section-new');
     const base = '<option value="">Default bucket</option><option value="__NEW__">Create a new section</option>';
@@ -51,8 +64,9 @@ const SUBJADMIN = {
     try {
       const r = await ADMIN.post('getFile', { fileId });
       if (!r.success) throw new Error(r.error || 'Could not open that file.');
-      const sections = (r.result && Array.isArray(r.result.sections))
-        ? r.result.sections.map(s => String(s.section || '')).filter(Boolean) : [];
+      const payload = this._unwrap(r);
+      const sections = (payload && Array.isArray(payload.sections))
+        ? payload.sections.map(s => String(s.section || '')).filter(Boolean) : [];
       if (sel) sel.innerHTML = '<option value="">Default bucket</option>' +
         sections.map(n => '<option value="' + escAttrJs(n) + '">' + esc(n) + '</option>').join('') +
         '<option value="__NEW__">Create a new section</option>';
@@ -69,11 +83,11 @@ const SUBJADMIN = {
   },
 
   async commit(){
-    const fileId = $('sp-target').value || '';
+    const fileId = ($('sp-target') || {}).value || '';
     if (!fileId) return TOAST.show('Choose a chapter file first', 'error');
-    let section = $('sp-section').value;
+    let section = ($('sp-section') || {}).value || '';
     if (section === '__NEW__') {
-      section = ($('sp-section-new').value || '').trim();
+      section = (($('sp-section-new') || {}).value || '').trim();
       if (!section) return TOAST.show('Name the new section', 'error');
     }
     const items = this._preview.filter(x => x.keep).map(x => ({ chapterId:x.chapterId, groupKey:x.groupKey, question:x.question, marks:x.marks }));
@@ -83,14 +97,19 @@ const SUBJADMIN = {
       const r = await ADMIN.post('adminCommitSubjectiveImport', { fileId, section, items: JSON.stringify(items) });
       if (!r.success) throw new Error(r.error || 'Could not add those questions.');
       TOAST.show(r.inserted + ' added' + (r.skipped ? ', ' + r.skipped + ' skipped as duplicates' : ''), 'success', 5000);
-      $('sp-commit').disabled = true;
-      $('sp-status').textContent = 'Added ' + r.inserted + ' to "' + (r.section || 'the default bucket') + '"';
+      const commitBtn = $('sp-commit'); if (commitBtn) commitBtn.disabled = true;
+      const status = $('sp-status'); if (status) status.textContent = 'Added ' + r.inserted + ' to "' + (r.section || 'the default bucket') + '"';
+      /* Refresh the section dropdown so the newly created section is
+         immediately available for the next batch. */
+      try { await this._onChapterChange(fileId); } catch (e) {}
     } catch(e){ TOAST.show(e.message, 'error', 6000); }
     BUSY.stop();
   },
   clear(){
-    $('sp-raw').value = ''; $('sp-preview').innerHTML = ''; $('sp-status').textContent = '';
-    $('sp-commit').disabled = true;
+    const raw = $('sp-raw'); if (raw) raw.value = '';
+    const prev = $('sp-preview'); if (prev) prev.innerHTML = '';
+    const status = $('sp-status'); if (status) status.textContent = '';
+    const commitBtn = $('sp-commit'); if (commitBtn) commitBtn.disabled = true;
     this._preview = [];
   },
   _populateFilters(){
@@ -107,10 +126,10 @@ const SUBJADMIN = {
 const SUBJ_UPLOAD = {
   _pending: null,
   onFile(input){
-    const f = input.files && input.files[0];
+    const f = input && input.files && input.files[0];
     if (!f) return;
     if (f.size > 5 * 1024 * 1024) { TOAST.show('That file is over 5 MB', 'error'); input.value = ''; return; }
-    $('subj-upload-name').textContent = f.name;
+    const nameEl = $('subj-upload-name'); if (nameEl) nameEl.textContent = f.name;
     const r = new FileReader();
     r.onload = e => { this._pending = { dataUrl: e.target.result, filename: f.name }; };
     r.onerror = () => TOAST.show('Could not read that file', 'error');
@@ -118,9 +137,9 @@ const SUBJ_UPLOAD = {
   },
   clear(){
     this._pending = null;
-    $('subj-upload-file').value = '';
-    $('subj-upload-name').textContent = 'Choose a JSON file';
-    $('subj-upload-result').innerHTML = '';
+    const f = $('subj-upload-file'); if (f) f.value = '';
+    const nameEl = $('subj-upload-name'); if (nameEl) nameEl.textContent = 'Choose a JSON file';
+    const result = $('subj-upload-result'); if (result) result.innerHTML = '';
   },
   async upload(){
     if (!this._pending) return TOAST.show('Choose a JSON file first', 'warning');
@@ -128,10 +147,13 @@ const SUBJ_UPLOAD = {
     try {
       const r = await ADMIN.post('adminUploadSubjectiveFile', { fileData: this._pending.dataUrl, filename: this._pending.filename });
       if (!r.success) throw new Error(r.error || 'Upload failed.');
-      $('subj-upload-result').innerHTML =
-        '<div class="banner banner-accent" style="align-items:center"><i class="ph ph-check-circle"></i>' +
-        '<span>Uploaded ' + plural(r.questionCount, 'question') + '. File ID <code class="mono">' + esc(r.fileId) + '</code>' +
-        '<button class="copy-btn" data-on-click="copyText(\'' + escAttrJs(r.fileId) + '\',\'File ID copied\')" aria-label="Copy file ID"><i class="ph ph-copy"></i></button></span></div>';
+      const result = $('subj-upload-result');
+      if (result) {
+        result.innerHTML =
+          '<div class="banner banner-accent" style="align-items:center"><i class="ph ph-check-circle"></i>' +
+          '<span>Uploaded ' + plural(r.questionCount, 'question') + '. File ID <code class="mono">' + esc(r.fileId) + '</code>' +
+          '<button class="copy-btn" data-on-click="copyText(\'' + escAttrJs(r.fileId) + '\',\'File ID copied\')" aria-label="Copy file ID"><i class="ph ph-copy"></i></button></span></div>';
+      }
       TOAST.show('Uploaded — paste the file ID into subjective-data.js', 'success', 6000);
     } catch(e){ TOAST.show(e.message, 'error', 6000); }
     BUSY.stop();

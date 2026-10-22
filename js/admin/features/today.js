@@ -1,17 +1,21 @@
 // js/admin/features/today.js — the today queue + badges.
 // MUST load AFTER: core.js (ADMIN, $, $$, plural). Uses SUBJ_STORE, QREPORTS
-// at call time — both must be non-stub for TODAY.render / BADGES.update to work.
+// at call time — both must be non-stub for TODAY.render / BADGES.update.
 
 const TODAY = {
   render(){
     const el = $('queue');
     if (!el) return;
-    const pendingPay   = (ADMIN.data.payments || []).filter(p => p.status === 'pending').length;
-    const qotdPending  = SUBJ_STORE.all.filter(s => (s.kind || 'qotd') === 'qotd' && s.status !== 'graded').length;
-    const examPending  = SUBJ_STORE.all.filter(s => s.kind === 'exam' && s.status !== 'graded').length;
-    const reportList   = (typeof QREPORTS !== 'undefined' && QREPORTS.all) ? QREPORTS.all : [];
-    const openReports  = reportList.filter(r => r.status === 'open').length;
-    const expiring     = Number($('expiring-list')?.dataset.count || 0);
+    const pendingPay   = (ADMIN.data.payments || []).filter(p => p && p.status === 'pending').length;
+    /* SUBJ_STORE.all is initialised to [] in the store module, but the
+       store may not be loaded yet when this first runs. Guard both. */
+    const subsAll = (typeof SUBJ_STORE !== 'undefined' && Array.isArray(SUBJ_STORE.all)) ? SUBJ_STORE.all : [];
+    const qotdPending  = subsAll.filter(s => s && (s.kind || 'qotd') === 'qotd' && s.status !== 'graded').length;
+    const examPending  = subsAll.filter(s => s && s.kind === 'exam' && s.status !== 'graded').length;
+    const reportList   = (typeof QREPORTS !== 'undefined' && Array.isArray(QREPORTS.all)) ? QREPORTS.all : [];
+    const openReports  = reportList.filter(r => r && r.status === 'open').length;
+    const expiringEl   = $('expiring-list');
+    const expiring     = Number((expiringEl && expiringEl.dataset && expiringEl.dataset.count) || 0);
 
     const items = [
       { n:pendingPay,  tone:'money',  icon:'ph-credit-card',
@@ -28,7 +32,7 @@ const TODAY = {
         go:"UI.nav('qreports')" },
       { n:expiring,    tone:'urgent', icon:'ph-hourglass-medium',
         t:'Trials ending soon', done:'No trials ending', busy:'Within your selected window',
-        go:"document.getElementById('expiring-panel').scrollIntoView({behavior:'smooth',block:'center'})" }
+        go:"document.getElementById('expiring-panel')?.scrollIntoView({behavior:'smooth',block:'center'})" }
     ];
     const open = items.filter(i => i.n > 0).length;
 
@@ -36,8 +40,8 @@ const TODAY = {
       '<button class="queue-row ' + (i.n ? i.tone : 'clear') + '" role="listitem" data-on-click="' + i.go + '">' +
         '<span class="q-icon"><i class="ph ' + i.icon + '"></i></span>' +
         '<span class="q-body">' +
-          '<span class="q-title">' + i.t + '</span>' +
-          '<span class="q-sub">' + (i.n ? i.busy : i.done) + '</span>' +
+          '<span class="q-title">' + esc(i.t) + '</span>' +
+          '<span class="q-sub">' + esc(i.n ? i.busy : i.done) + '</span>' +
         '</span>' +
         '<span class="q-count">' + i.n + '</span>' +
         '<i class="ph ph-caret-right q-chev"></i>' +
@@ -60,13 +64,14 @@ const BADGES = {
     else el.hidden = true;
   },
   update(){
-    const reportList = (typeof QREPORTS !== 'undefined' && QREPORTS.all) ? QREPORTS.all : [];
-    this.set('badge-payments', (ADMIN.data.payments || []).filter(p => p.status === 'pending').length);
-    this.set('badge-qreports', reportList.filter(r => r.status === 'open').length);
-    this.set('badge-subjective', SUBJ_STORE.all.filter(s => s.status !== 'graded').length);
-    this.set('tab-count-qotd', SUBJ_STORE.all.filter(s => (s.kind || 'qotd') === 'qotd' && s.status !== 'graded').length);
-    this.set('tab-count-hourly', SUBJ_STORE.all.filter(s => s.kind === 'hourly' && s.status !== 'graded').length);
-    this.set('tab-count-exam', SUBJ_STORE.all.filter(s => s.kind === 'exam' && s.status !== 'graded').length);
+    const reportList = (typeof QREPORTS !== 'undefined' && Array.isArray(QREPORTS.all)) ? QREPORTS.all : [];
+    const subsAll    = (typeof SUBJ_STORE !== 'undefined' && Array.isArray(SUBJ_STORE.all)) ? SUBJ_STORE.all : [];
+    this.set('badge-payments', (ADMIN.data.payments || []).filter(p => p && p.status === 'pending').length);
+    this.set('badge-qreports', reportList.filter(r => r && r.status === 'open').length);
+    this.set('badge-subjective', subsAll.filter(s => s && s.status !== 'graded').length);
+    this.set('tab-count-qotd', subsAll.filter(s => s && (s.kind || 'qotd') === 'qotd' && s.status !== 'graded').length);
+    this.set('tab-count-hourly', subsAll.filter(s => s && s.kind === 'hourly' && s.status !== 'graded').length);
+    this.set('tab-count-exam', subsAll.filter(s => s && s.kind === 'exam' && s.status !== 'graded').length);
   }
 };
 

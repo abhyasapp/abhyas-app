@@ -14,7 +14,7 @@ const MAINTENANCE = {
     BUSY.stop();
   },
   async pruneOldBackups(){
-    const days = parseInt($('maint-backup-days').value, 10);
+    const days = parseInt(($('maint-backup-days') || {}).value, 10);
     if (!days || days < 1) return TOAST.show('Enter a number of days to keep', 'error');
     const ok = await CONFIRM.ask({
       title:'Prune old backups',
@@ -33,7 +33,7 @@ const MAINTENANCE = {
     if (ok) this._run('Delete', 'adminClearProgressBackups', {}, r => 'Deleted ' + plural(r.deleted, 'backup row'));
   },
   async trimLogs(){
-    const keep = parseInt($('maint-logs-keep').value, 10);
+    const keep = parseInt(($('maint-logs-keep') || {}).value, 10);
     if (!keep || keep < 100) return TOAST.show('Keep at least 100 rows', 'error');
     const ok = await CONFIRM.ask({
       title:'Trim the activity log',
@@ -63,17 +63,20 @@ const CHAPTERS = {
     if (this._map) return;
     this._map = new Map(); this._levels = new Set();
     if (typeof ChapterData !== 'undefined') {
-      ChapterData.allFileRefs().forEach(ref => {
-        const level = ChapterData.levelLabel(ref.lv);
-        const chapter = ChapterData.chapterName(ref.lv, ref.ch);
-        this._map.set(ref.fid, { level, chapter, label: level + ' — ' + chapter });
-        this._levels.add(level);
-      });
+      try {
+        ChapterData.allFileRefs().forEach(ref => {
+          const level = ChapterData.levelLabel(ref.lv);
+          const chapter = ChapterData.chapterName(ref.lv, ref.ch);
+          this._map.set(ref.fid, { level, chapter, label: level + ' — ' + chapter });
+          this._levels.add(level);
+        });
+      } catch(e){}
     }
   },
   labelFor(fileId){
     this._build();
-    return this._map.get(fileId)?.label || (fileId === 'local' ? 'Local file' : 'Weekly set or unknown');
+    return (this._map.get(fileId) && this._map.get(fileId).label)
+      || (fileId === 'local' ? 'Local file' : 'Weekly set or unknown');
   },
   allLevels(){ this._build(); return [...this._levels].sort(); },
   allChapters(){ this._build(); return [...new Set([...this._map.values()].map(v => v.chapter))].sort(); }
@@ -88,10 +91,12 @@ const TRENDS = {
     try {
       const r = await ADMIN.post('adminTrends', { days: 30 });
       if (!r.success) throw new Error(r.error || 'Could not load.');
-      const t = r.totals;
-      const max = Math.max(1, ...r.series.map(d => Math.max(d.signups, d.paid)));
-      const bars = key => r.series.map(d =>
-        '<span title="' + esc(d.date) + ': ' + d[key] + '" style="flex:1;min-width:3px;height:' + Math.max(2, Math.round(d[key] / max * 56)) +
+      const t = r.totals || {};
+      const series = Array.isArray(r.series) ? r.series : [];
+      const max = Math.max(1, ...series.map(d => Math.max(d.signups || 0, d.paid || 0)));
+      const bars = key => series.map(d =>
+        '<span title="' + esc(d.date || '') + ': ' + (d[key] || 0) + '" ' +
+        'style="flex:1;min-width:3px;height:' + Math.max(2, Math.round((d[key] || 0) / max * 56)) +
         'px;background:' + (key === 'paid' ? 'var(--accent)' : 'var(--info)') + ';border-radius:2px 2px 0 0"></span>').join('');
       const chart = (label, key, sum) =>
         '<div class="mb3"><div class="flex between center mb2"><span class="t-callout" style="color:var(--ink);font-weight:600">' + label + '</span>' +
@@ -99,13 +104,13 @@ const TRENDS = {
         '<div style="display:flex;align-items:flex-end;gap:2px;height:60px">' + bars(key) + '</div></div>';
       box.innerHTML =
         '<div class="metrics mb4">' +
-          '<div class="metric"><div class="v">' + t.paidRate + '%</div><div class="l">Of all students have paid</div></div>' +
-          '<div class="metric"><div class="v">' + t.awaiting + '</div><div class="l">Payments waiting for you</div></div>' +
-          '<div class="metric"><div class="v">' + t.notPaid + '</div><div class="l">Expired, not paid</div></div>' +
-          '<div class="metric"><div class="v">Rs ' + Number(t.revenueEstimate).toLocaleString() + '</div><div class="l">Estimated at Rs ' + t.amount + ' each</div></div>' +
+          '<div class="metric"><div class="v">' + (t.paidRate || 0) + '%</div><div class="l">Of all students have paid</div></div>' +
+          '<div class="metric"><div class="v">' + (t.awaiting || 0) + '</div><div class="l">Payments waiting for you</div></div>' +
+          '<div class="metric"><div class="v">' + (t.notPaid || 0) + '</div><div class="l">Expired, not paid</div></div>' +
+          '<div class="metric"><div class="v">Rs ' + Number(t.revenueEstimate || 0).toLocaleString() + '</div><div class="l">Estimated at Rs ' + (t.amount || 0) + ' each</div></div>' +
         '</div>' +
-        chart('New students per day', 'signups', t.periodSignups) +
-        chart('Payments approved per day', 'paid', t.periodPaid) +
+        chart('New students per day', 'signups', t.periodSignups || 0) +
+        chart('Payments approved per day', 'paid', t.periodPaid || 0) +
         (t.notPaid ? '<div class="flex g2 wrap center"><span class="t-foot">' + plural(t.notPaid, 'student') + ' finished the trial without paying. A short message can win some back.</span>' +
           '<button class="btn btn-secondary btn-sm" data-on-click="USERS.filterBy(\'expired\')">See them</button></div>' : '');
     } catch(e){
@@ -128,70 +133,89 @@ const _gate = (() => {
   return fn => new Promise((res, rej) => { q.push({ fn, res, rej }); next(); });
 })();
 
+/* getFile normalization: ADMIN.post already unwraps Supabase's
+   { success:true, content:"<json>" } into res.result. This helper reads
+   whichever shape actually came back so this file keeps working even if
+   the caller sends getFile through a path that bypasses normalization. */
+function _unwrapGetFileResponse(res) {
+  if (!res || !res.success) return null;
+  if (res.result !== undefined && res.result !== null) return res.result;
+  if (typeof res.content === 'string') {
+    try { return JSON.parse(res.content); } catch (e) { return null; }
+  }
+  return null;
+}
+
 const MISSED = {
   lastResults: [], _built: false,
   _buildFilters(){
-  if (this._built) return;
-  const lv = $('miss-level'), ch = $('miss-chapter');
-  if (!lv || !ch) return;
-  this._built = true;
-  CHAPTERS.allLevels().forEach(l => lv.insertAdjacentHTML('beforeend', '<option value="' + escAttrJs(l) + '">' + esc(l) + '</option>'));
-  CHAPTERS.allChapters().forEach(c => ch.insertAdjacentHTML('beforeend', '<option value="' + escAttrJs(c) + '">' + esc(c) + '</option>'));
+    if (this._built) return;
+    const lv = $('miss-level'), ch = $('miss-chapter');
+    if (!lv || !ch) return;
+    this._built = true;
+    CHAPTERS.allLevels().forEach(l => lv.insertAdjacentHTML('beforeend', '<option value="' + escAttrJs(l) + '">' + esc(l) + '</option>'));
+    CHAPTERS.allChapters().forEach(c => ch.insertAdjacentHTML('beforeend', '<option value="' + escAttrJs(c) + '">' + esc(c) + '</option>'));
   },
   clearFilters(){
-    ['miss-level','miss-chapter','miss-from','miss-to'].forEach(id => $(id).value = '');
-    $('miss-min').value = '3'; $('miss-limit').value = '20';
+    ['miss-level','miss-chapter','miss-from','miss-to'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+    if ($('miss-min')) $('miss-min').value = '3';
+    if ($('miss-limit')) $('miss-limit').value = '20';
     this.load();
   },
   async load(){
     this._buildFilters();
     const box = $('missed-list');
+    if (!box) return;
     box.innerHTML = '<div class="sk-block"><div class="skeleton sk-80"></div><div class="skeleton sk-40"></div></div>' +
                     '<div class="sk-block"><div class="skeleton sk-60"></div><div class="skeleton sk-40"></div></div>';
     const params = {
-      level: $('miss-level').value, chapter: $('miss-chapter').value,
-      dateFrom: $('miss-from').value, dateTo: $('miss-to').value,
-      minAttempts: $('miss-min').value || 3, limit: $('miss-limit').value || 20
+      level: ($('miss-level') || {}).value || '',
+      chapter: ($('miss-chapter') || {}).value || '',
+      dateFrom: ($('miss-from') || {}).value || '',
+      dateTo: ($('miss-to') || {}).value || '',
+      minAttempts: ($('miss-min') || {}).value || 3,
+      limit: ($('miss-limit') || {}).value || 20
     };
     try {
       const res = await ADMIN.post('adminMostMissedQuestions', params);
       if (!res.success) throw new Error(res.error || 'Could not load.');
-      this.lastResults = res.results;
+      this.lastResults = res.results || [];
       const trunc = res.truncated
         ? '<div class="banner banner-warning"><i class="ph ph-warning"></i><span>Partial results — scanned ' + res.totalRowsScanned + ' of ' + res.totalRowsAvailable + ' progress rows.</span></div>'
         : '';
-      if (!res.results.length) {
+      if (!this.lastResults.length) {
         box.innerHTML = trunc + '<div class="empty"><i class="ph ph-target"></i><div class="t">Nothing matches yet</div>' +
           '<div class="d">Widen the date range or lower the minimum attempts.</div>' +
           '<div class="a"><button class="btn btn-quiet" data-on-click="MISSED.clearFilters()">Reset filters</button></div></div>';
         return;
       }
       const cache = {};
-      await Promise.all([...new Set(res.results.map(r => r.fileId))].map(async fid => {
+      await Promise.all([...new Set(this.lastResults.map(r => r.fileId).filter(Boolean))].map(async fid => {
         try {
           const f = await _gate(() => ADMIN.post('getFile', { fileId: fid }));
-          if (f.success) {
-            const raw = f.result;
-            cache[fid] = Array.isArray(raw) ? raw : (raw?.questions || raw?.data || raw?.quiz || raw?.items || []);
-          }
-        } catch(e){}
+          const raw = _unwrapGetFileResponse(f);
+          if (raw == null) { cache[fid] = []; return; }
+          cache[fid] = Array.isArray(raw) ? raw : (raw.questions || raw.data || raw.quiz || raw.items || []);
+        } catch(e){ cache[fid] = []; }
       }));
-      box.innerHTML = trunc + res.results.map(r => {
+      box.innerHTML = trunc + this.lastResults.map(r => {
         const qs = cache[r.fileId];
         const q = (qs && r.index != null) ? qs[r.index] : null;
         const text = q ? (q.q || q.question || q.Question || q.stem || q.ques || q.text) : null;
         const chapter = r.chapter || CHAPTERS.labelFor(r.fileId);
+        const wrongRate = r.wrongRate != null ? r.wrongRate : '—';
+        const accuracy = r.accuracy != null ? r.accuracy : (r.wrongRate != null ? 100 - r.wrongRate : '—');
         return '<div class="miss">' +
           '<div class="miss-top">' +
-            '<div class="miss-q">' + (text ? esc(String(text).slice(0, 240)) : '<span class="mono dim">' + esc(r.uid) + '</span>') + '</div>' +
-            '<div class="miss-rate"><div class="v">' + r.wrongRate + '%</div><div class="l">' + r.wrong + ' of ' + r.total + ' wrong</div></div>' +
+            '<div class="miss-q">' + (text ? esc(String(text).slice(0, 240)) : '<span class="mono dim">' + esc(r.uid || '') + '</span>') + '</div>' +
+            '<div class="miss-rate"><div class="v">' + wrongRate + '%</div><div class="l">' + (r.wrong || 0) + ' of ' + (r.total || 0) + ' wrong</div></div>' +
           '</div>' +
           '<div class="miss-tags">' +
             (r.level ? '<span class="badge flat">' + esc(r.level) + '</span>' : '') +
             (chapter ? '<span class="badge flat">' + esc(chapter) + '</span>' : '') +
           '</div>' +
-          '<div class="miss-meta"><span>' + plural(r.uniqueStudents ?? 0, 'student') + '</span>' +
-          '<span>' + (r.accuracy ?? (100 - r.wrongRate)) + '% accuracy</span></div>' +
+          '<div class="miss-meta"><span>' + plural(r.uniqueStudents || 0, 'student') + '</span>' +
+          '<span>' + accuracy + '% accuracy</span></div>' +
         '</div>';
       }).join('');
     } catch(e){
@@ -202,7 +226,13 @@ const MISSED = {
     if (!this.lastResults || !this.lastResults.length) return TOAST.show('Load the list first', 'warning');
     ADMIN.downloadCSV(ADMIN.toCSV(
       ['UID','Level','Chapter','Wrong','Total','Wrong %','Accuracy %','Students'],
-      this.lastResults.map(r => [r.uid, r.level || '', r.chapter || '', r.wrong, r.total, r.wrongRate, r.accuracy, r.uniqueStudents])
+      this.lastResults.map(r => [
+        r.uid || '', r.level || '', r.chapter || '',
+        r.wrong || 0, r.total || 0,
+        r.wrongRate != null ? r.wrongRate : '',
+        r.accuracy != null ? r.accuracy : '',
+        r.uniqueStudents || 0
+      ])
     ), 'most_missed_questions.csv');
   }
 };

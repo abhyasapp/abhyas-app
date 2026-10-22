@@ -13,6 +13,16 @@ const GOOGLE_PROMPT_HEAD =
   '(5) the common confusions to avoid on this topic, ' +
   '(6) a one-line memory trick. Keep it exam-focused. ';
 
+// ── EXTENSION CONNECTION STATE ──
+window.isDualSearchExtensionInstalled = false;
+
+// Listen for the safe event dispatched by content.js
+document.addEventListener('DualSearchExtensionReady', () => {
+    window.isDualSearchExtensionInstalled = true;
+    console.log("✅ Dual Search Extension Connected!");
+});
+
+// ── IMAGE HELPERS ──
 function _resolveQImg(raw) {
   const v = String(raw || '').trim();
   if (!v) return null;
@@ -31,6 +41,7 @@ function qImgHtml(q) {
   return `<div style="margin:.4rem 0"><img src="${esc(q.img)}" alt="${esc(alt)}" style="max-width:100%;border-radius:8px;border:1px solid var(--b1);display:block" loading="lazy" data-on-error="ACT.hideParent(this)"></div>`;
 }
 
+// ── QUERY BUILDER ──
 function _buildRichQuery(q) {
   if (!q) return '';
   const opts = (q.options || []).map((o, i) => String.fromCharCode(65 + i) + ') ' + String(o)).join(' ');
@@ -39,14 +50,43 @@ function _buildRichQuery(q) {
   return (GOOGLE_PROMPT_HEAD + body).slice(0, GOOGLE_PROMPT_MAX).trim();
 }
 
+// ── SEARCH BUTTON HTML ──
 function qSearchHtml(q) {
-  const query = encodeURIComponent(_buildRichQuery(q));
-  return `<a class="ib" href="https://www.google.com/search?q=${query}" target="_blank" rel="noopener" `
+  // 1. Build the raw text (Question + Options) to send to the extension
+  const opts = (q.options || []).map((o, i) => String.fromCharCode(65 + i) + ') ' + String(o)).join(' ');
+  const textToSearch = String(q.q || '').trim() + (opts ? '  Options: ' + opts : '');
+  
+  // 2. Safely escape for the HTML attribute
+  const safeQuery = textToSearch.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  
+  // 3. Fallback URL (used ONLY if the extension is not installed)
+  const fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(_buildRichQuery(q))}`;
+
+  // 4. Return the link with class "ext-search-btn" for Event Delegation
+  return `<a class="ib ext-search-btn" href="${fallbackUrl}" target="_blank" rel="noopener" `
+       + `data-query="${safeQuery}" `
        + `title="Ask Google AI to analyse this question" `
        + `aria-label="Ask Google AI to analyse this question">`
        + `<i class="ph ph-magnifying-glass"></i></a>`;
 }
 
+// ── EVENT DELEGATION (THE FIX) ──
+// We intercept clicks globally instead of using inline onclick.
+document.addEventListener('click', function(e) {
+    // Check if the clicked element (or its parent) is our search button
+    const btn = e.target.closest('.ext-search-btn');
+    if (btn) {
+        if (window.isDualSearchExtensionInstalled) {
+            // Extension is installed! Stop the normal link and send the message.
+            e.preventDefault();
+            const queryText = btn.getAttribute('data-query');
+            window.postMessage({ type: 'DUAL_SEARCH_REQUEST', query: queryText }, '*');
+        }
+        // If extension is NOT ready, it falls back to the default href (normal Google search)
+    }
+});
+
+// ── QUESTION PARSER ──
 function normQ(raw, fid) {
   if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.success === false) {
     console.warn('[normQ] Server error for', fid, '—', raw.error);

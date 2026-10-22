@@ -1,7 +1,7 @@
 // js/admin/features/studydocs.js — upload / edit / delete study PDFs.
 // MUST load AFTER: core.js (ADMIN, $, esc, escAttrJs, badge, fullTime,
-// MODAL, CONFIRM, TOAST), core/study-docs.js (STUDYDOC_LABELS, subjChapterName,
-// formatBytes). PDFVIEW is used at call time only.
+// MODAL, CONFIRM, TOAST), core/study-docs.js (STUDYDOC_LABELS,
+// subjChapterName, formatBytes). PDFVIEW is used at call time only.
 
 const STUDYDOCS = {
   list: [], loaded: false, MAX_BYTES: 9 * 1024 * 1024,
@@ -81,58 +81,66 @@ const STUDYDOCS = {
 
   onFilePicked(){
     const input = $('sd-file'), status = $('sd-status'), nameEl = $('sd-file-name');
-    const f = input.files && input.files[0];
+    const f = input && input.files && input.files[0];
     if (!f) return;
-    nameEl.textContent = f.name;
+    if (nameEl) nameEl.textContent = f.name;
     if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') {
-      status.innerHTML = '<span style="color:var(--danger)">That is not a PDF.</span>'; input.value = ''; nameEl.textContent = 'Choose a PDF'; return;
+      if (status) status.innerHTML = '<span style="color:var(--danger)">That is not a PDF.</span>';
+      input.value = ''; if (nameEl) nameEl.textContent = 'Choose a PDF'; return;
     }
     if (f.size > this.MAX_BYTES) {
-      status.innerHTML = '<span style="color:var(--danger)">That file is ' + formatBytes(f.size) + '. Keep it under 9 MB (a scanner or PDF compressor can shrink it).</span>';
-      input.value = ''; nameEl.textContent = 'Choose a PDF'; return;
+      if (status) status.innerHTML = '<span style="color:var(--danger)">That file is ' + formatBytes(f.size) + '. Keep it under 9 MB (a scanner or PDF compressor can shrink it).</span>';
+      input.value = ''; if (nameEl) nameEl.textContent = 'Choose a PDF'; return;
     }
-    status.textContent = formatBytes(f.size) + ' ready';
+    if (status) status.textContent = formatBytes(f.size) + ' ready';
     const t = $('sd-title');
     if (t && !t.value.trim()) t.value = f.name.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').trim();
   },
 
   async upload(){
-    const f = $('sd-file').files && $('sd-file').files[0];
-    const title = $('sd-title').value.trim();
-    if (!title) { $('sd-title').classList.add('invalid'); return TOAST.show('Give the PDF a title', 'warning'); }
+    const fileInput = $('sd-file');
+    const f = fileInput && fileInput.files && fileInput.files[0];
+    const titleEl = $('sd-title');
+    const title = titleEl ? titleEl.value.trim() : '';
+    if (!title) { if (titleEl) titleEl.classList.add('invalid'); return TOAST.show('Give the PDF a title', 'warning'); }
     if (!f) return TOAST.show('Choose a PDF file first', 'warning');
     const btn = $('sd-save'), status = $('sd-status');
-    btn.disabled = true; btn.textContent = 'Uploading…';
-    status.innerHTML = '<span class="inline-loader">Requesting upload slot</span>';
+    if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
+    if (status) status.innerHTML = '<span class="inline-loader">Requesting upload slot</span>';
     try {
       const up = await ADMIN.post('getStudyDocUploadUrl', {});
       if (!up.success || !up.signedUrl || !up.path) {
         throw new Error(up.error || 'The server did not return an upload slot.');
       }
-      status.innerHTML = '<span class="inline-loader">Uploading to storage</span>';
+      if (status) status.innerHTML = '<span class="inline-loader">Uploading to storage</span>';
       const put = await fetch(up.signedUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/pdf' },
         body: f
       });
       if (!put.ok) throw new Error('Storage refused the upload (HTTP ' + put.status + ').');
-      status.innerHTML = '<span class="inline-loader">Saving</span>';
+      if (status) status.innerHTML = '<span class="inline-loader">Saving</span>';
+      /* The file is already in Supabase Storage at `up.path`. If
+         adminAddStudyDoc is retried on GAS, GAS cannot read that path —
+         the record would be silently orphaned. Disable fallback for this
+         one call so a Supabase failure surfaces as a clear error instead
+         of a "successful" record GAS cannot open. */
       const r = await ADMIN.post('adminAddStudyDoc', {
         title,
-        category: $('sd-cat').value,
-        chapterId: $('sd-chap').value,
-        description: $('sd-desc').value.trim(),
-        sortOrder: $('sd-pin').checked ? 1 : 100,
-        publish: $('sd-publish').checked,
+        category: ($('sd-cat') || {}).value || 'model-answer',
+        chapterId: ($('sd-chap') || {}).value || '',
+        description: (($('sd-desc') || {}).value || '').trim(),
+        sortOrder: ($('sd-pin') && $('sd-pin').checked) ? 1 : 100,
+        publish: !!($('sd-publish') && $('sd-publish').checked),
         pdfPath: up.path
-      });
+      }, { fallback: false });
       if (!r.success) throw new Error(r.error || 'Upload failed.');
       MODAL.close('sheet');
       TOAST.show('Uploaded' + ($('sd-publish') && !$('sd-publish').checked ? ' (hidden)' : ''), 'success');
       this.load(true);
     } catch(e){
-      status.innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
-      btn.disabled = false; btn.textContent = 'Upload';
+      if (status) status.innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
+      if (btn) { btn.disabled = false; btn.textContent = 'Upload'; }
     }
   },
 
@@ -173,17 +181,22 @@ const STUDYDOCS = {
   },
 
   async saveEdit(id){
-    const title = $('sd-title').value.trim();
-    if (!title) { $('sd-title').classList.add('invalid'); return TOAST.show('Give the PDF a title', 'warning'); }
-    const btn = $('sd-save'); btn.disabled = true;
+    const titleEl = $('sd-title');
+    const title = titleEl ? titleEl.value.trim() : '';
+    if (!title) { if (titleEl) titleEl.classList.add('invalid'); return TOAST.show('Give the PDF a title', 'warning'); }
+    const btn = $('sd-save'); if (btn) btn.disabled = true;
     try {
       const r = await ADMIN.post('adminUpdateStudyDoc', {
-        id, title, category: $('sd-cat').value, chapterId: $('sd-chap').value, description: $('sd-desc').value.trim(),
-        sortOrder: $('sd-pin').checked ? 1 : 100, status: $('sd-state').value
+        id, title,
+        category: ($('sd-cat') || {}).value || 'model-answer',
+        chapterId: ($('sd-chap') || {}).value || '',
+        description: (($('sd-desc') || {}).value || '').trim(),
+        sortOrder: ($('sd-pin') && $('sd-pin').checked) ? 1 : 100,
+        status: ($('sd-state') || {}).value || 'published'
       });
       if (!r.success) throw new Error(r.error || 'Could not save.');
       MODAL.close('sheet'); TOAST.show('Saved', 'success'); this.load(true);
-    } catch(e){ btn.disabled = false; TOAST.show(e.message, 'error'); }
+    } catch(e){ if (btn) btn.disabled = false; TOAST.show(e.message, 'error'); }
   },
 
   async setStatus(id, status){
@@ -191,7 +204,8 @@ const STUDYDOCS = {
     if (!d) return;
     try {
       const r = await ADMIN.post('adminUpdateStudyDoc', {
-        id, title: d.title, category: d.category, chapterId: d.chapterId, description: d.description, sortOrder: d.sortOrder, status
+        id, title: d.title, category: d.category, chapterId: d.chapterId,
+        description: d.description, sortOrder: d.sortOrder, status
       });
       if (!r.success) throw new Error(r.error || 'Could not update.');
       TOAST.show(status === 'hidden' ? 'Hidden from students' : 'Visible to students', 'success'); this.load(true);

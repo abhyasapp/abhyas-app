@@ -6,6 +6,8 @@ const WEEKLYSETS = {
   list: [], uploadedFileId: '', _lastResults: null,
 
   openCreate(){
+    /* Clear any stale uploaded file ID from a previous attempt. */
+    this.uploadedFileId = '';
     MODAL.sheet('Schedule a weekly set',
       '<div class="field"><label for="ws-title">Title</label>' +
         '<input class="input" type="text" id="ws-title" placeholder="Week 12 — Structural analysis"></div>' +
@@ -38,20 +40,22 @@ const WEEKLYSETS = {
     if (days === 0) days = 7;
     const t = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days, 8, 0, 0);
     const p = n => String(n).padStart(2, '0');
-    $('ws-release').value = t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate()) + 'T' + p(t.getHours()) + ':' + p(t.getMinutes());
+    const el = $('ws-release');
+    if (el) el.value = t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate()) + 'T' + p(t.getHours()) + ':' + p(t.getMinutes());
   },
 
   async onFilePicked(){
     const input = $('ws-file'), status = $('ws-upload-status'), nameEl = $('ws-file-name');
-    const file = input.files && input.files[0];
+    const file = input && input.files && input.files[0];
     if (!file) return;
-    nameEl.textContent = file.name;
+    if (nameEl) nameEl.textContent = file.name;
     if (file.size > 4 * 1024 * 1024) {
-      status.innerHTML = '<span style="color:var(--danger)">That file is ' + (file.size / 1048576).toFixed(1) + ' MB — keep it under 4 MB.</span>';
-      input.value = ''; nameEl.textContent = 'Choose a .json question bank';
+      if (status) status.innerHTML = '<span style="color:var(--danger)">That file is ' + (file.size / 1048576).toFixed(1) + ' MB — keep it under 4 MB.</span>';
+      if (input) input.value = '';
+      if (nameEl) nameEl.textContent = 'Choose a .json question bank';
       return;
     }
-    status.innerHTML = '<span class="inline-loader">Uploading to Drive</span>';
+    if (status) status.innerHTML = '<span class="inline-loader">Uploading to Drive</span>';
     try {
       const dataUrl = await new Promise((res, rej) => {
         const r = new FileReader();
@@ -62,11 +66,11 @@ const WEEKLYSETS = {
       const r = await ADMIN.post('adminUploadWeeklySetFile', { fileData: dataUrl, filename: file.name });
       if (!r.success) throw new Error(r.error || 'Upload failed.');
       this.uploadedFileId = r.fileId;
-      $('ws-fileid').value = r.fileId;
-      status.innerHTML = '<span style="color:var(--success)">Uploaded · file ID ' + esc(r.fileId) + '</span>';
+      const fileIdEl = $('ws-fileid'); if (fileIdEl) fileIdEl.value = r.fileId;
+      if (status) status.innerHTML = '<span style="color:var(--success)">Uploaded · file ID ' + esc(r.fileId) + '</span>';
     } catch(e){
-      status.innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
-      input.value = '';
+      if (status) status.innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
+      if (input) input.value = '';
     }
   },
 
@@ -82,6 +86,7 @@ const WEEKLYSETS = {
       box.innerHTML = '<div class="empty"><i class="ph ph-calendar-blank"></i><div class="t">No weekly sets yet</div>' +
         '<div class="d">Schedule one and it unlocks for every student at the time you choose.</div>' +
         '<div class="a"><button class="btn btn-primary" data-perm="weeklysets_manage" data-on-click="WEEKLYSETS.openCreate()">Schedule a set</button></div></div>';
+      if (typeof ADMIN._applyPermissions === 'function') ADMIN._applyPermissions();
       return;
     }
     const now = Date.now();
@@ -92,18 +97,30 @@ const WEEKLYSETS = {
       const archived = s.status === 'archived';
       const st = archived ? 'archived' : (released ? 'live' : 'scheduled');
       return '<div class="row">' +
-        '<div class="row-main"><div class="row-title">' + esc(s.title) + badge(st) + '</div>' +
+        '<div class="row-main"><div class="row-title">' + esc(s.title || '(untitled)') + badge(st) + '</div>' +
         '<div class="row-sub">' + (s.chapterLabel ? esc(s.chapterLabel) + ' · ' : '') +
           (released ? 'Released ' : 'Unlocks ') + esc(fullTime(s.releaseAt)) + '</div></div>' +
         '<div class="row-actions">' +
-          '<button class="icon-btn sm" data-on-click="WEEKLYSETS.showResults(\'' + escAttrJs(s.id) + '\',\'' + escAttrJs(s.title) + '\')" aria-label="Results for ' + esc(s.title) + '" title="Results"><i class="ph ph-chart-bar"></i></button>' +
-          '<button class="icon-btn sm" data-on-click="WEEKLYSETS.preview(\'' + escAttrJs(s.fileId) + '\',\'' + escAttrJs(s.title) + '\')" aria-label="Preview ' + esc(s.title) + '" title="Preview"><i class="ph ph-eye"></i></button>' +
+          '<button class="icon-btn sm" data-on-click="WEEKLYSETS.showResults(\'' + escAttrJs(s.id) + '\',\'' + escAttrJs(s.title || '') + '\')" aria-label="Results for ' + esc(s.title || '') + '" title="Results"><i class="ph ph-chart-bar"></i></button>' +
+          '<button class="icon-btn sm" data-on-click="WEEKLYSETS.preview(\'' + escAttrJs(s.fileId || '') + '\',\'' + escAttrJs(s.title || '') + '\')" aria-label="Preview ' + esc(s.title || '') + '" title="Preview"><i class="ph ph-eye"></i></button>' +
           (canManage ? (archived
             ? '<button class="icon-btn sm" data-on-click="WEEKLYSETS.setStatus(\'' + escAttrJs(s.id) + '\',\'active\')" aria-label="Restore" title="Restore"><i class="ph ph-arrow-counter-clockwise"></i></button>'
             : '<button class="icon-btn sm" data-on-click="WEEKLYSETS.setStatus(\'' + escAttrJs(s.id) + '\',\'archived\')" aria-label="Archive" title="Archive"><i class="ph ph-archive"></i></button>') : '') +
-          (canManage ? '<button class="icon-btn sm danger" data-on-click="WEEKLYSETS.del(\'' + escAttrJs(s.id) + '\',\'' + escAttrJs(s.title) + '\')" aria-label="Delete ' + esc(s.title) + '" title="Delete"><i class="ph ph-trash"></i></button>' : '') +
+          (canManage ? '<button class="icon-btn sm danger" data-on-click="WEEKLYSETS.del(\'' + escAttrJs(s.id) + '\',\'' + escAttrJs(s.title || '') + '\')" aria-label="Delete ' + esc(s.title || '') + '" title="Delete"><i class="ph ph-trash"></i></button>' : '') +
         '</div></div>';
     }).join('') + '</div>';
+  },
+
+  /* getFile normalization: ADMIN.post already unwraps Supabase's
+     { success:true, content:"<json>" } into res.result. Read whichever
+     shape actually came back. */
+  _unwrap(res) {
+    if (!res || !res.success) return null;
+    if (res.result !== undefined && res.result !== null) return res.result;
+    if (typeof res.content === 'string') {
+      try { return JSON.parse(res.content); } catch (e) { return null; }
+    }
+    return null;
   },
 
   async preview(fileId, title){
@@ -112,13 +129,16 @@ const WEEKLYSETS = {
     try {
       const res = await ADMIN.post('getFile', { fileId });
       if (!res.success) throw new Error(res.error || 'Could not open that file.');
-      const raw = res.result;
-      const qs = Array.isArray(raw) ? raw : (raw?.questions || raw?.data || raw?.quiz || raw?.items || []);
+      const raw = this._unwrap(res);
+      const qs = Array.isArray(raw) ? raw : (raw && (raw.questions || raw.data || raw.quiz || raw.items)) || [];
       if (!Array.isArray(qs) || !qs.length) {
-        $('bd-sheet').innerHTML = '<div class="banner banner-warning"><i class="ph ph-warning"></i><span>No questions found in that file.</span></div>';
+        const bd = $('bd-sheet');
+        if (bd) bd.innerHTML = '<div class="banner banner-warning"><i class="ph ph-warning"></i><span>No questions found in that file.</span></div>';
         return;
       }
-      $('bd-sheet').innerHTML =
+      const bd = $('bd-sheet');
+      if (!bd) return;
+      bd.innerHTML =
         '<p class="t-callout mb4"><b>' + qs.length + '</b> questions found. Showing the first ' + Math.min(5, qs.length) + '.</p>' +
         '<div class="stack2">' + qs.slice(0, 5).map((q, i) => {
           const text = q.q || q.question || q.stem || '(no text)';
@@ -128,7 +148,8 @@ const WEEKLYSETS = {
           '</div>';
         }).join('') + '</div>';
     } catch(e){
-      $('bd-sheet').innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>' + esc(e.message) + '</span></div>';
+      const bd = $('bd-sheet');
+      if (bd) bd.innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>' + esc(e.message) + '</span></div>';
     }
   },
 
@@ -139,57 +160,68 @@ const WEEKLYSETS = {
       if (!res.success) throw new Error(res.error || 'Could not load results.');
       this._lastResults = res;
       if (!res.attempts) {
-        $('bd-sheet').innerHTML = '<div class="empty"><i class="ph ph-chart-bar"></i><div class="t">No attempts yet</div>' +
+        const bd = $('bd-sheet');
+        if (bd) bd.innerHTML = '<div class="empty"><i class="ph ph-chart-bar"></i><div class="t">No attempts yet</div>' +
           '<div class="d">Results appear here once students sit this set.</div></div>';
         return;
       }
-      const max = Math.max(...res.distribution.map(b => b.count), 1);
-      $('bd-sheet').innerHTML =
+      const dist = Array.isArray(res.distribution) ? res.distribution : [];
+      const recent = Array.isArray(res.recent) ? res.recent : [];
+      const max = Math.max.apply(null, dist.map(b => b.count || 0).concat([1]));
+      const bd = $('bd-sheet');
+      if (!bd) return;
+      bd.innerHTML =
         (res.rescored ? '' : '<div class="banner banner-warning"><i class="ph ph-warning"></i><span>The source file could not be read, so these scores are as reported by each device.</span></div>') +
         '<dl class="dl mb4">' +
-          '<div><dt>Attempts</dt><dd class="mono">' + res.attempts + '</dd></div>' +
-          '<div><dt>Average</dt><dd class="mono" style="color:var(--accent);font-weight:700">' + res.avgPct + '%</dd></div>' +
-          '<div><dt>Range</dt><dd class="mono">' + res.minPct + '–' + res.maxPct + '% (σ ' + res.stdDev + ')</dd></div>' +
-          '<div><dt>Students</dt><dd class="mono">' + res.uniqueStudents + '</dd></div>' +
+          '<div><dt>Attempts</dt><dd class="mono">' + (res.attempts || 0) + '</dd></div>' +
+          '<div><dt>Average</dt><dd class="mono" style="color:var(--accent);font-weight:700">' + (res.avgPct != null ? res.avgPct : '—') + '%</dd></div>' +
+          '<div><dt>Range</dt><dd class="mono">' + (res.minPct != null ? res.minPct : '—') + '–' + (res.maxPct != null ? res.maxPct : '—') + '% (σ ' + (res.stdDev != null ? res.stdDev : '—') + ')</dd></div>' +
+          '<div><dt>Students</dt><dd class="mono">' + (res.uniqueStudents || 0) + '</dd></div>' +
         '</dl>' +
         '<h4 class="t-cap mb2">Score spread</h4><div class="mb4">' +
-        res.distribution.map(b =>
-          '<div class="dist"><span class="rg">' + b.range + '%</span>' +
-          '<span class="track"><span class="fill" style="width:' + ((b.count / max) * 100) + '%"></span></span>' +
-          '<span class="ct">' + b.count + '</span></div>').join('') + '</div>' +
+        dist.map(b =>
+          '<div class="dist"><span class="rg">' + esc(b.range || '—') + '%</span>' +
+          '<span class="track"><span class="fill" style="width:' + ((b.count || 0) / max * 100) + '%"></span></span>' +
+          '<span class="ct">' + (b.count || 0) + '</span></div>').join('') + '</div>' +
         '<h4 class="t-cap mb2">Recent attempts</h4>' +
-        '<div class="rows">' + res.recent.map(r =>
-          '<div class="row"><div class="row-main"><div class="row-title mono">' + esc(r.username) + '</div>' +
+        '<div class="rows">' + recent.map(r =>
+          '<div class="row"><div class="row-main"><div class="row-title mono">' + esc(r.username || '—') + '</div>' +
           '<div class="row-sub">' + (r.durationSec ? Math.round(r.durationSec / 60) + ' min · ' : '') + relTime(r.submittedAt) + '</div></div>' +
-          badge(r.pct >= 70 ? 'graded' : r.pct >= 40 ? 'pending' : 'rejected', r.pct + '%') +
-          '<span class="t-cap mono">' + r.correct + '/' + r.total + '</span></div>').join('') + '</div>' +
+          badge((r.pct >= 70 ? 'graded' : r.pct >= 40 ? 'pending' : 'rejected'), (r.pct || 0) + '%') +
+          '<span class="t-cap mono">' + (r.correct || 0) + '/' + (r.total || 0) + '</span></div>').join('') + '</div>' +
         '<div class="flex mt4" style="justify-content:flex-end"><button class="btn btn-secondary btn-sm" data-on-click="WEEKLYSETS.exportResults()"><i class="ph ph-download-simple"></i> Export CSV</button></div>';
     } catch(e){
-      $('bd-sheet').innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>' + esc(e.message) + '</span></div>';
+      const bd = $('bd-sheet');
+      if (bd) bd.innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>' + esc(e.message) + '</span></div>';
     }
   },
 
   exportResults(){
     const r = this._lastResults;
-    if (!r?.recent?.length) return TOAST.show('Nothing to export', 'warning');
+    if (!r || !Array.isArray(r.recent) || !r.recent.length) return TOAST.show('Nothing to export', 'warning');
     ADMIN.downloadCSV(ADMIN.toCSV(
       ['Username','Score %','Correct','Total','Skipped','Wrong','Duration (s)','Submitted'],
-      r.recent.map(a => [a.username, a.pct, a.correct, a.total, a.skipped, a.wrong, a.durationSec, a.submittedAt ? new Date(a.submittedAt).toISOString() : ''])
-    ), 'weekly_' + r.weeklyId + '_results.csv');
+      r.recent.map(a => [
+        a.username || '', a.pct || 0, a.correct || 0, a.total || 0,
+        a.skipped || 0, a.wrong || 0, a.durationSec || '',
+        a.submittedAt ? new Date(a.submittedAt).toISOString() : ''
+      ])
+    ), 'weekly_' + (r.weeklyId || 'set') + '_results.csv');
   },
 
   async create(){
-    const title = $('ws-title').value.trim();
-    const fileId = $('ws-fileid').value.trim() || this.uploadedFileId;
-    const chapterLabel = $('ws-chapter').value.trim();
-    const releaseLocal = $('ws-release').value;
+    const title = ($('ws-title') || {}).value ? $('ws-title').value.trim() : '';
+    const fileIdEl = $('ws-fileid');
+    const fileId = (fileIdEl && fileIdEl.value.trim()) || this.uploadedFileId;
+    const chapterLabel = ($('ws-chapter') || {}).value ? $('ws-chapter').value.trim() : '';
+    const releaseLocal = ($('ws-release') || {}).value || '';
     if (!title) return TOAST.show('Give the set a title', 'error');
     if (!fileId) return TOAST.show('Upload a question file first', 'error');
     if (!releaseLocal) return TOAST.show('Choose when it unlocks', 'error');
     const releaseAt = new Date(releaseLocal);
     if (isNaN(releaseAt)) return TOAST.show('That unlock time is not valid', 'error');
     const btn = $('ws-create');
-    btn.classList.add('loading');
+    if (btn) btn.classList.add('loading');
     try {
       const res = await ADMIN.post('adminCreateWeeklySet', { title, fileId, chapterLabel, releaseAt: releaseAt.toISOString() });
       if (!res.success) throw new Error(res.error);
@@ -199,7 +231,7 @@ const WEEKLYSETS = {
       MODAL.close('sheet');
       ADMIN.refresh(['weeklysets']);
     } catch(e){ TOAST.show(e.message || 'Could not schedule that set', 'error'); }
-    btn.classList.remove('loading');
+    if (btn) btn.classList.remove('loading');
   },
 
   async setStatus(id, status){
