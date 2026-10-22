@@ -11,9 +11,10 @@ user.html.backup
 Thumbs.db
 desktop.ini
 
-# ── Editor / IDE ──
+# ── Editor / IDE / tool metadata ──
 .vscode/
 .idea/
+.freebuff/
 *.swp
 *.swo
 

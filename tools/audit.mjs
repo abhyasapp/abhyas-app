@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const ROOT = process.cwd();
-const SKIP = new Set(['node_modules', '.git']);
+const SKIP = new Set(['node_modules', '.git', 'coverage']);
 const walk = (d, out = []) => {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     if (SKIP.has(e.name)) continue;
@@ -82,18 +82,35 @@ const out = [];
 out.push(`\n=== 1. UNRESOLVED IMPORTS / BROKEN HTML REFS (${missing.length}) ===`);
 out.push(missing.length ? missing.join('\n') : '  none');
 out.push(`\n=== 2. DUPLICATE SYMBOL NAMES (same name in >1 file) ===`);
+/* expose.js is generated and mirrors every global by design, so counting it
+   as a second declaration would flag almost every symbol. */
 let d = 0;
 for (const [n, where] of [...names].sort()) {
-  const fs_ = [...new Set(where.map(w => w.split(' ')[0]))];
-  if (fs_.length > 1) { d++; out.push(`  ${n}\n    ${where.join('\n    ')}`); }
+  const real = where.filter(w => !w.startsWith('js/core/expose.js'));
+  const fs_ = [...new Set(real.map(w => w.split(' ')[0]))];
+  if (fs_.length > 1) { d++; out.push(`  ${n}\n    ${real.join('\n    ')}`); }
 }
 if (!d) out.push('  none');
 out.push(`\n=== 3. IDENTICAL FILE CONTENT (copy-paste duplicates) ===`);
 let c = 0;
 for (const [, group] of hashes) if (group.length > 1) { c++; out.push('  ' + group.join('\n  ') + '\n'); }
 if (!c) out.push('  none');
-out.push(`\n=== 4. ORPHANS (never imported, not referenced by any HTML) ===`);
-const orphan = scan.filter(f => !imported.has(f) && !html.some(h => fs.readFileSync(h, 'utf8').includes(path.basename(f))));
+/* Entry points that are not import edges: the service worker's
+   importScripts()/SHELL list and tools named by npm scripts. Without this,
+   version.js and audit-handlers.js look like orphans every run. */
+const entry = new Set();
+if (fileSet.has('sw.js')) {
+  const sw = fs.readFileSync('sw.js', 'utf8');
+  for (const m of sw.matchAll(/['"](\.?\/?(?:js|tools)\/[^'"]+)['"]/g)) entry.add(m[1].replace(/^\.\//, ''));
+}
+try {
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  for (const cmd of Object.values(pkg.scripts || {})) {
+    for (const m of cmd.matchAll(/\bnode\s+([\w./-]+\.[cm]?js\b)/g)) entry.add(m[1].replace(/^\.\//, ''));
+  }
+} catch { /* no package.json — nothing to learn */ }
+out.push(`\n=== 4. ORPHANS (never imported, not referenced by HTML, sw.js or npm scripts) ===`);
+const orphan = scan.filter(f => !imported.has(f) && !entry.has(f) && !html.some(h => fs.readFileSync(h, 'utf8').includes(path.basename(f))));
 out.push(orphan.length ? orphan.join('\n') : '  none');
 out.push(`\n=== 5. UNUSED VENDOR FILES ===`);
 out.push(files.filter(f => isVendor(f) && !files.some(g => g !== f && !isVendor(g) && fs.readFileSync(g, 'utf8').includes(path.basename(f)))).join('\n') || '  none');

@@ -1,6 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   SW.JS — Abhyas Service Worker (v1.22)
-   Added background push listener for FCM.
+   SW.JS — Abhyas Service Worker (v1.49.0)
+   Version is derived from js/core/version.js. Update that file (and
+   config.js and package.json — a test fails if any of the three differ)
+   to invalidate every cache on the next page load.
    ═══════════════════════════════════════════════════════════════════════ */
 
 importScripts('./js/core/version.js');
@@ -113,7 +115,8 @@ const SHELL = [
   './js/features/wrong-bank-ui.js',
   './js/report/report-matching.js',
   './js/report/report-shared.js',
-  './js/report/userreport.js'
+  './js/report/userreport.js',
+  './js/app/index-admin-router.js'
 ];
 
 function offlinePage() {
@@ -167,7 +170,6 @@ self.addEventListener('message', e => {
   }
 });
 
-// ── NEW: Background Push Listener ──
 self.addEventListener('push', function(event) {
   if (!event.data) return;
   try {
@@ -177,12 +179,11 @@ self.addEventListener('push', function(event) {
       body: data.notification?.body || 'You have a new update.',
       icon: './icon-192.png',
       badge: './icon-192.png',
-      data: data.data // pass custom data
+      data: data.data
     };
     event.waitUntil(self.registration.showNotification(title, options));
   } catch (e) {
-    // Fallback if payload is not JSON
-    event.waitUntil(self.registration.showNotification('Abhyas', { 
+    event.waitUntil(self.registration.showNotification('Abhyas', {
       body: event.data.text(),
       icon: './icon-192.png'
     }));

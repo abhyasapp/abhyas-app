@@ -1,16 +1,21 @@
 // js/admin/features/palette.js — Cmd+K command palette.
-// MUST load AFTER: core.js (ADMIN, $, $$, esc, TOAST), core/admin-nav.js (ADMIN_NAV).
-// Uses UI, PAYMENTS, USERS, WEEKLYSETS at call time — all guarded via typeof in the
-// _build() callbacks but not at the top of _build(). Safe: references resolve when a
-// user actually presses Ctrl+K, by which time those objects are loaded.
+// MUST load AFTER: core.js (ADMIN, $, $$, esc, TOAST), core/admin-nav.js
+// (ADMIN_NAV). Uses UI, PAYMENTS, USERS, WEEKLYSETS at call time.
 
 const PALETTE = {
   _items: [], _filtered: [], _idx: 0, _bound: false,
 
   open(){
+    /* Cmd+K on the sign-in gate opened the palette before login, which
+       showed an empty overlay. Reject it until the console is unlocked. */
+    if (!ADMIN.creds) return;
+    const app = $('app');
+    if (app && !app.classList.contains('on')) return;
+
     $('palette').classList.add('show');
     document.body.style.overflow = 'hidden';
     const input = $('palette-q');
+    if (!input) return;
     input.value = '';
     this._build();
     this._filtered = this._items;
@@ -62,17 +67,20 @@ const PALETTE = {
     add('Do','Change my password','','ph-key', () => ADMIN.changePassword());
     add('Do','Sign out','','ph-sign-out', () => ADMIN.logout());
 
-    (ADMIN.data.payments || []).filter(p => p.status === 'pending').forEach(p => {
+    (ADMIN.data.payments || []).filter(p => p && p.status === 'pending').forEach(p => {
       add('Payments awaiting review', p.name || p.username, 'TXN ' + (p.txId || '—'), 'ph-credit-card',
         () => { UI.nav('payments'); setTimeout(() => PAYMENTS.review(p.username), 120); });
     });
     (ADMIN.data.users || []).slice(0, 400).forEach(u => {
+      if (!u || !u.username) return;
       add('Students', u.name || u.username, u.username + (u.email ? ' · ' + u.email : ''), 'ph-user',
         () => { UI.nav('users'); setTimeout(() => USERS.view(u.username), 120); });
     });
-    const sets = (typeof WEEKLYSETS !== 'undefined' && WEEKLYSETS.list) || [];
-     sets.forEach(s => {
-     add('Weekly sets', s.title, s.chapterLabel || '', 'ph-calendar-check', () => UI.nav('weeklysets'));
+    /* Read WEEKLYSETS.list (populated in render) rather than WEEKLYSETS.sets
+       (which doesn't exist — the field is called `list`). */
+    const sets = (typeof WEEKLYSETS !== 'undefined' && Array.isArray(WEEKLYSETS.list)) ? WEEKLYSETS.list : [];
+    sets.forEach(s => {
+      add('Weekly sets', s.title || '(untitled)', s.chapterLabel || '', 'ph-calendar-check', () => UI.nav('weeklysets'));
     });
 
     this._items = items;
@@ -98,6 +106,7 @@ const PALETTE = {
 
   _render(){
     const box = $('palette-list');
+    if (!box) return;
     if (!this._filtered.length) {
       box.innerHTML = '<div class="empty" style="padding:var(--sp-8) var(--sp-4)"><i class="ph ph-magnifying-glass"></i>' +
         '<div class="t">No matches</div><div class="d">Try a username, transaction ID or section name.</div></div>';

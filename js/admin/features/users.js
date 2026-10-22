@@ -1,9 +1,8 @@
 // js/admin/features/users.js — the student table + edit / view / bulk actions.
-// MUST load AFTER: core.js (ADMIN, $, $$, esc, escAttrJs, badge, initials, relTime,
-// fullTime, plural, statusLabel, copyText, MODAL, CONFIRM, BUSY, TOAST, FSTATE).
-// MUST load AFTER: features/logs.js (paintSort, PAGINATION) — those are called
-// from USERS.renderPage at runtime; today they are still stubs, so renderPage
-// throws ReferenceError on paintSort. That resolves once logs.js is filled.
+// MUST load AFTER: core.js (ADMIN, $, $$, esc, escAttrJs, badge, initials,
+// relTime, fullTime, plural, statusLabel, copyText, MODAL, CONFIRM, BUSY,
+// TOAST, FSTATE).
+// MUST load AFTER: features/logs.js (paintSort, PAGINATION).
 
 const USERS = {
   selected: new Set(), _lastIdx: null, _rows: [], _t: null,
@@ -12,8 +11,12 @@ const USERS = {
   debouncedFilter(){ clearTimeout(this._t); this._t = setTimeout(() => this.filter(), 250); },
 
   filterBy(status){
-    $('u-filter').value = status;
+    const sel = $('u-filter');
+    if (sel) sel.value = status;
     FSTATE.set('u-filter', status);
+    /* Reset pagination — otherwise a metric click from page 3 leaves the
+       student staring at an empty list. */
+    ADMIN.state.uPage = 1;
     UI.nav('users');
     this.filter();
   },
@@ -25,9 +28,12 @@ const USERS = {
   },
 
   _visibleRows(){
-    const q = ($('u-search').value || '').toLowerCase();
-    const f = $('u-filter').value;
+    const searchEl = $('u-search');
+    const filterEl = $('u-filter');
+    const q = (searchEl && searchEl.value || '').toLowerCase();
+    const f = (filterEl && filterEl.value) || 'all';
     const rows = (ADMIN.data.users || []).filter(u => {
+      if (!u || !u.username) return false;
       const match = !q || (u.username || '').toLowerCase().includes(q) ||
                           (u.name || '').toLowerCase().includes(q) ||
                           (u.email || '').toLowerCase().includes(q) ||
@@ -38,7 +44,11 @@ const USERS = {
     return rows.sort((a, b) => {
       let av = a[k], bv = b[k];
       if (k === 'name') { av = a.name || a.username; bv = b.name || b.username; }
-      if (k === 'createdAt') { av = new Date(av || 0).getTime(); bv = new Date(bv || 0).getTime(); return (av - bv) * d; }
+      if (k === 'createdAt') {
+        av = new Date(av || 0).getTime();
+        bv = new Date(bv || 0).getTime();
+        return (av - bv) * d;
+      }
       return String(av || '').localeCompare(String(bv || '')) * d;
     });
   },
@@ -46,8 +56,9 @@ const USERS = {
   filter(){
     this.selected.clear();
     const all = $('u-chk-all'); if (all) { all.checked = false; all.indeterminate = false; }
-    FSTATE.set('u-filter', $('u-filter').value);
-    FSTATE.set('u-search', $('u-search').value);
+    const filterEl = $('u-filter'), searchEl = $('u-search');
+    FSTATE.set('u-filter', (filterEl && filterEl.value) || 'all');
+    FSTATE.set('u-search', (searchEl && searchEl.value) || '');
     this._lastIdx = null;
     ADMIN.state.uPage = 1;
     this._rows = this._visibleRows();
@@ -55,13 +66,17 @@ const USERS = {
     this.updateBulkBar();
   },
   clearFilters(){
-    $('u-search').value = ''; $('u-filter').value = 'all';
-    FSTATE.set('u-search', ''); FSTATE.set('u-filter', 'all');
+    const searchEl = $('u-search'), filterEl = $('u-filter');
+    if (searchEl) searchEl.value = '';
+    if (filterEl) filterEl.value = 'all';
+    FSTATE.set('u-search', '');
+    FSTATE.set('u-filter', 'all');
     this.filter();
   },
   render(){
-    $('u-filter').value = FSTATE.get('u-filter', 'all');
-    $('u-search').value = FSTATE.get('u-search', '');
+    const filterEl = $('u-filter'), searchEl = $('u-search');
+    if (filterEl) filterEl.value = FSTATE.get('u-filter', 'all');
+    if (searchEl) searchEl.value = FSTATE.get('u-search', '');
     this._rows = this._visibleRows();
     this.renderPage(this._rows);
     this.updateBulkBar();
@@ -80,6 +95,7 @@ const USERS = {
     if (ADMIN.state.uPage > total) ADMIN.state.uPage = total;
     const page = rows.slice((ADMIN.state.uPage - 1) * per, ADMIN.state.uPage * per);
     const tb = $('users-body');
+    if (!tb) return;
 
     if (!page.length) {
       tb.innerHTML = '<tr><td colspan="7">' + ((ADMIN.data.users || []).length
@@ -87,7 +103,7 @@ const USERS = {
           '<div class="a"><button class="btn btn-quiet" data-on-click="USERS.clearFilters()">Reset filters</button></div></div>'
         : '<div class="empty"><i class="ph ph-users-three"></i><div class="t">No students yet</div><div class="d">Accounts appear here as soon as someone signs up in the app.</div></div>')
         + '</td></tr>';
-      $('u-pg').innerHTML = '';
+      const pg = $('u-pg'); if (pg) pg.innerHTML = '';
       return;
     }
 
@@ -117,10 +133,23 @@ const USERS = {
   },
   goPage(p){ ADMIN.state.uPage = p; this.renderPage(this._rows); UI.scrollTop(); },
 
+  /* The bug: the old version short-circuited on `!permanentAccess` before
+     checking `accessType === 'yearly'`, so an active yearly user showed
+     "None". Order matters — check accessType first, then permanentAccess,
+     then status. */
   accessLabel(u){
-    if (!u.permanentAccess) return u.status === 'trial' ? 'Free trial' : 'None';
-    if (u.accessType === 'yearly') return u.accessExpiresAt ? 'Until ' + new Date(u.accessExpiresAt).toLocaleDateString() : 'One year';
-    return 'Permanent';
+    if (!u) return 'None';
+    if (u.accessType === 'yearly') {
+      if (!u.accessExpiresAt) return 'One year';
+      const exp = new Date(u.accessExpiresAt).getTime();
+      const when = new Date(u.accessExpiresAt).toLocaleDateString();
+      return exp < Date.now() ? 'Until ' + when + ' (expired)' : 'Until ' + when;
+    }
+    if (u.permanentAccess) return 'Permanent';
+    if (u.status === 'trial') return 'Free trial';
+    if (u.status === 'active') return 'Active';
+    if (u.status === 'payment_pending') return 'Awaiting payment';
+    return 'None';
   },
 
   toggle(username, event){
@@ -132,22 +161,24 @@ const USERS = {
         for (let i = lo; i <= hi; i++) adding ? this.selected.add(this._rows[i].username) : this.selected.delete(this._rows[i].username);
       }
     } else {
-      this.selected.has(username) ? this.selected.delete(username) : this.selected.add(username);
+      if (this.selected.has(username)) this.selected.delete(username);
+      else this.selected.add(username);
     }
     this._lastIdx = this._rows.findIndex(r => r.username === username);
     this.renderPage(this._rows);
     this.updateBulkBar();
   },
   toggleAll(){
-    const on = $('u-chk-all').checked;
+    const cb = $('u-chk-all');
+    const on = cb && cb.checked;
     this._rows.forEach(u => on ? this.selected.add(u.username) : this.selected.delete(u.username));
     this.renderPage(this._rows);
     this.updateBulkBar();
   },
   updateBulkBar(){
     const n = this.selected.size;
-    $('u-bulk-count').textContent = plural(n, 'student') + ' selected';
-    $('u-bulk').classList.toggle('show', n > 0);
+    const cnt = $('u-bulk-count'); if (cnt) cnt.textContent = plural(n, 'student') + ' selected';
+    const bar = $('u-bulk'); if (bar) bar.classList.toggle('show', n > 0);
     const all = $('u-chk-all');
     if (all) { all.checked = n > 0 && n === this._rows.length; all.indeterminate = n > 0 && n < this._rows.length; }
   },
@@ -170,8 +201,9 @@ const USERS = {
     try {
       const res = await ADMIN.post('adminGrantAccessBatch', { usernames: JSON.stringify(usernames), duration });
       if (!res.success) throw new Error(res.error || 'That did not work.');
-      const good = res.results.filter(r => r.success).length;
-      const bad = res.results.length - good;
+      const results = Array.isArray(res.results) ? res.results : [];
+      const good = results.filter(r => r && r.success).length;
+      const bad  = results.length - good;
       TOAST.show(good + ' granted' + (bad ? ', ' + bad + ' failed' : ''), bad ? 'warning' : 'success');
     } catch(e){ TOAST.show(e.message, 'error'); }
     BUSY.stop();
@@ -191,8 +223,9 @@ const USERS = {
     try {
       const res = await ADMIN.post('adminDeleteUsersBatch', { usernames: JSON.stringify(usernames) });
       if (!res.success) throw new Error(res.error || 'That did not work.');
-      const good = res.results.filter(r => r.success).length;
-      const bad = res.results.length - good;
+      const results = Array.isArray(res.results) ? res.results : [];
+      const good = results.filter(r => r && r.success).length;
+      const bad  = results.length - good;
       TOAST.show(plural(good, 'account') + ' deleted' + (bad ? ', ' + bad + ' failed' : ''), bad ? 'warning' : 'success');
     } catch(e){ TOAST.show(e.message, 'error'); }
     BUSY.stop();
@@ -203,13 +236,15 @@ const USERS = {
   view(username){
     const u = (ADMIN.data.users || []).find(x => x.username === username);
     if (!u) return;
+    const bd = $('bd-user'), tt = $('tt-user');
+    if (!bd || !tt) return;
     const un = escAttrJs(u.username);
     const pay = (ADMIN.data.payments || []).find(p => p.username === username);
     const canManage = ADMIN.can('users_manage');
     const isAdmin = (ADMIN.data.admins || []).some(a => a.username.toLowerCase() === username.toLowerCase());
 
-    $('tt-user').textContent = u.name || u.username;
-    $('bd-user').innerHTML =
+    tt.textContent = u.name || u.username;
+    bd.innerHTML =
       '<div class="flex center g3 mb4">' +
         '<span class="avatar lg">' + esc(initials(u.name || u.username)) + '</span>' +
         '<div><div class="t-t3">' + esc(u.name || u.username) + '</div>' +
@@ -228,7 +263,7 @@ const USERS = {
       '</dl>' +
       (pay
         ? '<h4 class="t-cap mb2">Payment</h4><div class="panel" style="margin:0 0 var(--sp-4);background:var(--bg-grouped);border:none">' +
-          '<dl class="dl"><div><dt>Transaction ID</dt><dd class="mono">' + esc(pay.txId) + '</dd></div>' +
+          '<dl class="dl"><div><dt>Transaction ID</dt><dd class="mono">' + esc(pay.txId || '') + '</dd></div>' +
           '<div><dt>Status</dt><dd>' + badge(pay.status) + '</dd></div>' +
           (pay.remarks ? '<div><dt>Remarks</dt><dd>' + esc(pay.remarks) + '</dd></div>' : '') + '</dl>' +
           (pay.screenshotUrl && pay.screenshotUrl.startsWith('http')
@@ -251,14 +286,16 @@ const USERS = {
   edit(username){
     const u = (ADMIN.data.users || []).find(x => x.username === username);
     if (!u) return;
+    const bd = $('bd-user'), tt = $('tt-user');
+    if (!bd || !tt) return;
     const un = escAttrJs(username);
-    $('tt-user').textContent = 'Edit ' + username;
-    $('bd-user').innerHTML =
+    tt.textContent = 'Edit ' + username;
+    bd.innerHTML =
       '<div class="field-row">' +
-        '<div class="field"><label for="edit-name">Full name</label><input class="input" type="text" id="edit-name" value="' + esc(u.name) + '"></div>' +
-        '<div class="field"><label for="edit-mobile">Mobile</label><input class="input" type="tel" inputmode="tel" id="edit-mobile" value="' + esc(u.mobile) + '" placeholder="98XXXXXXXX"></div>' +
+        '<div class="field"><label for="edit-name">Full name</label><input class="input" type="text" id="edit-name" value="' + esc(u.name || '') + '"></div>' +
+        '<div class="field"><label for="edit-mobile">Mobile</label><input class="input" type="tel" inputmode="tel" id="edit-mobile" value="' + esc(u.mobile || '') + '" placeholder="98XXXXXXXX"></div>' +
       '</div>' +
-      '<div class="field"><label for="edit-email">Email</label><input class="input" type="email" inputmode="email" id="edit-email" value="' + esc(u.email) + '" placeholder="student@example.com"></div>' +
+      '<div class="field"><label for="edit-email">Email</label><input class="input" type="email" inputmode="email" id="edit-email" value="' + esc(u.email || '') + '" placeholder="student@example.com"></div>' +
       '<div class="field"><label for="edit-status">Status</label><select class="select" id="edit-status">' +
         ['trial','active','expired','payment_pending','rejected'].map(s =>
           '<option value="' + s + '"' + (u.status === s ? ' selected' : '') + '>' + statusLabel(s) + '</option>').join('') +
@@ -274,23 +311,27 @@ const USERS = {
 
   async saveEdit(username){
     const btn = $('edit-save');
-    btn.classList.add('loading');
+    if (btn) btn.classList.add('loading');
+    /* Omit the password field entirely when blank — sending `''` invites the
+       backend to hash empty and lock the student out. */
+    const pw = (($('edit-password') || {}).value || '');
+    const payload = {
+      username,
+      name: (($('edit-name') || {}).value || '').trim(),
+      email: (($('edit-email') || {}).value || '').trim(),
+      mobile: (($('edit-mobile') || {}).value || '').trim(),
+      status: (($('edit-status') || {}).value) || 'trial',
+      permanentAccess: !!($('edit-permanent') && $('edit-permanent').checked)
+    };
+    if (pw) payload.password = pw;
     try {
-      const res = await ADMIN.post('adminUpdateUser', {
-        username,
-        name: $('edit-name').value.trim(),
-        email: $('edit-email').value.trim(),
-        mobile: $('edit-mobile').value.trim(),
-        status: $('edit-status').value,
-        permanentAccess: $('edit-permanent').checked,
-        password: $('edit-password').value
-      });
+      const res = await ADMIN.post('adminUpdateUser', payload);
       if (!res.success) throw new Error(res.error);
       TOAST.show('Changes saved', 'success');
       MODAL.close('user');
       ADMIN.refresh(['stats','users']);
     } catch(e){ TOAST.show(e.message, 'error'); }
-    btn.classList.remove('loading');
+    if (btn) btn.classList.remove('loading');
   },
 
   async grantAccess(username, duration){

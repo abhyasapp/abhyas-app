@@ -24,8 +24,11 @@ function toggleTheme() {
   return next;
 }
 
-function togglePwVisibility(btn) {
-  const input = btn.previousElementSibling;
+/* The eye button in every .pw-field. Loaded on all three pages, so this is
+   the single definition — do not re-declare it in page/admin modules. */
+function togglePw(btn) {
+  const field = btn.closest('.pw-field');
+  const input = field ? field.querySelector('input') : btn.previousElementSibling;
   if (!input || input.tagName !== 'INPUT') return;
   const icon = btn.querySelector('i');
   const showing = input.type === 'text';
@@ -34,3 +37,4 @@ function togglePwVisibility(btn) {
   btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
   btn.setAttribute('aria-pressed', String(!showing));
 }
+window.togglePw = togglePw;

@@ -4,7 +4,6 @@
 // TOAST, FSTATE). MODAL.openReview / MODAL.confirmReview are set at the
 // bottom of this file — they are payment-specific extensions of the shared
 // MODAL object from core.js.
-// Uses PAGINATION, paintSort (features/logs.js), UI (router.js) at call time.
 
 const PAYMENTS = {
   selected: new Set(), _lastIdx: null, _rows: [], _t: null,
@@ -12,8 +11,10 @@ const PAYMENTS = {
 
   debouncedFilter(){ clearTimeout(this._t); this._t = setTimeout(() => this.filter(), 250); },
   filterBy(status){
-    $('p-filter').value = status;
+    const sel = $('p-filter');
+    if (sel) sel.value = status;
     FSTATE.set('p-filter', status);
+    ADMIN.state.pPage = 1;
     UI.nav('payments');
     this.filter();
   },
@@ -24,9 +25,12 @@ const PAYMENTS = {
   },
 
   _visibleRows(){
-    const q = ($('p-search').value || '').toLowerCase();
-    const f = $('p-filter').value;
+    const searchEl = $('p-search');
+    const filterEl = $('p-filter');
+    const q = (searchEl && searchEl.value || '').toLowerCase();
+    const f = (filterEl && filterEl.value) || 'all';
     const rows = (ADMIN.data.payments || []).filter(p => {
+      if (!p || !p.username) return false;
       const match = !q || (p.username || '').toLowerCase().includes(q) || (p.txId || '').toLowerCase().includes(q);
       return match && (f === 'all' || p.status === f);
     });
@@ -40,8 +44,9 @@ const PAYMENTS = {
   filter(){
     this.selected.clear();
     const all = $('p-chk-all'); if (all) { all.checked = false; all.indeterminate = false; }
-    FSTATE.set('p-filter', $('p-filter').value);
-    FSTATE.set('p-search', $('p-search').value);
+    const filterEl = $('p-filter'), searchEl = $('p-search');
+    FSTATE.set('p-filter', (filterEl && filterEl.value) || 'all');
+    FSTATE.set('p-search', (searchEl && searchEl.value) || '');
     this._lastIdx = null;
     ADMIN.state.pPage = 1;
     this._rows = this._visibleRows();
@@ -49,13 +54,17 @@ const PAYMENTS = {
     this.updateBulkBar();
   },
   clearFilters(){
-    $('p-search').value = ''; $('p-filter').value = 'all';
-    FSTATE.set('p-search', ''); FSTATE.set('p-filter', 'all');
+    const s = $('p-search'), f = $('p-filter');
+    if (s) s.value = '';
+    if (f) f.value = 'all';
+    FSTATE.set('p-search', '');
+    FSTATE.set('p-filter', 'all');
     this.filter();
   },
   render(){
-    $('p-filter').value = FSTATE.get('p-filter', 'all');
-    $('p-search').value = FSTATE.get('p-search', '');
+    const f = $('p-filter'), s = $('p-search');
+    if (f) f.value = FSTATE.get('p-filter', 'all');
+    if (s) s.value = FSTATE.get('p-search', '');
     this._rows = this._visibleRows();
     this.renderPage(this._rows);
     this.updateBulkBar();
@@ -74,6 +83,7 @@ const PAYMENTS = {
     if (ADMIN.state.pPage > total) ADMIN.state.pPage = total;
     const page = rows.slice((ADMIN.state.pPage - 1) * per, ADMIN.state.pPage * per);
     const tb = $('payments-body');
+    if (!tb) return;
 
     if (!page.length) {
       tb.innerHTML = '<tr><td colspan="7">' + ((ADMIN.data.payments || []).length
@@ -81,12 +91,12 @@ const PAYMENTS = {
           '<div class="a"><button class="btn btn-quiet" data-on-click="PAYMENTS.clearFilters()">Reset filters</button></div></div>'
         : '<div class="empty"><i class="ph ph-credit-card"></i><div class="t">No payments yet</div><div class="d">Transfers submitted from the app land here for review.</div></div>')
         + '</td></tr>';
-      $('p-pg').innerHTML = '';
+      const pg = $('p-pg'); if (pg) pg.innerHTML = '';
       return;
     }
 
     const canReview = ADMIN.can('payments_review');
-    const amount = ADMIN.data.settings.paymentAmount || '100';
+    const amount = (ADMIN.data.settings && ADMIN.data.settings.paymentAmount) || '100';
     tb.innerHTML = page.map(p => {
       const un = escAttrJs(p.username);
       const dup = p.duplicateTxId
@@ -98,7 +108,7 @@ const PAYMENTS = {
           '<span class="avatar">' + esc(initials(p.name || p.username)) + '</span>' +
           '<span style="min-width:0"><span class="nm truncate" style="display:block">' + esc(p.name || p.username) + '</span>' +
           '<span class="un truncate" style="display:block">' + esc(p.username) + '</span></span></button></td>' +
-        '<td data-label="Transaction" class="mono t-foot">' + esc(p.txId) + dup + '</td>' +
+        '<td data-label="Transaction" class="mono t-foot">' + esc(p.txId || '') + dup + '</td>' +
         '<td data-label="Amount" class="mono t-foot">Rs ' + esc(amount) + '</td>' +
         '<td data-label="Status">' + badge(p.status || 'pending') + '</td>' +
         '<td data-label="Submitted"><span title="' + esc(fullTime(p.submittedAt)) + '">' + relTime(p.submittedAt) + '</span></td>' +
@@ -122,22 +132,24 @@ const PAYMENTS = {
         for (let i = lo; i <= hi; i++) adding ? this.selected.add(this._rows[i].username) : this.selected.delete(this._rows[i].username);
       }
     } else {
-      this.selected.has(username) ? this.selected.delete(username) : this.selected.add(username);
+      if (this.selected.has(username)) this.selected.delete(username);
+      else this.selected.add(username);
     }
     this._lastIdx = this._rows.findIndex(r => r.username === username);
     this.renderPage(this._rows);
     this.updateBulkBar();
   },
   toggleAll(){
-    const on = $('p-chk-all').checked;
+    const cb = $('p-chk-all');
+    const on = cb && cb.checked;
     this._rows.forEach(p => on ? this.selected.add(p.username) : this.selected.delete(p.username));
     this.renderPage(this._rows);
     this.updateBulkBar();
   },
   updateBulkBar(){
     const n = this.selected.size;
-    $('p-bulk-count').textContent = plural(n, 'payment') + ' selected';
-    $('p-bulk').classList.toggle('show', n > 0);
+    const cnt = $('p-bulk-count'); if (cnt) cnt.textContent = plural(n, 'payment') + ' selected';
+    const bar = $('p-bulk'); if (bar) bar.classList.toggle('show', n > 0);
     const all = $('p-chk-all');
     if (all) { all.checked = n > 0 && n === this._rows.length; all.indeterminate = n > 0 && n < this._rows.length; }
   },
@@ -152,33 +164,74 @@ const PAYMENTS = {
     });
     if (ok) this._bulkReview('verified');
   },
+
+  /* Large batches require typing REJECT — a mis-click must not void fifty
+     payments. Small batches keep the one-dialog flow. */
   async bulkReject(){
     if (!this.selected.size) return;
     const n = this.selected.size;
+    const batchConfirm = n >= 10;
     MODAL.sheet('Reject ' + plural(n, 'payment'),
+      '<div class="banner banner-warning"><i class="ph ph-warning"></i><span>' +
+        'Rejecting ' + plural(n, 'payment') + ' does <b>not</b> delete the record — the students will see your reason and can re-submit.' +
+      '</span></div>' +
       '<div class="field"><label for="bulk-reason">Why are these being rejected?</label>' +
-      '<input class="input" type="text" id="bulk-reason" placeholder="Students see this message"></div>' +
+      '<input class="input" type="text" id="bulk-reason" placeholder="Students see this message">' +
+      (batchConfirm ? '<span class="field-hint">Type <b>REJECT</b> below to confirm a batch this large.</span>' : '') + '</div>' +
+      (batchConfirm ? '<div class="field"><label for="bulk-typed">Type <b>REJECT</b></label>' +
+        '<input class="input" type="text" id="bulk-typed" autocomplete="off"></div>' : '') +
       '<div class="flex g2 mt4"><button class="btn btn-quiet" style="flex:1" data-on-click="MODAL.close(\'sheet\')">Cancel</button>' +
-      '<button class="btn btn-danger" style="flex:1" data-on-click="PAYMENTS._bulkRejectGo()">Reject ' + n + '</button></div>',
+      '<button class="btn btn-danger" style="flex:1" id="bulk-reject-go" data-on-click="PAYMENTS._bulkRejectGo(' + (batchConfirm ? 'true' : 'false') + ')">Reject ' + n + '</button></div>',
       { wide:false });
   },
-  _bulkRejectGo(){
-    const reason = $('bulk-reason').value.trim();
+  _bulkRejectGo(requireType){
+    const reason = (($('bulk-reason') || {}).value || '').trim();
+    if (!reason) {
+      TOAST.show('Give a reason — the students see it', 'error');
+      if ($('bulk-reason')) $('bulk-reason').focus();
+      return;
+    }
+    if (requireType) {
+      const typed = (($('bulk-typed') || {}).value || '').trim().toUpperCase();
+      if (typed !== 'REJECT') {
+        TOAST.show('Type REJECT to confirm the batch', 'error');
+        if ($('bulk-typed')) $('bulk-typed').focus();
+        return;
+      }
+    }
     MODAL.close('sheet');
     this._bulkReview('rejected', reason);
   },
+
   async _bulkReview(status, reason){
+    if (this._bulkBusy) return;
+    this._bulkBusy = true;
     const usernames = [...this.selected];
     BUSY.start();
     try {
-      const res = await ADMIN.post('adminReviewPaymentsBatch', { usernames: JSON.stringify(usernames), status, rejectionReason: reason || '' });
+      const res = await ADMIN.post('adminReviewPaymentsBatch', {
+        usernames: JSON.stringify(usernames),
+        status,
+        rejectionReason: reason || ''
+      });
       if (!res.success) throw new Error(res.error || 'That did not work.');
-      const good = res.results.filter(r => r.success).length;
-      const bad = res.results.length - good;
-      TOAST.show(good + ' ' + (status === 'verified' ? 'verified' : 'rejected') + (bad ? ', ' + bad + ' failed' : ''), bad ? 'warning' : 'success');
+      const results = Array.isArray(res.results) ? res.results : [];
+      const good = results.filter(r => r && r.success).length;
+      const bad  = results.length - good;
+      if (bad > 0) {
+        const failedNames = results.filter(r => r && !r.success).map(r => r.username || '').filter(Boolean);
+        TOAST.show(
+          good + ' ' + (status === 'verified' ? 'verified' : 'rejected') + ', ' + bad + ' failed' +
+          (failedNames.length ? ': ' + failedNames.slice(0, 3).join(', ') + (failedNames.length > 3 ? '…' : '') : ''),
+          'warning', 7000
+        );
+      } else {
+        TOAST.show(good + ' ' + (status === 'verified' ? 'verified' : 'rejected'), 'success');
+      }
     } catch(e){ TOAST.show(e.message, 'error'); }
     BUSY.stop();
     this.selected.clear();
+    this._bulkBusy = false;
     ADMIN.refresh(['stats','payments','users']);
   },
 
@@ -208,10 +261,12 @@ MODAL.openReview = function(username){
   const un = escAttrJs(username);
   const settled = p.status !== 'pending';
   const canReview = ADMIN.can('payments_review');
-  const amount = ADMIN.data.settings.paymentAmount || '100';
+  const amount = (ADMIN.data.settings && ADMIN.data.settings.paymentAmount) || '100';
 
-  $('tt-review').textContent = settled ? 'Payment from ' + p.username : 'Review payment';
-  $('bd-review').innerHTML =
+  const tt = $('tt-review'), bd = $('bd-review');
+  if (!tt || !bd) return;
+  tt.textContent = settled ? 'Payment from ' + p.username : 'Review payment';
+  bd.innerHTML =
     (p.duplicateTxId
       ? '<div class="banner banner-warning"><i class="ph ph-warning"></i><span>This transaction ID was also submitted by <b>' +
         esc((p.duplicateTxIdUsers || []).join(', ')) + '</b>. Check the screenshot before verifying.</span></div>' : '') +
@@ -219,8 +274,8 @@ MODAL.openReview = function(username){
       '<div><div class="t-t3">' + esc(p.name || p.username) + '</div><div class="t-cap mono">' + esc(p.username) + '</div></div>' +
       '<span style="margin-left:auto">' + badge(p.status || 'pending') + '</span></div>' +
     '<dl class="dl mb4">' +
-      '<div><dt>Transaction ID</dt><dd class="mono">' + esc(p.txId) +
-        '<button class="copy-btn" data-on-click="copyText(\'' + escAttrJs(p.txId) + '\',\'Transaction ID copied\')" aria-label="Copy transaction ID"><i class="ph ph-copy"></i></button></dd></div>' +
+      '<div><dt>Transaction ID</dt><dd class="mono">' + esc(p.txId || '') +
+        '<button class="copy-btn" data-on-click="copyText(\'' + escAttrJs(p.txId || '') + '\',\'Transaction ID copied\')" aria-label="Copy transaction ID"><i class="ph ph-copy"></i></button></dd></div>' +
       '<div><dt>Amount</dt><dd class="mono">Rs ' + esc(amount) + '</dd></div>' +
       '<div><dt>Submitted</dt><dd>' + esc(fullTime(p.submittedAt)) + '</dd></div>' +
       '<div><dt>Remarks</dt><dd>' + (esc(p.remarks) || '—') + '</dd></div>' +
@@ -247,11 +302,13 @@ MODAL.openReview = function(username){
 };
 
 MODAL.confirmReview = async function(username, status){
-  const reason = $('rej-reason')?.value || '';
-  const duration = $('grant-duration')?.value || 'permanent';
+  const reason = (($('rej-reason') || {}).value || '');
+  const duration = (($('grant-duration') || {}).value) || 'permanent';
   if (status === 'rejected' && !reason.trim()) {
-    $('rej-reason').classList.add('invalid');
-    $('rej-reason').focus();
+    if ($('rej-reason')) {
+      $('rej-reason').classList.add('invalid');
+      $('rej-reason').focus();
+    }
     return TOAST.show('Give a reason — the student sees it', 'error');
   }
   if (status === 'verified') {
@@ -266,18 +323,23 @@ MODAL.confirmReview = async function(username, status){
     }
   }
   const btn = $(status === 'verified' ? 'rev-verify' : 'rev-reject');
-  btn.classList.add('loading');
+  if (btn) btn.classList.add('loading');
   try {
     const res = await ADMIN.post('adminReviewPayment', { username, status, rejectionReason: reason });
     if (!res.success) throw new Error(res.error);
-    if (status === 'verified' && duration === 'year') await ADMIN.post('adminGrantAccess', { username, duration:'year' });
-    TOAST.show(status === 'verified'
-      ? username + ' now has ' + (duration === 'year' ? 'one year of' : 'permanent') + ' access'
-      : 'Payment rejected — ' + username + ' has been told why', 'success', 5000);
+    if (status === 'verified' && duration === 'year') {
+      await ADMIN.post('adminGrantAccess', { username, duration: 'year' });
+    }
+    TOAST.show(
+      status === 'verified'
+        ? username + ' now has ' + (duration === 'year' ? 'one year of' : 'permanent') + ' access'
+        : 'Payment rejected — ' + username + ' has been told why',
+      'success', 5000
+    );
     MODAL.close('review');
     ADMIN.refresh(['stats','payments','users']);
   } catch(e){ TOAST.show(e.message, 'error'); }
-  btn.classList.remove('loading');
+  if (btn) btn.classList.remove('loading');
 };
 
 window.PAYMENTS = PAYMENTS;
