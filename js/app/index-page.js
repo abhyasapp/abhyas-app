@@ -6,7 +6,7 @@
   'use strict';
 
   var GAS_URL = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
-  var SESSION_KEY = (typeof LS !== 'undefined' && LS.USER) || 'abhyas_session';   // ── FIX 1: align with auth.js
+  var SESSION_KEY = (typeof LS !== 'undefined' && LS.USER) || 'abhyas_session';
   var COOKIE_KEY = 'abhyas_cookie_seen';
 
   var _session = null;
@@ -14,6 +14,11 @@
   var _pendingPaymentFile = null;
   var _trialTimer = null;
   var _mode = 'login';
+
+  /* Google sign-in state */
+  var GOOGLE_CLIENT_ID =
+    (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GOOGLE_CLIENT_ID) || '';
+  var _googleReady = false;
 
   function _get(id) { return document.getElementById(id); }
   function _show(id) { var el = _get(id); if (el) el.style.display = ''; }
@@ -55,38 +60,51 @@
   /* Transport                                                         */
   /* ================================================================ */
 
-  // ── FIX 2: route through netFetch so login/checkSession go to Supabase,
-  //    while requestPasswordReset/resetPassword/resendVerification/
-  //    updateProfile still reach GAS via DRIVE_ACTIONS.
-function _resolveEndpoint(action, params) {
-  // abhyasEndpointFor() lives in config.js and is loaded before this file.
-  // It returns 'supabase' for actions not in DRIVE_ACTIONS, 'gas' otherwise.
-  // Same routing logic netFetch uses internally, without the S.online gate.
-  if (typeof abhyasEndpointFor === 'function'
-      && typeof ABHYAS_CONFIG !== 'undefined'
-      && ABHYAS_CONFIG.SUPABASE_URL) {
-    try {
-      if (abhyasEndpointFor(action, params) === 'supabase') {
-        return ABHYAS_CONFIG.SUPABASE_URL;
-      }
-    } catch (e) { /* fall through to GAS */ }
+  function _resolveEndpoint(action, params) {
+    if (typeof abhyasEndpointFor === 'function'
+        && typeof ABHYAS_CONFIG !== 'undefined'
+        && ABHYAS_CONFIG.SUPABASE_URL) {
+      try {
+        if (abhyasEndpointFor(action, params) === 'supabase') {
+          return ABHYAS_CONFIG.SUPABASE_URL;
+        }
+      } catch (e) { /* fall through to GAS */ }
+    }
+    return GAS_URL;
   }
-  return GAS_URL;
-}
 
-function _post(action, params) {
-  var fullParams = Object.assign({ action: action }, params || {});
-  var url = _resolveEndpoint(action, fullParams);
-  if (!url) return Promise.reject(new Error('The backend address is not configured.'));
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(fullParams)
-  }).then(function (r) {
-    if (!r.ok) throw new Error('The server replied with HTTP ' + r.status + '.');
-    return r.json();
-  });
-}
+  function _timeoutFor(action) {
+    var rc = (typeof RETRY_CONFIG !== 'undefined' && RETRY_CONFIG.timeouts) ? RETRY_CONFIG.timeouts : {};
+    var a = String(action || '').toLowerCase();
+    if (a === 'submitpayment') return rc.upload || 120000;
+    if (a === 'requestpasswordreset' || a === 'resetpassword') return 30000;
+    return rc.normal || 20000;
+  }
+
+  function _post(action, params) {
+    var fullParams = Object.assign({ action: action }, params || {});
+    var primaryUrl = _resolveEndpoint(action, fullParams);
+    if (!primaryUrl) return Promise.reject(new Error('The backend address is not configured.'));
+
+    if (typeof netFetch === 'function') {
+      return netFetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(fullParams)
+      }, _timeoutFor(action)).then(function (r) {
+        return r.json();
+      });
+    }
+
+    return fetch(primaryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(fullParams)
+    }).then(function (r) {
+      if (!r.ok) throw new Error('The server replied with HTTP ' + r.status + '.');
+      return r.json();
+    });
+  }
 
   /* ================================================================ */
   /* Session storage                                                   */
@@ -97,9 +115,6 @@ function _post(action, params) {
       var raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return null;
       var s = JSON.parse(raw);
-      // ── FIX 3: match auth.js exactly — if no token, treat as no session.
-      //    This prevents the "half-valid session" state that produced the
-      //    "Session expired on Written tab" symptom.
       if (!s || s.type !== 'user' || !s.username || !s.token) return null;
       return s;
     } catch (e) { return null; }
@@ -140,7 +155,6 @@ function _post(action, params) {
       mobile: user.mobile || '',
       token: res.token || '',
       access: _computeAccess(res, user),
-      // ── FIX 4: include needsPayment so auth.js's _enter() shows the paywall
       needsPayment: !!(res.needsPayment || (res.access && res.access.level === 'expired')),
       emailVerified: res.emailVerified !== false,
       adminCapable: !!res.adminCapable,
@@ -177,6 +191,9 @@ function _post(action, params) {
     if (_mode === 'payment') _show('form-payment');
     if (_mode === 'status')  _show('form-status');
     if (_mode === 'redirecting') _show('form-redirecting');
+
+    /* Update Google button visibility when changing modes */
+    _applyGoogleVisibility();
   }
 
   /* ================================================================ */
@@ -250,6 +267,73 @@ function _post(action, params) {
   }
 
   /* ================================================================ */
+  /* Google sign-in                                                    */
+  /* ================================================================ */
+
+  function _initGoogleSignIn() {
+    var wrap  = _get('g-signin-wrap');
+    var btnEl = _get('g-signin-btn');
+    if (!wrap || !btnEl || !GOOGLE_CLIENT_ID) return;
+    if (_googleReady) return;
+
+    if (typeof google === 'undefined' ||
+        !google.accounts || !google.accounts.id) {
+      setTimeout(_initGoogleSignIn, 250);         // GSI script still loading
+      return;
+    }
+
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: _onGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      ux_mode: 'popup'
+    });
+
+    google.accounts.id.renderButton(btnEl, {
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'rectangular',
+      width: 380
+    });
+
+    _googleReady = true;
+    _applyGoogleVisibility();
+  }
+
+  function _applyGoogleVisibility() {
+    var wrap = _get('g-signin-wrap');
+    if (!wrap) return;
+    var show = _googleReady && (_mode === 'login' || _mode === 'signup');
+    wrap.classList.toggle('g-hidden', !show);
+  }
+
+  async function _onGoogleCredential(response) {
+    _clearErr();
+    if (!response || !response.credential) {
+      _showErr('Google sign-in failed. Please try again.');
+      return;
+    }
+    var wrap = _get('g-signin-wrap');
+    if (wrap) wrap.classList.add('g-busy');
+    try {
+      var res = await _post('googlelogin', { idToken: response.credential });
+      if (!res || !res.success) throw new Error((res && res.error) || 'Google sign-in failed.');
+      if (!res.token) throw new Error('The server did not return a session token.');
+
+      var session = _buildSession(res, (res.user && res.user.username) || '');
+      _writeSession(session);
+      try { localStorage.setItem('abhyas_last_user', session.username); } catch (e) {}
+      await _loadPublicInfo();
+      _routeByAccess();
+    } catch (err) {
+      _showErr(err.message || 'Google sign-in failed.');
+    }
+    if (wrap) wrap.classList.remove('g-busy');
+  }
+
+  /* ================================================================ */
   /* Payment render                                                    */
   /* ================================================================ */
 
@@ -289,9 +373,6 @@ function _post(action, params) {
   /* ================================================================ */
 
   async function _loadPublicInfo() {
-    // getPublicInfo exists on both backends; netFetch will route it to Supabase
-    // (not in DRIVE_ACTIONS), which is fine — the Supabase edge function has
-    // a `getpublicinfo` case that returns the same shape.
     try {
       var res = await _post('getPublicInfo', {});
       if (res && res.success) {
@@ -382,7 +463,6 @@ function _post(action, params) {
     if (!ident) return _showErr('Enter your username or email.');
     _setBusy(btn, true);
     try {
-      // GAS-only action — will route to GAS via DRIVE_ACTIONS
       var res = await _post('requestPasswordReset', { identifier: ident });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not send the reset code.');
       if (typeof toast === 'function') toast('If that matches an account, a reset code is on its way.', 4500);
@@ -405,7 +485,6 @@ function _post(action, params) {
     if (pass.length < 8) return _showErr('Password must be at least 8 characters.');
     _setBusy(btn, true);
     try {
-      // GAS-only action
       var res = await _post('resetPassword', { code: code, newPassword: pass });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not reset the password.');
       if (typeof toast === 'function') toast('Password updated. Sign in with your new password.', 4500);
@@ -455,16 +534,12 @@ function _post(action, params) {
           rd.readAsDataURL(_pendingPaymentFile);
         });
       }
-      // submitPayment exists on Supabase (better: it uploads to Storage and
-      // returns a signed URL) — netFetch routes it there.
       var res = await _post('submitPayment', {
         username: _session.username,
         token: _session.token,
         txId: txn,
         remarks: rem,
-        // Supabase accepts 'screenshot' as a data URL and uploads it
         screenshot: dataUrl,
-        // Legacy GAS field name
         screenshotDataUrl: dataUrl
       });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not send the payment.');
@@ -522,7 +597,6 @@ function _post(action, params) {
     var btn = _get('verify-resend');
     if (btn) _setBusy(btn, true);
     try {
-      // GAS-only action — route via DRIVE_ACTIONS
       var res = await _post('resendVerification', { username: _session.username, token: _session.token });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not send that email.');
       if (res.alreadyVerified) {
@@ -551,7 +625,6 @@ function _post(action, params) {
     if (!val) return _showErr('Enter your mobile number.');
     if (!/^[0-9]{7,15}$/.test(val.replace(/[^0-9]/g, ''))) return _showErr('That mobile number looks wrong.');
     try {
-      // GAS-only action — route via DRIVE_ACTIONS
       var res = await _post('updateProfile', { username: _session.username, token: _session.token, mobile: val });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not save the mobile number.');
       _session.mobile = val;
@@ -699,6 +772,8 @@ function _post(action, params) {
     window.addEventListener('offline', _paintNet);
 
     _bindForms();
+    _initGoogleSignIn();
+
     await _loadPublicInfo();
 
     var existing = _readSession();
