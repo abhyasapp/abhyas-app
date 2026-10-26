@@ -218,12 +218,15 @@ window.IMGZOOM = {
     img.alt = alt || 'Question image';
     box.classList.add('show');
     document.body.style.overflow = 'hidden';
+    /* Tab-trap the zoom view; Escape closes it (handled here, not shell-hooks). */
+    DIALOG.open(box, { onEscape: () => IMGZOOM.close() });
   },
   close(){
     const box = $('img-fullscreen');
     if (!box) return;
     box.classList.remove('show');
     document.body.style.overflow = '';
+    DIALOG.release(box);
   }
 };
 
@@ -265,12 +268,21 @@ window.QNOTE = {
   get(uid){
     if (!uid) return '';
     const m = this._load();
-    return String(m[uid] || '');
+    /* Reads normalise what was damaged on the way in, so a note saved before
+       this existed heals on the next render. Nothing needs the pristine value:
+       exports and sync read localStorage directly, and set() repairs before
+       it stores. */
+    return (typeof repairPasted === 'function')
+      ? repairPasted(m[uid] || '')
+      : String(m[uid] || '');
   },
   set(uid, text){
     if (!uid) return;
     const m = this._load();
-    const t = String(text == null ? '' : text).slice(0, this.MAX).trim();
+    const raw = (typeof repairPasted === 'function')
+      ? repairPasted(text)
+      : String(text == null ? '' : text);
+    const t = raw.slice(0, this.MAX).trim();
     if (t) m[uid] = t; else delete m[uid];
     this._save();
   },
@@ -317,6 +329,10 @@ window.QNOTE = {
           '</div>' +
           '<div class="qnote-text">' + esc(note) + '</div>' +
         '</div>';
+      /* The note is written after any surrounding renderMath() call has
+         already run (the flashcard renders fc-wrap first), so it renders its
+         own box rather than relying on the caller's order. */
+      renderMath(box);
       return;
     }
 

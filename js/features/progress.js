@@ -21,11 +21,24 @@ const PROG = {
     if(PROG._st){ clearTimeout(PROG._st); PROG._st = null; _save(LS.PROG, S.prog); }
   },
 
+  /* History is never thrown away. This used to keep only the newest 50 sessions and drop the rest
+     on every save. Now the newest DETAIL_KEEP sessions keep their per-question results (qres, used
+     for "times missed" and question history); older ones keep their summary line (date, chapter,
+     score, time, kind) and lose only that bulky per-question list. Totals are unaffected. */
+  DETAIL_KEEP: 300,
+  _compact(){
+    const a = S.prog.sessions;
+    for (let i = PROG.DETAIL_KEEP; i < a.length; i++) {
+      const x = a[i];
+      if (x && x.qres) { const { qres, ...summary } = x; a[i] = summary; }  
+    }
+  },
+
   recordSession(sess){
     if (!sess) return;
     if(!Array.isArray(S.prog.sessions)) S.prog.sessions = [];
     S.prog.sessions.unshift(sess);
-    S.prog.sessions = S.prog.sessions.slice(0,50);
+    PROG._compact();
     _save(LS.PROG, S.prog);
 
     try { if (typeof WRONGBY !== 'undefined') WRONGBY._missCache = null; } catch(e){}

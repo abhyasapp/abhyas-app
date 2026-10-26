@@ -53,7 +53,17 @@ const AUTH = {
 
   _isValidOffline(u) {
     const a = u.access || {};
-    if (a.level === 'permanent') return true;
+    if (a.level === 'permanent') {
+      /* Yearly licences are stored as level 'permanent' + accessType 'yearly'
+         + accessExpiresAt. Returning true unconditionally let a licence that
+         expired months ago keep full offline access until the next online
+         check. Honour the expiry, with the same 2-day skew allowance as trials. */
+      if (a.accessType === 'yearly' && a.accessExpiresAt) {
+        const exp = new Date(a.accessExpiresAt).getTime();
+        if (isFinite(exp)) return exp > (Date.now() - 2 * 24 * 60 * 60 * 1000);
+      }
+      return true;
+    }
     if (a.level === 'trial' && a.trialExpiresAt) {
       const exp = new Date(a.trialExpiresAt).getTime();
       // Allow up to 2 days of clock skew backwards to prevent lockouts on bad device clocks

@@ -20,8 +20,12 @@ const REV = {
   filterList(kind, term) {
     this._filters[kind] = String(term || '').toLowerCase().trim();
     this._saveFilters();
-    if (kind === 'wr' && typeof WRONGBY !== 'undefined' && WRONGBY.render) WRONGBY.render();
-    else this.renderList(kind);
+    this._limit[kind] = this.PAGE;                         // a new search starts from the first page
+    clearTimeout(this._ft);                                // re-draw once typing pauses, not on every key
+    this._ft = setTimeout(() => {
+      if (kind === 'wr' && typeof WRONGBY !== 'undefined' && WRONGBY.render) WRONGBY.render();
+      else this.renderList(kind);
+    }, 180);
   },
   _matches(q, term) {
     if (!term) return true;
@@ -198,41 +202,33 @@ const REV = {
   
   dueCount() { return REV.dueWrong().length; },
 
-  renderList(kind) {
+  /* Long lists are drawn PAGE cards at a time. Drawing 1,500 wrong answers at once
+     meant ~39,000 DOM nodes and a multi-second freeze on a mid-range phone. */
+  PAGE: 40,
+  _limit: { bk: 40, fl: 40, wr: 40 },
+  _moreHtml(kind, total, shown) {
+    if (shown >= total) return total > REV.PAGE ? '<p class="t-foot" style="text-align:center;margin:var(--sp-3) 0">All ' + total + ' shown</p>' : '';
+    const left = total - shown;
+    return '<button class="btn btn-quiet btn-blk" type="button" data-rev-more="' + kind + '" data-on-click="REV.more(\'' + kind + '\')">Show ' + Math.min(REV.PAGE, left) + ' more <span class="t-foot">(' + shown + ' of ' + total + ' shown)</span></button>';
+  },
+  more(kind) {
+    const el = document.getElementById(REV._listEl(kind)); if (!el) return;
     let arr = REV._store(kind);
-    REV._loadFilters();
-    
-    const _inputId = kind === 'bk' ? 'bk-search' : kind === 'fl' ? 'fl-search' : 'wr-search';
-    const _input = document.getElementById(_inputId);
-    if (_input && _input.value !== REV._filters[kind]) _input.value = REV._filters[kind];
-    
-    const filter = this._filters[kind] || '';
-    if (filter) arr = arr.filter(q => this._matches(q, filter));
-    if (kind === 'wr') REV._updateMasteredBtn();
-    
-    const el = document.getElementById(REV._listEl(kind));
-    if (!el) return;
-    
-    if (!arr.length) {
-      const copy = kind === 'bk'
-        ? { i: '<i class="ph ph-star"></i>', t: 'No bookmarks yet', s: 'Tap the star on any question while studying to save it here.' }
-        : kind === 'fl'
-        ? { i: '<i class="ph ph-flag"></i>', t: 'No flagged questions yet', s: 'Tap the flag on a question you want to come back to.' }
-        : { i: '<i class="ph ph-x-circle"></i>', t: 'No wrong answers yet', s: 'Questions you miss land here automatically, ready for spaced review.' };
-      
-      el.innerHTML = `<div class="empty">
-        <div class="empty-i">${copy.i}</div>
-        <p>${copy.t}</p>
-        <p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">${copy.s}</p>
-      </div>`;
-      return;
-    }
-
+    const filter = REV._filters[kind] || '';
+    if (filter) arr = arr.filter(q => REV._matches(q, filter));
     if (kind === 'wr') arr = [...arr].sort((a, b) => (a._nextDue ?? 0) - (b._nextDue ?? 0));
-    
-    requestAnimationFrame(() => {
-      try {
-        el.innerHTML = arr.map((q, i) => {
+    const from = el.querySelectorAll('.qcard').length;
+    const to = Math.min(arr.length, from + REV.PAGE);
+    REV._limit[kind] = to;
+    const old = el.querySelector('[data-rev-more]'); const note = el.querySelector(':scope > .t-foot'); if (old) old.remove(); if (note) note.remove();
+    const chunk = document.createElement('div'); chunk.className = 'rev-chunk';
+    chunk.innerHTML = arr.slice(from, to).map((q, j) => REV._cardHtml(kind, q, from + j)).join('');
+    el.appendChild(chunk);
+    el.insertAdjacentHTML('beforeend', REV._moreHtml(kind, arr.length, to));
+    renderMath(chunk);                       // only the new cards, not the whole list
+    const nb = el.querySelector('.rev-chunk:last-of-type .qcard'); if (nb && nb.focus) { nb.setAttribute('tabindex', '-1'); nb.focus({ preventScroll: true }); }
+  },
+  _cardHtml(kind, q, i) {
           if (!q) return '';
           const opts = (Array.isArray(q.options) ? q.options : []).map((o, j) => {
             const c = String(j) === String(q.correct) || j === Number(q.correct);
@@ -305,7 +301,45 @@ const REV = {
             ${reasonPicker}
             ${notePicker}
           </div>`;
-        }).join('');
+  },
+
+  renderList(kind) {
+    let arr = REV._store(kind);
+    REV._loadFilters();
+    
+    const _inputId = kind === 'bk' ? 'bk-search' : kind === 'fl' ? 'fl-search' : 'wr-search';
+    const _input = document.getElementById(_inputId);
+    if (_input && _input.value !== REV._filters[kind]) _input.value = REV._filters[kind];
+    
+    const filter = this._filters[kind] || '';
+    if (filter) arr = arr.filter(q => this._matches(q, filter));
+    if (kind === 'wr') REV._updateMasteredBtn();
+    
+    const el = document.getElementById(REV._listEl(kind));
+    if (!el) return;
+    
+    if (!arr.length) {
+      const copy = kind === 'bk'
+        ? { i: '<i class="ph ph-star"></i>', t: 'No bookmarks yet', s: 'Tap the star on any question while studying to save it here.' }
+        : kind === 'fl'
+        ? { i: '<i class="ph ph-flag"></i>', t: 'No flagged questions yet', s: 'Tap the flag on a question you want to come back to.' }
+        : { i: '<i class="ph ph-x-circle"></i>', t: 'No wrong answers yet', s: 'Questions you miss land here automatically, ready for spaced review.' };
+      
+      el.innerHTML = `<div class="empty">
+        <div class="empty-i">${copy.i}</div>
+        <p>${copy.t}</p>
+        <p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">${copy.s}</p>
+      </div>`;
+      return;
+    }
+
+    if (kind === 'wr') arr = [...arr].sort((a, b) => (a._nextDue ?? 0) - (b._nextDue ?? 0));
+    
+    requestAnimationFrame(() => {
+      try {
+        const total = arr.length;
+        const lim = Math.max(REV.PAGE, (REV._limit[kind] || REV.PAGE));
+        el.innerHTML = '<div class="rev-chunk">' + arr.slice(0, lim).map((q, i) => REV._cardHtml(kind, q, i)).join('') + '</div>' + REV._moreHtml(kind, total, lim);
         renderMath(el);
       } catch (err) {
         console.error('[REV.renderList] failed to render list:', err);
@@ -363,7 +397,8 @@ const REV = {
     let arr = [...REV._store(kind)].filter(x => x && !x._withdrawn);
     if (kind === 'wr' && dueOnly) arr = REV.dueWrong();
     if (!arr.length) { toast(dueOnly ? 'Nothing due for review right now 🎉' : 'Nothing to study here yet'); return; }
-    QUIZ.startWith(shuf(arr), mode, kind === 'bk' ? '⭐ Bookmarks' : kind === 'fl' ? '🚩 Flagged' : (dueOnly ? '🔁 Wrong Bank (Due Today)' : '❌ Wrong Bank'));
+    QUIZ.startWith(shuf(arr), mode, kind === 'bk' ? '⭐ Bookmarks' : kind === 'fl' ? '🚩 Flagged' : (dueOnly ? '🔁 Wrong Bank (Due Today)' : '❌ Wrong Bank'),
+      { sessionKind: 'review' });
   }
 };
 

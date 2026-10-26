@@ -47,3 +47,30 @@ function driveFileId(u) {
   return m ? m[1] : '';
 }
 window.driveFileId = driveFileId;
+
+/* repairPasted — notes are copied from anywhere (PDF, Word, HTML source,
+   JSON), so they arrive carrying the damage those sources do. This repairs
+   only what is already broken and never rewrites what the student meant:
+     · invisible characters that render as nothing (soft hyphen, zero-width
+       space, word joiner, BOM) are dropped. ZWJ/ZWNJ are KEPT — Devanagari
+       needs them for shaping, so stripping them would corrupt Nepali notes.
+     · HTML entities left over from copying markup become their character,
+       in ONE pass, so `&amp;lt;` becomes `&lt;` and not `<`.
+     · NBSP becomes a normal space; that is where most `&nbsp;` trails end.
+     · `\\frac` (a backslash escaped by JSON or a code block) collapses to
+       `\frac`, but only when a command name follows, so a genuine LaTeX line
+       break (`a \\ b`) and `\\[2pt]` survive untouched.
+   Returns a string for any input, so corrupt storage cannot throw here.     */
+function repairPasted(s) {
+  let out = String(s == null ? '' : s);
+  if (!out) return out;
+  out = out.replace(/\r\n?/g, '\n');
+  out = out.replace(/[\u00AD\u200B\u2060\uFEFF]/g, '');
+  out = out.replace(/\u00A0/g, ' ');
+  out = out.replace(/&(nbsp|amp|lt|gt|quot|#39|#x27);/gi, (m, k) => ({
+    nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", '#x27': "'"
+  }[k.toLowerCase()]));
+  out = out.replace(/\\{2,}(?=[A-Za-z])/g, '\\');
+  return out;
+}
+window.repairPasted = repairPasted;

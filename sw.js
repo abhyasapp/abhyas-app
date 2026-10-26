@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   SW.JS — Abhyas Service Worker (v1.49.0)
+   SW.JS — Abhyas Service Worker (v1.58.0)
    Version is derived from js/core/version.js. Update that file (and
    config.js and package.json — a test fails if any of the three differ)
    to invalidate every cache on the next page load.
@@ -95,6 +95,9 @@ const SHELL = [
   './js/features/session.js',
   './js/features/shell-hooks.js',
   './js/features/shell-ui.js',
+  './js/features/sprint-plan.js',
+  './js/features/sprint-log.js',
+  './js/features/sprint-report.js',
   './js/features/sprint.js',
   './js/features/streak.js',
   './js/features/study-docs.js',
@@ -116,7 +119,11 @@ const SHELL = [
   './js/report/report-matching.js',
   './js/report/report-shared.js',
   './js/report/userreport.js',
-  './js/app/index-admin-router.js'
+  './js/app/index-admin-router.js',
+  './css/tokens.css',
+  './js/core/i18n.js',
+  './css/app.css',
+  './js/features/settings-ui.js'
 ];
 
 function offlinePage() {
@@ -234,13 +241,36 @@ async function localCacheFirst(req) {
   return networkFirst(req);
 }
 
+/* Cache-key helper. A URL ending in refresh=1… means "fetch a fresh copy
+   from origin" (question content can change); the `_` param was only ever
+   used as a cache-buster on jsDelivr. Strip both so one canonical entry is
+   kept per file instead of a new one per request. */
+function cdnCacheKey(u) {
+  try {
+    const url = new URL(u);
+    url.searchParams.delete('_');
+    url.searchParams.delete('refresh');
+    return url.toString();
+  } catch (err) { return u; }
+}
+
 async function cdnCacheFirst(req) {
+  const key = cdnCacheKey(req.url);
   const cache = await caches.open(CDN_CACHE);
-  const hit = await cache.match(req.url);
+  if (/([?&])refresh=1(&|$)/.test(req.url)) {
+    /* Bypass the mirror entirely: revalidation passes need the CDN's
+       current answer, not the last one we cached (the mirror has no TTL,
+       so a plain cache-first read would answer with the stale copy and
+       downloaded question files would never update). */
+    const fresh = await fetch(key, { mode: 'cors', credentials: 'omit', cache: 'reload' });
+    if (fresh.ok) cache.put(key, fresh.clone()).catch(() => {});
+    return fresh;
+  }
+  const hit = await cache.match(key);
   if (hit) return hit;
   try {
     const res = await fetch(req.url, { mode: 'cors', credentials: 'omit' });
-    if (res.ok) cache.put(req.url, res.clone()).catch(() => {});
+    if (res.ok) cache.put(key, res.clone()).catch(() => {});
     return res;
   } catch (err) {
     try { return await fetch(req); } catch (e2) { return new Response('', { status: 504, statusText: 'Offline' }); }

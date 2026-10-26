@@ -221,6 +221,23 @@ function sprintToday(plan, chapters) {
   return items;
 }
 
+/* One source of truth for "which sessions belong to this day". Sprint,
+   Home's study-time widget, insights and Today Plan must all agree, so they
+   all call this instead of each re-deriving local midnight. */
+function sessionsOnDay(sessions, isoDate) {
+  const day = String(isoDate || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return [];
+  const isoOf = d => (typeof localISODate === 'function')
+    ? localISODate(d)
+    : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  return (Array.isArray(sessions) ? sessions : []).filter(s => {
+    if (!s) return false;
+    const at = Number(s.at || s.ts || s.date);
+    if (!at) return false;
+    return isoOf(new Date(at)) === day;
+  });
+}
+
 function sprintDayStats(sessions, iso) {
   const day = String(iso || '');
   const out = { q: 0, correct: 0, mins: 0 };

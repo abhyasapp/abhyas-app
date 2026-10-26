@@ -216,7 +216,8 @@ window.SESSION = {
     if (!this._pending) { toast('Session expired, tap again.'); return; }
     const qs = this._pending;
     this._pending = null;
-    QUIZ._doStart(qs, 'flashcard', label, false, { session: true, phase });
+    QUIZ._doStart(qs, 'flashcard', label, false,
+      { session: true, phase, sessionKind: phase === 'drill' ? 'drill' : 'new' });
   }
 };
 

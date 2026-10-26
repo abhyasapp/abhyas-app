@@ -238,11 +238,16 @@
     openCustomize() {
       _renderCustomizeList();
       const el = document.getElementById('mbg-home-customize');
-      if (el) el.classList.add('show');
+      if (!el) return;
+      el.classList.add('show');
+      /* Escape / Tab-trap are handled centrally; the ✕ + Done buttons close. */
+      DIALOG.open(el, { onEscape: () => window.HOME_LAYOUT.closeCustomize() });
     },
     closeCustomize() {
       const el = document.getElementById('mbg-home-customize');
-      if (el) el.classList.remove('show');
+      if (!el || !el.classList.contains('show')) return;
+      el.classList.remove('show');
+      DIALOG.release(el);
     },
     moveUp(id) { _move(id, -1); },
     moveDown(id) { _move(id, 1); },

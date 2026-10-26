@@ -100,6 +100,16 @@ window.PACE = {
       el.parentElement.appendChild(line);
     }
     if (!pace) { line.textContent = ''; return; }
+
+    /* First run: "300 min behind your weekly pace" scolds someone who has not
+       studied yet. An empty state should say how to start, not how far behind
+       they are. */
+    const sessions = (S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
+    if (!sessions.length) {
+      line.innerHTML = ' \u00b7 <span class="on-track"><i class="ph ph-play-circle"></i> start your first session to set a pace</span>';
+      return;
+    }
+
     if (pace.onTrack) {
       line.innerHTML = ' \u00b7 <span class="on-track"><i class="ph ph-check-circle"></i> on pace for your target</span>';
     } else {
@@ -108,6 +118,8 @@ window.PACE = {
     }
   },
   _compute(){
+    /* A brand-new account has no history, so "behind pace" would be a scolding on day one. */
+    if (!((S.prog && S.prog.sessions) || []).length) return null;
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     let actualSec = 0;
     ((S.prog && S.prog.sessions) || []).forEach(s => {
@@ -629,6 +641,6 @@ window.HARDEST20 = {
     try { picked = await this.build(); } catch(e){}
     QUIZ._hideLoader();
     if (!picked.length){ toast('Practice a few chapters first \u2014 then this drills the ones you keep missing.', 5000); return; }
-    QUIZ.startWith(picked, 'flashcard', '\ud83c\udfaf Your hardest ' + picked.length, null);
+    QUIZ.startWith(picked, 'flashcard', '\ud83c\udfaf Your hardest ' + picked.length, { sessionKind: 'drill' });
   }
 };

@@ -14,12 +14,15 @@
 <meta name="robots" content="noindex,nofollow">
 <script src="js/core/config.js"></script>
 <script src="js/core/actions.js"></script>
-<title>Abhyas Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<title>Abhyas Admin — teaching console</title>
+<link rel="preload" href="tools/vendor/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="tools/vendor/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="tools/vendor/fonts/fonts.css">
+<link rel="preload" href="tools/vendor/phosphor/Phosphor.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="tools/vendor/phosphor/phosphor-regular.css">
 <link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="referrer" content="same-origin">
 <style>
 /* ═══════════════════════════════════════════════════════════════════════
    Abhyas Admin — self-contained design system + page styles.
@@ -312,7 +315,7 @@ kbd{font-family:var(--mono);font-size:.625rem;background:var(--surface);
 @media (max-width:640px){#content{padding:var(--sp-3) var(--sp-3) calc(var(--sp-10) + var(--safe-b))}}
 .inner{max-width:var(--content-max);margin:0 auto}
 .page-head{margin-bottom:var(--sp-5);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap}
-.page-head h1{font-size:var(--fs-t1);font-weight:700;letter-spacing:-.017em}
+.page-head h1,.page-head h2{font-size:var(--fs-t1);font-weight:700;letter-spacing:-.017em;margin:0}
 .page-head p{font-size:var(--fs-callout);color:var(--ink-2);margin-top:3px;max-width:66ch}
 .page-head .acts{display:flex;gap:var(--sp-2);flex-wrap:wrap}
 .view{display:none}
@@ -868,7 +871,7 @@ th,td{border-bottom-width:var(--hairline-w)}
               <div class="t-callout" style="font-weight:600" id="account-name">admin</div>
               <div class="t-cap" id="account-role">Signed in</div>
             </div>
-            <button class="menu-item" role="menuitem" data-on-click="UI.closeMenu();UI.nav('settings')"><i class="ph ph-gear"></i>Settings</button>
+            <button class="menu-item" role="menuitem" data-perm="settings_view" data-on-click="UI.closeMenu();UI.nav('settings')"><i class="ph ph-gear"></i>Settings</button>
             <button class="menu-item" role="menuitem" data-on-click="UI.closeMenu();ADMIN.changePassword()"><i class="ph ph-key"></i>Change password</button>
             <button class="menu-item" role="menuitem" data-on-click="UI.closeMenu();PALETTE.open()"><i class="ph ph-magnifying-glass"></i>Search<kbd class="kb">Ctrl K</kbd></button>
             <div class="menu-sep"></div>
@@ -897,7 +900,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <section class="view on" id="view-today" aria-label="Today">
         <div class="page-head">
           <div>
-            <h1>Today</h1>
+            <h2>Today</h2>
             <p id="today-date">—</p>
           </div>
           <div class="acts">
@@ -928,7 +931,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <section class="view" id="view-dashboard" aria-label="Insights">
         <div class="page-head">
           <div>
-            <h1>Insights</h1>
+            <h2>Insights</h2>
             <p>Where students stand, and which questions are hurting them most.</p>
           </div>
           <div class="acts">
@@ -939,7 +942,7 @@ th,td{border-bottom-width:var(--hairline-w)}
 
         <div class="section-head"><h2>Accounts</h2><span class="hint">Tap a figure to filter the list</span></div>
         <div class="metrics mb4">
-          <button class="metric" data-on-click="UI.nav('users')"><div class="v" id="st-users">0</div><div class="l">All students</div></button>
+          <button class="metric" data-perm="users_view" data-on-click="UI.nav('users')"><div class="v" id="st-users">0</div><div class="l">All students</div></button>
           <button class="metric" data-on-click="USERS.filterBy('trial')"><div class="v" id="st-trial">0</div><div class="l">On trial</div></button>
           <button class="metric" data-on-click="USERS.filterBy('active')"><div class="v" id="st-active">0</div><div class="l">Paid</div></button>
           <button class="metric" data-on-click="USERS.filterBy('expired')"><div class="v" id="st-expired">0</div><div class="l">Expired</div></button>
@@ -948,7 +951,7 @@ th,td{border-bottom-width:var(--hairline-w)}
         <div class="section-head"><h2>Payments</h2></div>
         <div class="metrics mb4">
           <button class="metric" data-on-click="PAYMENTS.filterBy('pending')"><div class="v" id="st-pending">0</div><div class="l">Awaiting review</div></button>
-          <button class="metric" data-on-click="UI.nav('payments')"><div class="v" id="st-payments">0</div><div class="l">Submitted</div></button>
+          <button class="metric" data-perm="payments_view" data-on-click="UI.nav('payments')"><div class="v" id="st-payments">0</div><div class="l">Submitted</div></button>
           <button class="metric" data-on-click="PAYMENTS.filterBy('verified')"><div class="v" id="st-verified">0</div><div class="l">Verified</div></button>
           <button class="metric" data-on-click="PAYMENTS.filterBy('rejected')"><div class="v" id="st-rejected">0</div><div class="l">Rejected</div></button>
         </div>
@@ -978,7 +981,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <!-- ═══════════════════════════ STUDENTS ═══════════════════════════ -->
       <section class="view" id="view-users" aria-label="Students">
         <div class="page-head">
-          <div><h1>Students</h1><p>Every registered account, with access and payment state.</p></div>
+          <div><h2>Students</h2><p>Every registered account, with access and payment state.</p></div>
           <div class="acts"><button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="ADMIN.exportUsers()"><i class="ph ph-download-simple"></i> Export CSV</button></div>
         </div>
         <div class="toolbar">
@@ -1021,7 +1024,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <!-- ═══════════════════════════ PAYMENTS ═══════════════════════════ -->
       <section class="view" id="view-payments" aria-label="Payments">
         <div class="page-head">
-          <div><h1>Payments</h1><p>Verify or reject transfers students have submitted.</p></div>
+          <div><h2>Payments</h2><p>Verify or reject transfers students have submitted.</p></div>
           <div class="acts"><button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="ADMIN.exportPayments()"><i class="ph ph-download-simple"></i> Export CSV</button></div>
         </div>
         <div class="toolbar">
@@ -1061,7 +1064,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <!-- ═══════════════════════════ ADMINS ═══════════════════════════ -->
       <section class="view" id="view-admins" aria-label="Admins">
         <div class="page-head">
-          <div><h1>Admins</h1><p>Give trusted people access to parts of this console. Only the owner can change this list.</p></div>
+          <div><h2>Admins</h2><p>Give trusted people access to parts of this console. Only the owner can change this list.</p></div>
           <div class="acts"><button class="btn btn-secondary btn-sm" id="btn-add-admin" data-on-click="ADMINS.openPromote()"><i class="ph ph-user-plus"></i> Add admin</button></div>
         </div>
         <div class="panel"><div id="admins-list"></div></div>
@@ -1070,7 +1073,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <!-- ═══════════════════════════ WEEKLY SETS ═══════════════════════════ -->
       <section class="view" id="view-weeklysets" aria-label="Weekly sets">
         <div class="page-head">
-          <div><h1>Weekly sets</h1><p>Upload a question set now; it unlocks for students at the time you choose.</p></div>
+          <div><h2>Weekly sets</h2><p>Upload a question set now; it unlocks for students at the time you choose.</p></div>
           <div class="acts"><button class="btn btn-primary btn-sm" data-perm="weeklysets_manage" data-on-click="WEEKLYSETS.openCreate()"><i class="ph ph-plus"></i> New set</button></div>
         </div>
         <div id="ws-trunc"></div>
@@ -1080,7 +1083,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <!-- ═══════════════════════════ STUDY PDFs ═══════════════════════════ -->
       <section class="view" id="view-studydocs" aria-label="Study PDFs">
         <div class="page-head">
-          <div><h1>Study PDFs</h1><p>Model answers, notes and past papers for students to read in the app. Only paid students can open them.</p></div>
+          <div><h2>Study PDFs</h2><p>Model answers, notes and past papers for students to read in the app. Only paid students can open them.</p></div>
           <div class="acts"><button class="btn btn-primary btn-sm" data-perm="studydocs_manage" data-on-click="STUDYDOCS.openUpload()"><i class="ph ph-upload-simple"></i> Upload PDF</button></div>
         </div>
         <div class="panel"><div id="studydocs-list" class="stack2"></div></div>
@@ -1089,7 +1092,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <!-- ═══════════════════════════ REPORTS ═══════════════════════════ -->
       <section class="view" id="view-qreports" aria-label="Question reports">
         <div class="page-head">
-          <div><h1>Reports</h1><p>Questions students have flagged as wrong, unclear or broken.</p></div>
+          <div><h2>Reports</h2><p>Questions students have flagged as wrong, unclear or broken.</p></div>
           <div class="acts"><button class="btn btn-secondary btn-sm" data-perm="qreports_manage" data-on-click="QREPORTS.refreshFile()"><i class="ph ph-arrows-clockwise"></i> Refresh a file</button><button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="QREPORTS.exportCSV()"><i class="ph ph-download-simple"></i> Export CSV</button></div>
         </div>
         <div class="toolbar">
@@ -1118,7 +1121,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <!-- ═══════════════════════════ GRADING ═══════════════════════════ -->
       <section class="view" id="view-subjective" aria-label="Grading">
         <div class="page-head">
-          <div><h1>Grading</h1><p>Score written answers and add questions to the subjective bank.</p></div>
+          <div><h2>Grading</h2><p>Score written answers and add questions to the subjective bank.</p></div>
         </div>
         <div class="tabbar" role="tablist">
           <button class="active" data-tab="qotd" role="tab" aria-selected="true" aria-controls="subj-panel-qotd" data-on-click="SUBJ_TABS.go('qotd')">Question of the day <span class="tab-count" id="tab-count-qotd" hidden>0</span></button>
@@ -1226,7 +1229,7 @@ th,td{border-bottom-width:var(--hairline-w)}
 
       <!-- ═══════════════════════════ ACTIVITY ═══════════════════════════ -->
       <section class="view" id="view-logs" aria-label="Activity">
-        <div class="page-head"><div><h1>Activity</h1><p>Every action taken in this console.</p></div></div>
+        <div class="page-head"><div><h2>Activity</h2><p>Every action taken in this console.</p></div></div>
         <div class="toolbar">
           <input class="input search" type="search" id="l-search" placeholder="Search action, admin or target" data-on-input="LOGS.debounced()" aria-label="Search activity">
           <select class="select" id="l-filter" data-on-change="LOGS.filter()" aria-label="Filter by action">
@@ -1249,7 +1252,7 @@ th,td{border-bottom-width:var(--hairline-w)}
 
       <!-- ═══════════════════════════ DATA & UPKEEP ═══════════════════════════ -->
       <section class="view" id="view-data" aria-label="Data and upkeep">
-        <div class="page-head"><div><h1>Data &amp; upkeep</h1><p>Import student progress, prune backups, trim logs and lock down old screenshots.</p></div></div>
+        <div class="page-head"><div><h2>Data &amp; upkeep</h2><p>Import student progress, prune backups, trim logs and lock down old screenshots.</p></div></div>
 
         <div class="panel">
           <div class="panel-hd"><div><h3>Import student progress</h3><div class="sub">Preview first — it reports exactly what would change without touching anything.</div></div></div>
@@ -1305,7 +1308,7 @@ th,td{border-bottom-width:var(--hairline-w)}
 
       <!-- ═══════════════════════════ SETTINGS ═══════════════════════════ -->
       <section class="view" id="view-settings" aria-label="Settings">
-        <div class="page-head"><div><h1>Settings</h1><p>What students see on the payment screen, and how long the free trial runs.</p></div></div>
+        <div class="page-head"><div><h2>Settings</h2><p>What students see on the payment screen, and how long the free trial runs.</p></div></div>
 
         <div class="panel">
           <div class="panel-hd"><div><h3>Payment</h3></div></div>

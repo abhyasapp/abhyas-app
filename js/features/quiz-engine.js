@@ -78,13 +78,20 @@ const QUIZ = {
     }
   },
 
-  async _fetchFromCDN(fileId, timeoutMs){
+  /* opts.fresh → bypass the service worker's CDN mirror (refresh=1, see
+     sw.js cdnCacheFirst) so a revalidation actually reaches jsDelivr.
+     Without it the SW would answer a recheck with the copy it cached
+     earlier, unchanged files would look identical, and changed question
+     content could never reach the offline downloads. */
+  async _fetchFromCDN(fileId, timeoutMs, opts){
     if(!this.CDN_BASE) throw new Error('CDN 404 (no mirror configured)');
     if(!S.online || S.forcedOffline) throw new Error('OFFLINE');
     const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs || 12000);
     try{
-      const r = await fetch(`${this.CDN_BASE}/content/${fileId}.json`,
+      let url = `${this.CDN_BASE}/content/${fileId}.json`;
+      if(opts && opts.fresh) url += '?refresh=1&_=' + Date.now();
+      const r = await fetch(url,
                             { signal: ctrl.signal, cache: 'default' });
       clearTimeout(timer);
       if(!r.ok) throw new Error('CDN ' + r.status);
@@ -199,7 +206,7 @@ const QUIZ = {
   async _revalidateQuiet(fileId, cacheKey){
     if(!S.online || S.forcedOffline) return false;
     try{
-      const data = await QUIZ._fetchFromCDN(fileId, 12000);
+      const data = await QUIZ._fetchFromCDN(fileId, 12000, { fresh: true });
       return await QDB.set(cacheKey, data);
     }catch(e){
       if(String(e.message || '').indexOf('CDN 404') === -1) return false;
@@ -354,15 +361,18 @@ const QUIZ = {
         </div>
       </div>`;
     document.body.appendChild(modal);
-    modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+    /* Dismiss + focus handling: backdrop click, Escape, and Tab-trap. */
+    const close = ()=>{ modal.remove(); DIALOG.release(modal); };
+    modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
     document.querySelectorAll('#quiz-limit-modal .qlm-preset').forEach(btn=>{
       btn.onclick = ()=>{ document.getElementById('qlm-inp').value = btn.dataset.qn; };
     });
-    document.getElementById('qlm-cancel').onclick = ()=> modal.remove();
+    document.getElementById('qlm-cancel').onclick = close;
+    DIALOG.open(modal, { focus: '#qlm-inp', onEscape: close });
     document.getElementById('qlm-start').onclick = ()=>{
       const n = Math.min(total, Math.max(1, parseInt(document.getElementById('qlm-inp').value)||total));
       const doShuffle = document.getElementById('qlm-shuffle').checked;
-      modal.remove();
+      close();
       const picked = doShuffle ? shuf(qsArr).slice(0,n) : qsArr.slice(0,n);
       QUIZ._doStart(picked, mode, chapterName, false, scope);
     };
@@ -635,8 +645,10 @@ const QUIZ = {
         </div>
       </div>`;
     document.body.appendChild(modal);
+    const closeResume = ()=>{ modal.remove(); DIALOG.release(modal); };
+    DIALOG.open(modal, { focus: '#exam-resume-btn', onEscape: closeResume });
     document.getElementById('exam-resume-btn').onclick = ()=>{
-      modal.remove();
+      closeResume();
       QUIZ._resumeSnapshot(snap, adjustedLeft);
     };
     document.getElementById('exam-discard-btn').onclick = async ()=>{
@@ -647,7 +659,7 @@ const QUIZ = {
         danger: true
       });
       if(!ok) return;
-      modal.remove();
+      closeResume();
       QUIZ._clearExamSnapshot();
     };
   },
@@ -707,7 +719,9 @@ const QUIZ = {
         </div>
       </div>`;
     document.body.appendChild(modal);
-    const close = ()=> modal.remove();
+    const close = ()=>{ modal.remove(); DIALOG.release(modal); };
+    /* Focus the safe choice (Cancel); Escape and Tab-trap keep it a real dialog. */
+    DIALOG.open(modal, { focus: '#qem-cancel', onEscape: close });
     if(isExam && !isReview){
       document.getElementById('qem-finish').onclick = ()=>{ close(); QUIZ.submitExam(); };
     }
@@ -1276,11 +1290,17 @@ const QUIZ = {
       renderMath(document.getElementById('res-review'));
     });
 
-    if(pct>=70 && window.confetti){ confetti({particleCount:90,spread:75,origin:{y:0.6}}); }
+    if(pct>=70 && window.confetti){ confetti({particleCount:90,spread:75,origin:{y:0.6}}); setTimeout(()=>document.querySelectorAll('body > canvas').forEach(c=>c.setAttribute('aria-hidden','true')),0); }
     const qres = S.quiz.qs
       .map((q,i)=> S.quiz.ans[i]===null ? null : {uid:q.uid, ok:isOk(S.quiz.ans[i], q.correct)})
       .filter(Boolean);
     const scope = S.quiz.scope || {};
+    /* Persisted so the sprint page (and anything else that reads history)
+       never has to guess from the chapter label. Callers that know what
+       they started — review, drill, session — set scope.sessionKind. */
+    const sessionKind = (scope.sessionKind === 'review' || scope.sessionKind === 'drill' || scope.sessionKind === 'new')
+      ? scope.sessionKind
+      : (scope.phase === 'drill' ? 'drill' : 'new');
     const durationSec = S.quiz.startedAt
       ? Math.min(3*60*60, Math.round((Date.now()-S.quiz.startedAt)/1000))
       : 0;
@@ -1290,9 +1310,11 @@ const QUIZ = {
       mode:S.quiz.mode,
       total, correct, wrong, skipped, pct, at:Date.now(),
       durationSec,
+      sessionKind,
       lv:scope.lv||'', ch:scope.ch||'', book:scope.book||'', sub:scope.sub||'', fid:scope.fid||'',
       weeklyId: scope.weeklyId || '',
       weeklyTitle: scope.weeklyTitle || '',
+      sprintKind: scope.sprint || '',
       qres
     };
     if(typeof COV !== 'undefined') COV.record(qres);

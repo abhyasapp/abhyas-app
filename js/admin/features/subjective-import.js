@@ -22,7 +22,9 @@ const SUBJADMIN = {
     if (!wrap) return;
     const CH = (typeof SUBJECTIVE_CHAPTERS !== 'undefined') ? SUBJECTIVE_CHAPTERS : [];
     const kept = this._preview.filter(x => x.keep).length;
+    const skipped = this._preview.length - kept;
     wrap.innerHTML = '<div class="t-cap mb2">' + kept + ' of ' + this._preview.length + ' will be added. Low-confidence guesses have a red edge — check the chapter before adding.</div>' +
+      (skipped ? '<div class="mb2"><button class="btn btn-quiet btn-sm" data-on-click="SUBJADMIN._restoreAll()"><i class="ph ph-arrow-counter-clockwise"></i> Restore ' + skipped + ' skipped</button></div>' : '') +
       this._preview.map((it, i) => {
         const conf = it.confidence >= 3 ? 'high' : it.confidence >= 1 ? 'mid' : 'low';
         const opts = CH.map(c => '<option value="' + escAttrJs(c.id) + '"' + (c.id === it.chapterId ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
@@ -42,6 +44,7 @@ const SUBJADMIN = {
   },
   _setMarks(i, v){ this._preview[i].marks = Math.max(1, Math.min(40, parseInt(v, 10) || 10)); },
   _drop(i){ this._preview[i].keep = !this._preview[i].keep; this._render(); },
+  _restoreAll(){ this._preview.forEach(p => { p.keep = true; }); this._render(); },
 
   /* getFile normalization — ADMIN.post already unwraps Supabase's
      { success:true, content:"<json>" } into res.result. Read whichever

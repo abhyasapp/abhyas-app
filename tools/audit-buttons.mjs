@@ -146,7 +146,11 @@ for (const file of JS_FILES) {
     const rest = src.slice(m.index, m.index + 700);
     const end = rest.search(/<\/button>|<button\b(?!^)/i);
     const chunk = rest.slice(0, end > 0 ? end : 700).replace(/^<button/, '');
-    if (/data-on-|onclick\s*=|data-modal-close|type=\\?["']submit/.test(chunk)) continue;
+    /* data-sprint buttons are handled by one delegated click listener in js/features/sprint.js. */
+    if (/data-on-|data-sprint=|onclick\s*=|data-modal-close|type=\\?["']submit/.test(chunk)) continue;
+    /* A disabled placeholder is not clickable; it is enabled and wired by JS
+       later, or it is a not-yet-unlocked card. Not a dead button. */
+    if (/\bdisabled\b|aria-disabled\s*=\\?["']true/.test(chunk)) continue;
     const id = /\bid=\\?["']([\w-]+)/.exec(chunk)?.[1];
     const cls = (/\bclass=\\?["']([^"'\\]+)/.exec(chunk)?.[1] || '').split(/\s+/).filter(Boolean);
     if (id && (WEAK_ID(id) && new RegExp(`['"]#?${id}['"][\\s\\S]{0,160}(onclick|addEventListener|onchange)|(onclick|addEventListener)[\\s\\S]{0,160}['"]#?${id}['"]`).test(src))) continue;
@@ -165,6 +169,11 @@ async function clickAll(page, only) {
   const silent = [], threw = [];
   for (const el of els) {
     if (el.closest('form') && (el.type === 'submit' || !el.getAttribute('type'))) continue;   // submit needs form data — covered by wiring
+    /* An earlier click in this same pass may have disabled it (the sample
+       question locks every option once one is chosen) or replaced the screen
+       it lived on. A disabled or detached control cannot be clicked, so its
+       silence is not a dead button. */
+    if (el.disabled || !el.isConnected) continue;
     const ae0 = asyncErrors.length;
     const before = { f: log.fetches.length, e: log.errors.length, s: log.storageWrites, d: log.dialogs.length, n: log.navigations.length };
     let muts = 0;
@@ -197,8 +206,12 @@ for (const page of PAGES) {
     const swap = booted[page]; booted[page] = fresh;
     const again = await clickAll(page, null);
     booted[page] = swap;
-    const stillSilent = new Set(again.silent.map((s) => s.el));
-    for (const s of silent) if (stillSilent.has(s.el)) { delete s.node; result.silent.push(s); }
+    /* Match on selector AND label: several sprint rows share
+       button.row-btn.ghost, and a selector-only match can pair the silent
+       "Review" with a different row's button on the fresh boot. */
+    const key = (s) => `${s.el}|${s.text}`;
+    const stillSilent = new Set(again.silent.map(key));
+    for (const s of silent) if (stillSilent.has(key(s))) { delete s.node; result.silent.push(s); }
     fresh.close();
   }
 }

@@ -15,6 +15,13 @@ const TODAY = {
     const reportList   = (typeof QREPORTS !== 'undefined' && Array.isArray(QREPORTS.all)) ? QREPORTS.all : [];
     const openReports  = reportList.filter(r => r && r.status === 'open').length;
     const expiringEl   = $('expiring-list');
+    /* EXPIRING.load() sets dataset.count only after its network call returns.
+       On the first paint the tile would show 0 until the next refresh, so
+       kick the load off here — it re-renders when the count arrives. */
+    if (expiringEl && !(expiringEl.dataset && expiringEl.dataset.count) &&
+        typeof EXPIRING !== 'undefined' && typeof EXPIRING.load === 'function') {
+      try { EXPIRING.load(); } catch (e) {}
+    }
     const expiring     = Number((expiringEl && expiringEl.dataset && expiringEl.dataset.count) || 0);
 
     const items = [

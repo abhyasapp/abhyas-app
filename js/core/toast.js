@@ -8,6 +8,8 @@
     if (box) return box;
     box = document.createElement('div');
     box.id = 'toast-stack';
+    box.setAttribute('role', 'status');
+    box.setAttribute('aria-live', 'polite');
     box.style.cssText =
       'position:fixed;left:1rem;right:1rem;bottom:calc(1rem + env(safe-area-inset-bottom,0px));' +
       'z-index:10030;display:flex;flex-direction:column;gap:.4rem;pointer-events:none;align-items:center';

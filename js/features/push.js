@@ -6,12 +6,28 @@ const firebaseConfig = {
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
+const VAPID_PUBLIC_KEY = 'YOUR_PUBLIC_VAPID_KEY';
+
+/* Nothing is configured until the placeholder values above are replaced.
+   Until then: do not load Firebase, and hide the Notifications card so the
+   app never offers a button that can only fail. */
+const PUSH_CONFIGURED =
+  !Object.values(firebaseConfig).some(v => /^YOUR_/.test(String(v))) &&
+  !/^YOUR_/.test(String(VAPID_PUBLIC_KEY));
 
 window.PUSH = {
   _initialized: false,
   _token: null,
+  configured: PUSH_CONFIGURED,
+
+  _hideCard() {
+    const btn = document.getElementById('push-enable-btn');
+    const card = btn && btn.closest ? btn.closest('.card') : null;
+    if (card) card.style.display = 'none';
+  },
 
   init() {
+    if (!PUSH_CONFIGURED) { this._hideCard(); return; }
     if (this._initialized) return;
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       console.log('[PUSH] Not supported by this browser.');
@@ -22,10 +38,14 @@ window.PUSH = {
     if (typeof firebase === 'undefined') {
       const s = document.createElement('script');
       s.src = 'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js';
+      /* If the SDK cannot load (offline, blocked), say so quietly and hide the card
+         instead of leaving a button that can never work. */
+      s.onerror = () => { console.warn('[PUSH] Firebase could not be loaded; notifications unavailable.'); this._hideCard(); };
       s.onload = () => {
         const m = document.createElement('script');
         m.src = 'https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js';
         m.onload = () => this._setupFirebase();
+        m.onerror = s.onerror;
         document.head.appendChild(m);
       };
       document.head.appendChild(s);
@@ -35,10 +55,17 @@ window.PUSH = {
   },
 
   _setupFirebase() {
-    if (firebase.apps.length === 0) {
-      firebase.initializeApp(firebaseConfig);
+    try {
+      if (typeof firebase === 'undefined' || !firebase.messaging) throw new Error('Firebase SDK missing');
+      if (firebase.apps.length === 0) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      this._messaging = firebase.messaging();
+    } catch (e) {
+      console.warn('[PUSH] Setup failed:', e && e.message);
+      this._hideCard();
+      return;
     }
-    this._messaging = firebase.messaging();
     this._initialized = true;
     
     // Handle foreground messages
@@ -52,6 +79,11 @@ window.PUSH = {
   },
 
   async enable() {
+    if (!PUSH_CONFIGURED) {
+      this._hideCard();
+      if (typeof toast === 'function') toast('Push notifications are not configured yet.');
+      return;
+    }
     if (!this._initialized) {
       if (typeof toast === 'function') toast('Push notifications are not configured yet.');
       return;
@@ -64,7 +96,7 @@ window.PUSH = {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         // Replace YOUR_PUBLIC_VAPID_KEY with the key from Firebase Console > Cloud Messaging
-        const token = await this._messaging.getToken({ vapidKey: 'YOUR_PUBLIC_VAPID_KEY' });
+        const token = await this._messaging.getToken({ vapidKey: VAPID_PUBLIC_KEY });
         if (token) {
           this._token = token;
           await this._saveToken(token);
@@ -105,7 +137,7 @@ window.PUSH = {
     if (!this._initialized) return;
     try {
       // Need VAPID key here too
-      const token = await this._messaging.getToken({ vapidKey: 'YOUR_PUBLIC_VAPID_KEY' });
+      const token = await this._messaging.getToken({ vapidKey: VAPID_PUBLIC_KEY });
       if (token && token !== this._token) {
         this._token = token;
         await this._saveToken(token);
@@ -114,6 +146,7 @@ window.PUSH = {
   },
 
   refreshButtonUI() {
+    if (!PUSH_CONFIGURED) { this._hideCard(); return; }
     const btn = document.getElementById('push-enable-btn');
     if (!btn) return;
     const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted'; // iOS Safari (non-PWA) has no Notification API

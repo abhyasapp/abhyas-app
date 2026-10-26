@@ -18,6 +18,10 @@
 (function () {
   'use strict';
 
+  /* i18n.js may load after this file on a cold cache. Translate at render
+     time (not at definition time) so switching language re-renders cleanly. */
+  const T = s => (typeof I18N !== 'undefined' ? I18N.t(s) : s);
+
   /* ───────────────────────── Page headers ──────────────────────────── */
   /* One entry per view: sidebar + phone-sheet + page header all read this. */
   const HEADS = {
@@ -111,14 +115,14 @@
       const b = it.badge
         ? '<span class="sb-badge ' + esc(it.badge.cls) + '" id="' + esc(it.badge.id) + '"' + (it.badge.hidden ? ' hidden' : '') + '>' + esc(it.badge.text) + '</span>'
         : '';
-      return open + ic + '<span class="grow"><span style="display:flex;align-items:center;gap:.35rem">' + esc(it.label) + b +
+      return open + ic + '<span class="grow"><span style="display:flex;align-items:center;gap:.35rem">' + esc(T(it.label)) + b +
         '</span><span class="sb-sub" id="' + esc(it.hint.id) + '">' + esc(it.hint.text) + '</span></span></button>';
     }
 
     const c = it.count
       ? '<span class="sb-badge ' + esc(it.count.cls) + '" id="' + esc(it.count.id) + '"' + (it.count.hidden ? ' hidden' : '') + '>0</span>'
       : '';
-    return open + ic + esc(it.label) + c + '</button>';
+    return open + ic + esc(T(it.label)) + c + '</button>';
   }
 
   /* ─────────────────── Collapsed groups (per device) ───────────────── */
@@ -141,14 +145,14 @@
     const collapsed = loadCollapsed();
     const homeBtn =
       '<div class="sb-sec"><button type="button" class="sb-item active" id="nav-home" data-on-click="UI.go(\'home\')">' +
-        '<span class="sb-ic"><i class="ph ' + HOME.icon + '"></i></span>' + HOME.label +
+        '<span class="sb-ic"><i class="ph ' + HOME.icon + '"></i></span>' + esc(T(HOME.label)) +
       '</button></div>';
 
     box.innerHTML = homeBtn + GROUPS.map(g => {
       const shut = !!collapsed[g.key];
       return '<div class="sb-sec' + (shut ? ' shut' : '') + '" data-group="' + esc(g.key) + '">' +
         '<button type="button" class="sb-lbl sb-lbl-btn" aria-expanded="' + (!shut) + '" data-on-click="NAV.toggle(\'' + escAttrJs(g.key) + '\')">' +
-          '<span>' + esc(g.label) + '</span><i class="ph ph-caret-down sb-caret" aria-hidden="true"></i>' +
+          '<span>' + esc(T(g.label)) + '</span><i class="ph ph-caret-down sb-caret" aria-hidden="true"></i>' +
         '</button>' +
         '<div class="sb-items">' + g.items.map(itemHtml).join('') + '</div>' +
       '</div>';
@@ -179,7 +183,7 @@
       const h = HEADS[el.getAttribute('data-head')];
       if (!h) return;
       /* HEADS is trusted, repo-authored text. */
-      el.innerHTML = '<h2><i class="ph ' + esc(h.icon) + '"></i> ' + esc(h.label) + '</h2><p>' + h.text + '</p>';
+      el.innerHTML = '<h2><i class="ph ' + esc(h.icon) + '"></i> ' + esc(T(h.label)) + '</h2><p>' + h.text + '</p>';
     });
   }
 
@@ -191,10 +195,10 @@
     if (!t) return null;
     const gs = GROUPS.filter(g => g.tab === tab);
     return {
-      title: t.title,
+      title: T(t.title),
       icon: t.icon,
       sections: gs.map(g => ({
-        label: gs.length > 1 ? g.label : '',
+        label: gs.length > 1 ? T(g.label) : '',
         items: g.items
       }))
     };

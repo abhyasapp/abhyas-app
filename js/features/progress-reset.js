@@ -89,11 +89,13 @@ const PROGRESS_RESET = {
       S.chapStats = {}; S.cov = {}; S.wr = []; S.stk = {days:[], last:''}; S.fcount = {};
       try { localStorage.setItem('abhyas_sprint_start', this._day()); } catch(e){}
       try { localStorage.removeItem('abhyas_sprint_off'); } catch(e){}
+      try { if(typeof SPRINT_LOG !== 'undefined') SPRINT_LOG.clear(); } catch(e){}
       r.all = T; r.sprint = T;
     } else if(scope === 'wr'){
       S.wr = []; r.wr = T;
     } else if(scope === 'sprint'){
       try { localStorage.setItem('abhyas_sprint_start', this._day()); localStorage.removeItem('abhyas_sprint_off'); } catch(e){}
+      try { if(typeof SPRINT_LOG !== 'undefined') SPRINT_LOG.clear(); } catch(e){}
       r.sprint = T;
     } else if(scope === 'exams'){
       S.prog.sessions = (S.prog.sessions || []).filter(s => !(s && s.mode === 'exam'));
@@ -193,6 +195,7 @@ const RESET_SNAPSHOT = {
         created: Array.isArray(created) ? created : [],
         sprint,
         sprintOff: (function(){ try { return localStorage.getItem('abhyas_sprint_off') || ''; } catch(e){ return ''; } })(),
+        sprintLog: (function(){ try { return localStorage.getItem('abhyas_sprint_log') || ''; } catch(e){ return ''; } })(),
         fcount:    S.fcount,
         prog:      S.prog,
         bk:        S.bk,
@@ -238,6 +241,7 @@ const RESET_SNAPSHOT = {
     if(snap.fcount)    { S.fcount = snap.fcount; _save(LS.FCOUNT, S.fcount); }
     if(snap.sprint)    { try { localStorage.setItem('abhyas_sprint_start', snap.sprint); } catch(e){} }
     if(snap.sprintOff) { try { localStorage.setItem('abhyas_sprint_off', snap.sprintOff); } catch(e){} }
+    if(snap.sprintLog) { try { localStorage.setItem('abhyas_sprint_log', snap.sprintLog); if(typeof SPRINT_LOG !== 'undefined') SPRINT_LOG._resetMemory(); } catch(e){} }
     /* undo the reset markers this reset made, so other devices stop applying them too */
     if(Array.isArray(snap.created) && snap.created.length) PROGRESS_RESET.lift(snap.created);
     _save(LS.PROG, S.prog);

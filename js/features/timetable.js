@@ -179,7 +179,7 @@ const TT = {
       
       requestAnimationFrame(() => {
         weekEl.innerHTML = `
-          <div class="tt-week-scroll">
+          <div class="tt-week-scroll" role="region" aria-label="Weekly study plan" tabindex="0">
           <div class="tt-week-grid">
             ${DAYS.map((d,i)=>`
               <div class="tt-dayhd ${i===todayIdx?'today':''}">

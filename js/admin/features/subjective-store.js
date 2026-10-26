@@ -15,8 +15,11 @@ const SUBJ_STORE = {
         this.truncated = !!r.truncated;
         this.totalCount = r.totalCount || this.all.length;
         this.loaded = true;
-        BADGES.update();
-        TODAY.render();
+        /* today.js may not have parsed yet (or may have failed to load).
+           A bare call would throw ReferenceError inside this try/catch and
+           silently skip the repaint — so guard both. */
+        try { if (typeof BADGES !== 'undefined') BADGES.update(); } catch (e) {}
+        try { if (typeof TODAY !== 'undefined') TODAY.render(); } catch (e) {}
       }
     } catch(e){}
     this.loading = false;

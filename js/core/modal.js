@@ -1,12 +1,107 @@
 // js/core/modal.js — the sheet modal plus the destructive-confirm dialog.
 
+/* ═════════════════════════════════════════════════════════════════════
+   DIALOG — the ONE focus manager for every dialog in the app.
+
+   A dialog is any element that should behave like a modal: it traps the
+   Tab key inside itself, moves focus in when it opens, restores focus to
+   the control that opened it when it closes, and (optionally) closes on
+   Escape. The app chrome (#tb topbar, #layout, #bnav) is marked
+   aria-hidden + inert while a dialog is open so screen readers and the
+   keyboard never land behind it.
+
+   Dialogs are stacked: opening a confirm over a sheet pushes a second
+   entry; Escape only ever dismisses the top one.
+   ═════════════════════════════════════════════════════════════════════ */
+const DIALOG = (() => {
+  const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  /* App chrome hidden while any dialog is open. Each of these is a direct
+     child of <body>, so a dialog (also body-level) is never trapped inside. */
+  const BG = ['#tb', '#layout', '#bnav'];
+  const stack = []; // [{ container, restoreTo, onEscape }]
+
+  function _visible(el) {
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  }
+  function _items(container) {
+    return Array.from(container.querySelectorAll(FOCUSABLE)).filter(_visible);
+  }
+  function _onKey(e) {
+    if (!stack.length) return;
+    const top = stack[stack.length - 1];
+    if (e.key === 'Escape') {
+      if (top.onEscape) { e.stopPropagation(); top.onEscape(); }
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const items = _items(top.container);
+    if (!items.length) { e.preventDefault(); return; }
+    const first = items[0], last = items[items.length - 1];
+    const inside = top.container.contains(document.activeElement);
+    if (e.shiftKey && (document.activeElement === first || !inside)) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+      e.preventDefault(); first.focus();
+    }
+  }
+  function _hideChrome(on) {
+    BG.forEach(sel => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      if (on) { el.setAttribute('aria-hidden', 'true'); el.setAttribute('inert', ''); }
+      else { el.removeAttribute('aria-hidden'); el.removeAttribute('inert'); }
+    });
+  }
+  function open(container, opts) {
+    if (!container) return;
+    opts = opts || {};
+    /* Re-opening a dialog that's already trapped (a content re-render) must not
+       push a second entry — just refresh its behaviour and re-focus. */
+    const existing = stack.find(en => en.container === container);
+    if (existing) { existing.onEscape = opts.onEscape || existing.onEscape; }
+    else {
+      if (!stack.length) {
+        document.addEventListener('keydown', _onKey, true);
+        _hideChrome(true);
+      }
+      stack.push({ container, restoreTo: opts.restoreTo || document.activeElement, onEscape: opts.onEscape || null });
+    }
+    let target = opts.focus ? container.querySelector(opts.focus) : null;
+    if (!target) { const list = _items(container); target = list[0] || null; }
+    try {
+      if (target) target.focus();
+      else { container.setAttribute('tabindex', '-1'); container.focus(); }
+    } catch (e) {}
+  }
+  function release(container) {
+    const idx = container ? stack.findIndex(en => en.container === container) : stack.length - 1;
+    if (idx === -1) return;
+    const entry = stack.splice(idx, 1)[0];
+    if (!stack.length) {
+      document.removeEventListener('keydown', _onKey, true);
+      _hideChrome(false);
+    }
+    try {
+      if (entry.restoreTo && entry.restoreTo.focus && document.contains(entry.restoreTo)) entry.restoreTo.focus();
+    } catch (e) {}
+  }
+  return { open, release, _stack: stack };
+})();
+window.DIALOG = DIALOG;
+
 function openMod(title, html) {
+  const bg = document.getElementById('mbg');
   document.getElementById('mtitle').textContent = title;
   document.getElementById('mbody').innerHTML = html;
-  document.getElementById('mbg').classList.add('show');
+  bg.classList.add('show');
+  /* Trap only the first time it opens; re-renders just swap content. Escape is
+     handled by shell-hooks.js, so leave onEscape off to avoid a double-close. */
+  if (!bg._trapped) { bg._trapped = true; DIALOG.open(bg); }
 }
 function closeMod() {
-  document.getElementById('mbg').classList.remove('show');
+  const bg = document.getElementById('mbg');
+  bg.classList.remove('show');
+  if (bg._trapped) { bg._trapped = false; DIALOG.release(bg); }
 }
 function _anyModalOpen() {
   if (document.getElementById('mbg')?.classList.contains('show')) return true;

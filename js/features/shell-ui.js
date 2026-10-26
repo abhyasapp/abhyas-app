@@ -46,12 +46,17 @@ window.BN = {
     this._activeKey = key;
 
     setTimeout(() => { const f = $('bn-sheet-grid').querySelector('button'); if (f) f.focus(); }, 60);
+    /* Tab-trap the sheet; Escape is handled by shell-hooks.js. */
+    DIALOG.open($('bn-sheet'));
   },
   close(){
-    $('bn-sheet').classList.remove('show');
+    const sheet = $('bn-sheet');
+    if (!sheet.classList.contains('show')) return;
+    sheet.classList.remove('show');
     $('bn-sheet-backdrop').classList.remove('show');
     document.body.style.overflow = '';
     this._activeKey = null;
+    DIALOG.release(sheet);
   }
 };
 
@@ -238,6 +243,11 @@ window.FONT = {
     } catch(e){ return 100; }
   },
   apply(v){ document.documentElement.style.fontSize = v === 100 ? '' : v + '%'; },
+  set(v){
+    if (this.STEPS.indexOf(v) === -1) return;
+    try { localStorage.setItem('abhyas_fs', JSON.stringify(v)); } catch(e){}
+    this.apply(v);
+  },
   cycle(){
     const i = (this.STEPS.indexOf(this.get()) + 1) % this.STEPS.length;
     const v = this.STEPS[i];
