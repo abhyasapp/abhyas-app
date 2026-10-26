@@ -5,29 +5,10 @@
   "description": "Abhyas: Loksewa Civil Engineering exam prep (static PWA; backend in ../backend)",
   "scripts": {
     "serve": "npx --yes serve -l 5500 .",
-    "check-syntax": "node tools/check-syntax.mjs",
-    "audit": "node tools/audit.mjs",
-    "audit:seo": "node tools/audit-seo.mjs",
-    "audit:handlers": "node tools/audit-handlers.js",
-    "lint": "eslint .",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:cov": "vitest run --coverage",
-    "verify": "npm run check-syntax && npm run check-i18n && npm run audit:seo && npm run lint && npm test",
-    "check-i18n": "node tools/check-i18n.mjs",
-    "audit:buttons": "node tools/audit-buttons.mjs",
     "sync-shell": "node tools/sync-shell.mjs"
   },
   "engines": {
     "node": ">=20.11"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.13.0",
-    "fake-indexeddb": "^6.2.6",
-    "globals": "^17.13.0",
-    "jsdom": "^30.1.3",
-    "vitest": "^5.0.5"
   },
   "repository": {
     "type": "git",
