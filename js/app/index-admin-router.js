@@ -115,7 +115,7 @@
       event.stopImmediatePropagation();
 
       var restore = showSigningIn(document.getElementById('btn-login'));
-      var res = null;
+      var res;
       try {
         res = await callBackend('adminLogin', { username: identifier, password: password });
       } catch (e) { res = { success: false }; }

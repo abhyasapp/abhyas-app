@@ -57,8 +57,18 @@ const PWA = {
     } else toast('Install option not available — try your browser\'s "Add to Home Screen" menu.');
   },
   toggleFullscreen() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => toast('Fullscreen not supported here'));
-    else document.exitFullscreen?.();
+    if (!document.fullscreenElement) {
+      /* Optional chaining alone made this a silent no-op in browsers that
+         do not expose the Fullscreen API (older iOS, embedded webviews).
+         Tell the student instead of pretending the tap did something. */
+      if (!document.fullscreenEnabled || typeof document.documentElement.requestFullscreen !== 'function') {
+        toast('Fullscreen is not available in this browser');
+        return;
+      }
+      document.documentElement.requestFullscreen().catch(() => toast('Fullscreen could not start'));
+    } else if (typeof document.exitFullscreen === 'function') {
+      document.exitFullscreen().catch?.(() => {});
+    }
   }
 };
 

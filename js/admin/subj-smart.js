@@ -71,7 +71,10 @@ function _classifyQuestion(text){
       const safe = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const re = new RegExp(`(^|\\W)${safe}(\\W|$)`, 'gi');
       const m = t.match(re);
-      if(m) score += m.length;
+      /* Longer keywords are far more specific: "flexible pavement" should
+         beat "road", and "water treatment" should beat "water". Doubling
+         their weight stops short generic words from deciding the chapter. */
+      if(m) score += (kw.length >= 8 ? m.length * 2 : m.length);
     }
     if(score > best.score) best = { chapterId: chId, groupKey: rule.group, score };
   }

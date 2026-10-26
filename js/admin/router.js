@@ -51,7 +51,17 @@ const UI = {
       if (id === 'settings') SETTINGS.load();
       if (id === 'dashboard') TRENDS.load();
       if (id === 'dashboard' && !MISSED.lastResults.length) MISSED.load();
-      if (id === 'subjective') SUBJ_TABS.go(tab || SUBJ_TABS.current);
+      if (id === 'subjective') {
+        /* SUBJ_TABS lives in subjective-store.js. If that module failed to
+           load, the outer catch would swallow the ReferenceError and leave
+           an empty panel. Show a visible error instead. */
+        if (typeof SUBJ_TABS !== 'undefined') {
+          SUBJ_TABS.go(tab || SUBJ_TABS.current);
+        } else {
+          const v = $('view-subjective');
+          if (v) v.innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>Grading module failed to load. Reload the page.</span></div>';
+        }
+      }
       if (id === 'admins') ADMIN._paintCurrentView('admins');
       if (id === 'studydocs') STUDYDOCS.load();
       if (id === 'qreports' && typeof QREPORTS !== 'undefined') QREPORTS.load();

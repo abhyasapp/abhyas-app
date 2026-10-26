@@ -144,7 +144,10 @@ const WEEKLYSETS = {
           const text = q.q || q.question || q.stem || '(no text)';
           const opts = q.options || q.opts || q.choices || [];
           return '<div class="sub-card"><div class="t-callout" style="font-weight:600">' + (i + 1) + '. ' + esc(String(text).slice(0, 220)) + '</div>' +
-            (Array.isArray(opts) && opts.length ? '<div class="t-foot mt2">' + opts.map((o, oi) => String.fromCharCode(65 + oi) + ') ' + esc(String(o))).join('  ·  ') + '</div>' : '') +
+            (Array.isArray(opts) && opts.length ? '<div class="t-foot mt2">' + opts.map((o, oi) =>
+              String.fromCharCode(65 + oi) + ') ' + esc(String(o)) +
+              (q.correct != null && Number(q.correct) === oi ? ' \u2713' : '')
+            ).join('  ·  ') + '</div>' : '') +
           '</div>';
         }).join('') + '</div>';
     } catch(e){

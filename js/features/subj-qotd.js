@@ -266,6 +266,7 @@ function _startQotdTick(){
   _stopQotdTick();
   _lastQotdPhase = _qotdPhase();
   _qotdTick = setInterval(() => {
+    if (document.hidden) return;            // nothing to repaint in a background tab; the next visible tick catches up
     const phase = _qotdPhase();
     if(phase !== _lastQotdPhase){ _lastQotdPhase = phase; _renderQotd(); }
     else _paintQotdTimer();

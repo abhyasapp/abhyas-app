@@ -352,6 +352,130 @@ const CACHE = {
     if(UI.cur==='offline') CACHE.render();
   },
 
+  /* ═══ Download refresh after a chapters-data change ═════════════════
+     js/data/chapters-loader.js refetches chapters-data.js every few
+     minutes while the app is open and fires `abhyas:chapters-updated`
+     when its source actually changed. This reconciles the downloaded
+     sets (QDB) with that change IMMEDIATELY instead of waiting for
+     autosync (off by default) or the 24 h revalidate-on-open stamp:
+       • files deleted from the chapter data are purged from the cache,
+       • files added to picked groups (or everywhere when autosync is
+         on) are downloaded, and
+       • every already-downloaded set is rechecked against the CDN —
+         with refresh=1 bypassing the serviceworker's CDN mirror — so
+         changed question content reaches the offline copies right away.
+     The listener is wired at the bottom of this file. */
+  PENDING_KEY: 'abhyas_chapters_refresh_pending',
+  _refreshLastAt: 0, _refreshing: false, _onlineHookBound: false,
+
+  _weakConnection() {
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    return !!(c && (c.saveData || c.type === 'cellular' || /^(slow-2g|2g|3g)$/i.test(c.effectiveType || '')));
+  },
+
+  _postponeRefresh(weak) {
+    try { _save(this.PENDING_KEY, Date.now()); } catch (e) {}
+    try {
+      toast(weak
+        ? '📖 Chapters changed — your downloaded sets will refresh on Wi-Fi or a better connection'
+        : '📖 Chapters changed — reconnect to refresh your downloaded sets', 8000);
+    } catch (e) {}
+    if (!this._onlineHookBound) {
+      this._onlineHookBound = true;
+      window.addEventListener('online', () => {
+        setTimeout(() => { try { CACHE.refreshFromUpdate('online-retry'); } catch (e) {} }, 3000);
+      });
+    }
+  },
+
+  async refreshFromUpdate(reason) {
+    if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return;
+    if (typeof QUIZ === 'undefined' || !QUIZ._fetchFromCDN) return;
+    if (typeof S === 'undefined') return;
+    if (this._refreshing || this._running) return;
+    if (Date.now() - this._refreshLastAt < 10 * 60 * 1000) return;
+    if (!S.online || S.forcedOffline) { this._postponeRefresh(false); return; }
+    if (this._weakConnection()) { this._postponeRefresh(true); return; }
+
+    this._refreshLastAt = Date.now();
+    this._refreshing = true;
+    try {
+      const refs = ChapterData.allFileRefs();
+      if (!refs.length) return;
+      const byKey = new Map(refs.map(r => [r.key, r]));
+      const have = new Set(await QDB.keys());
+      const picked = new Set(this._picked());
+      const autosyncOn = !!_load('abhyas_autosync', false);
+
+      /* 1. Files deleted from the chapter data — drop their downloads. */
+      let orphans = 0;
+      for (const k of have) {
+        if (!byKey.has(k)) { await QDB.del(k); orphans++; }
+      }
+
+      /* 2. Reset the 24 h per-file revalidation stamps so the next time
+            a changed chapter is OPENED online it rechecks immediately */
+      try { localStorage.removeItem('abhyas_qts'); } catch (e) {}
+
+      /* 3. New files since the change + 4. recheck downloaded ones. */
+      const toAdd = refs.filter(r => !have.has(r.key) && (autosyncOn || picked.has(r.lv)));
+      const toUpdate = refs.filter(r => have.has(r.key));
+      const targets = toAdd.concat(toUpdate);
+      let added = 0, updated = 0, failed = 0, done = 0;
+      if (targets.length) {
+        const total = targets.length;
+        this._badge('Refreshing downloads · 0/' + total);
+        const sameData = (a, b) => {
+          try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; }
+        };
+        let _i = 0;
+        const worker = async () => {
+          for (;;) {
+            const i = _i++;
+            if (i >= total) return;
+            const ref = targets[i];
+            done++;
+            if (done % 10 === 0 || done === total) this._badge('Refreshing downloads · ' + done + '/' + total);
+            try {
+              const data = await QUIZ._fetchFromCDN(ref.fid, 12000, { fresh: true });
+              if (!data || (typeof data === 'object' && !Array.isArray(data) && data.success === false)) {
+                throw new Error('CDN miss');
+              }
+              const prev = await QDB.get(ref.key);
+              if (prev != null) {
+                if (!sameData(prev, data)) {
+                  if (await QDB.set(ref.key, data)) updated++; else failed++;
+                }
+              } else if (await QDB.set(ref.key, data)) added++; else failed++;
+            } catch (cdnErr) {
+              /* Offline downloads keep their copy unless nothing was saved yet. */
+              if (!(await QDB.get(ref.key))) {
+                try { await QUIZ._fetch(ref.fid, ref.key, 1, 'bg'); added++; } catch (e) { failed++; }
+              } else failed++;
+            }
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(3, targets.length) }, worker));
+        this._badge(null);
+      }
+      if (typeof UI !== 'undefined' && UI.cur === 'offline') this.render();
+
+      const bits = [];
+      if (added) bits.push(added + ' new question ' + (added === 1 ? 'set' : 'sets') + ' added to your downloads');
+      if (updated) bits.push(updated + (updated === 1 ? ' set was' : ' sets were') + ' updated for offline use');
+      if (orphans) bits.push(orphans + ' removed ' + (orphans === 1 ? 'download' : 'downloads') + ' cleaned up');
+      try { if (bits.length) toast('🔄 ' + bits.join(' · '), 7000); } catch (e) {}
+      try {
+        if (!bits.length && reason === 'pending') {
+          toast('✅ Your downloaded sets already match the latest chapter data', 6000);
+        }
+      } catch (e) {}
+    } finally {
+      this._refreshing = false;
+      try { localStorage.removeItem(this.PENDING_KEY); } catch (e) {}
+    }
+  },
+
   _badge(msg){
     let el = document.getElementById('cache-autobadge');
     if(msg===null){ if(el) el.style.display = 'none'; return; }
@@ -367,3 +491,26 @@ const CACHE = {
 };
 
 window.CACHE = CACHE;
+
+/* Wire the chapters-loader change event → immediate download refresh.
+   (The loader fires `abhyas:chapters-updated` only when chapters-data.js
+   actually changed, so this runs at most once per real content change.) */
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('abhyas:chapters-updated', function (e) {
+    try {
+      const p = CACHE.refreshFromUpdate((e && e.detail && e.detail.reason) || 'background');
+      if (p && typeof p.catch === 'function') {
+        p.catch(function (err) { console.warn('[CACHE] download refresh failed:', err); });
+      }
+      return p;
+    } catch (err) { console.warn('[CACHE] download refresh failed:', err); }
+  });
+  /* If a refresh was postponed (offline / bad connection), retry shortly
+     after the next boot even though the loader won't fire the event again
+     for an unchanged source. */
+  try {
+    if (_load(CACHE.PENDING_KEY, 0)) {
+      setTimeout(function () { try { CACHE.refreshFromUpdate('pending'); } catch (e) {} }, 12000);
+    }
+  } catch (e) {}
+}

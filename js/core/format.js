@@ -58,12 +58,38 @@ function isOk(sel, cor) {
     : s.toLowerCase() === c.toLowerCase();
 }
 
+/* KaTeX is ~270 KB of script; most sessions never show a formula. Load it the first
+   time some text actually contains math delimiters. */
+let _mathLoading = null;
+function _loadMath() {
+  if (typeof window.renderMathInElement === 'function') return Promise.resolve(true);
+  if (_mathLoading) return _mathLoading;
+  const add = (src) => new Promise((ok, no) => { const t = document.createElement('script'); t.src = src; t.onload = ok; t.onerror = no; document.head.appendChild(t); });
+  _mathLoading = add('tools/vendor/katex/katex.min.js')
+    .then(() => add('tools/vendor/katex/auto-render.min.js'))
+    .then(() => true)
+    .catch(() => { _mathLoading = null; return false; });
+  return _mathLoading;
+}
+
 function renderMath(el) {
-  if (!el || typeof window.renderMathInElement !== 'function') return;
+  if (!el) return;
+  if (typeof window.renderMathInElement !== 'function') {
+    const txt = el.textContent || '';
+    if (txt.indexOf('$') === -1 && txt.indexOf('\\(') === -1 && txt.indexOf('\\[') === -1) return;
+    _loadMath().then((ok) => { if (ok) renderMath(el); });
+    return;
+  }
   try {
     window.renderMathInElement(el, {
+      /* Order matters: the long forms must be listed before `$` or `$$` is
+         taken one dollar at a time. `\(` and `\[` are what LaTeX sources and
+         Overleaf actually put on the clipboard, so copied math that has no
+         dollars at all still renders. */
       delimiters: [
         { left: '$$', right: '$$', display: true },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\(', right: '\\)', display: false },
         { left: '$', right: '$', display: false }
       ],
       throwOnError: false

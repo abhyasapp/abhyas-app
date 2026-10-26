@@ -370,9 +370,13 @@ const ADMIN = {
     const gate = $('gate'); if (gate) gate.hidden = true;
     const app  = $('app');  if (app)  app.classList.add('on');
     await this.loadPermissions();
+    this._applyPermissions();            // sidebar is correct before any data arrives
     await this.refresh();
+    this._applyPermissions();            // refresh can promote us to owner (adminListAdmins.isOwner)
+    if (!this._perms) TOAST.show('Could not load your permissions, so admin sections are hidden. Reload to try again.', 'warning', 8000);
     if (this._forcedPwChange) this.changePassword();
-    if (typeof UI !== 'undefined' && UI.nav) UI.nav(UI.current || 'today');
+    const land = (UI.current && this._viewAllowed(UI.current)) ? UI.current : this.firstAllowedView();
+    if (land && typeof UI !== 'undefined' && UI.nav) UI.nav(land);
   },
 
   async login() {
@@ -543,7 +547,7 @@ const ADMIN = {
       return res;
     };
 
-    let primaryErr = null;
+    let primaryErr;
     try {
       let res = await _attempt(primaryUrl);
       if (canFallback && _needsFallback(res)) {
@@ -596,25 +600,45 @@ const ADMIN = {
 
   /* ── permissions ── */
   async loadPermissions() {
-    try {
-      const r = await this.post('adminGetPermissions', {});
-      if (r && r.success) {
-        this._perms = {
-          role: r.role || (r.isOwner ? 'owner' : 'admin'),
-          features: r.features || {}
-        };
-        return;
-      }
-    } catch (e) {}
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await this.post('adminGetPermissions', {});
+        if (r && r.success) {
+          this._perms = {
+            role: r.role || (r.isOwner ? 'owner' : 'admin'),
+            features: r.features || {}
+          };
+          return;
+        }
+      } catch (e) {}
+    }
     this._perms = null;
   },
 
+  /* Fail CLOSED: until the server has told us what this admin may do, they may do
+     nothing. (This used to return true, so one failed request showed every section,
+     button and export to a restricted sub-admin.) The server still enforces; this
+     keeps the UI honest. An owner is recovered via adminListAdmins.isOwner. */
   can(key) {
-    if (!this._perms) return true;
+    if (!this._perms) return false;
     if (this._perms.role === 'owner') return true;
-    return !!this._perms.features[key];
+    return !!(this._perms.features && this._perms.features[key]);
   },
   _hasFeature(k) { return this.can(k); },
+
+  _featAllowed(feat) {
+    if (!feat) return true;
+    return Array.isArray(feat) ? feat.some(f => this.can(f)) : this.can(feat);
+  },
+  _viewAllowed(view) {
+    const F = (typeof ADMIN_NAV !== 'undefined' && ADMIN_NAV.FEATURES) || {};
+    return this._featAllowed(F[view]);
+  },
+  firstAllowedView() {
+    const all = (typeof ADMIN_NAV !== 'undefined' && ADMIN_NAV.ALL) || [];
+    const hit = all.find(it => this._featAllowed(it.feature));
+    return hit ? hit.view : null;
+  },
 
   _applyPermissions() {
     document.querySelectorAll('[data-perm]').forEach(el => {
@@ -624,8 +648,19 @@ const ADMIN = {
       el.hidden = !allowed;
       if (el.tagName === 'BUTTON' || el.tagName === 'A') el.disabled = !allowed;
     });
-    document.querySelectorAll('.rail-item[data-feat]').forEach(el => {
-      el.hidden = !this.can(el.getAttribute('data-feat'));
+    /* Sidebar: each .rail-item is id="nav-<view>"; the permission it needs lives in
+       ADMIN_NAV.FEATURES. (The old code looked for a data-feat attribute that the
+       generated items never carry, so nothing was ever hidden.) */
+    document.querySelectorAll('.rail-item').forEach(el => {
+      const legacy = el.getAttribute('data-feat');
+      const view = (el.id || '').replace(/^nav-/, '');
+      el.hidden = legacy ? !this.can(legacy) : !this._viewAllowed(view);
+    });
+    /* Hide a group heading when every item under it is hidden. */
+    document.querySelectorAll('.rail-group').forEach(h => {
+      let n = h.nextElementSibling, any = false;
+      while (n && !n.classList.contains('rail-group')) { if (n.classList.contains('rail-item') && !n.hidden) any = true; n = n.nextElementSibling; }
+      h.hidden = !any;
     });
   },
 

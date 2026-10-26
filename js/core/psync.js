@@ -33,7 +33,7 @@ const PSYNC = {
   _beaconSync(){
     if(!S.online || S.forcedOffline || !S.user || !S.user.token) return;
     try{
-      const json = JSON.stringify(this._syncPayloadForServer());
+      const json = JSON.stringify(this._syncPayloadForServer({ noLog: true }));      // keep the last-chance send small
       if(json.length > this._SYNC_PAYLOAD_CEILING) return;
       const body = JSON.stringify({ action:'saveProgress', username: S.user.username, token: S.user.token, data: json, baseUpdatedAt: this._rev() });
       const url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG && ABHYAS_CONFIG.SUPABASE_URL)
@@ -62,6 +62,7 @@ const PSYNC = {
     return {
       prog: S.prog || {total:0,correct:0,sessions:[]}, chapStats: S.chapStats || {}, cov: S.cov || {},
       bk: S.bk || [], fl: S.fl || [], wr: S.wr || [], stk: S.stk || {days:[],last:''}, qnotes, sprint,
+      sprintLog: (typeof SPRINT_LOG !== 'undefined') ? SPRINT_LOG.exportForSync() : undefined,
       resets: (typeof PROGRESS_RESET !== 'undefined') ? PROGRESS_RESET.load() : {}
     };
   },
@@ -111,6 +112,7 @@ const PSYNC = {
       localStorage.setItem('abhyas_qnotes', JSON.stringify(m.qnotes));
       if(typeof QNOTE !== 'undefined') QNOTE._cache = m.qnotes;
       if(m.sprint) localStorage.setItem('abhyas_sprint_start', m.sprint);
+      if(m.sprintLog && typeof SPRINT_LOG !== 'undefined') SPRINT_LOG.mergeIn(m.sprintLog);
     } catch(e){}
     if(typeof PROGRESS_RESET !== 'undefined') PROGRESS_RESET.save(m.resets || {});
     try { if(typeof WRONGBY !== 'undefined') WRONGBY._missCache = null; if(typeof QHIST !== 'undefined') QHIST._cache = null; } catch(e){}
@@ -149,7 +151,8 @@ const PSYNC = {
   _rev(){ try { return localStorage.getItem(this._REV_KEY) || ''; } catch(e){ return ''; } },
   _setRev(v){ try { if(v) localStorage.setItem(this._REV_KEY, String(v)); } catch(e){} },
 
-  _syncPayloadForServer(){
+  /* opts.noLog: leave the sprint log out. It is nice-to-have; core progress must never be blocked by its size. */
+  _syncPayloadForServer(opts){
     const p = S.prog || {};
     let sprint = '';
     try { sprint = localStorage.getItem('abhyas_sprint_start') || ''; } catch(e){}
@@ -166,6 +169,7 @@ const PSYNC = {
       cov: S.cov || {},
       stk: S.stk || { days: [], last: '' },
       sprint,
+      sprintLog: (opts && opts.noLog) || typeof SPRINT_LOG === 'undefined' ? undefined : SPRINT_LOG.exportForSync(),
       resets: (typeof PROGRESS_RESET !== 'undefined') ? PROGRESS_RESET.load() : {},
       wr: [], bk: [], fl: [], qnotes: {}
     };
@@ -180,6 +184,9 @@ const PSYNC = {
     let payload = null;
     try {
       payload = await syncEncode(JSON.stringify(this._syncPayloadForServer()), this._SYNC_PAYLOAD_CEILING);
+      if(payload === null) {          // too big with the sprint log: send the core progress without it
+        payload = await syncEncode(JSON.stringify(this._syncPayloadForServer({ noLog: true })), this._SYNC_PAYLOAD_CEILING);
+      }
     } catch(e) {
       console.warn('[PSYNC.pushNow] encode failed', e);
     }

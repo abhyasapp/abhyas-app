@@ -22,6 +22,14 @@ document.addEventListener('DualSearchExtensionReady', () => {
     console.log("✅ Dual Search Extension Connected!");
 });
 
+// Startup-race safety net. If the extension announced itself BEFORE this script ran, the event above
+// was missed. So we also ask any already-loaded extension to answer (it replies DUAL_SEARCH_PONG; see
+// docs/SEARCH.md for the 6-line content.js addition). Harmless if the extension never answers.
+window.addEventListener('message', (e) => {
+  if (e.source === window && e.data && e.data.type === 'DUAL_SEARCH_PONG') window.isDualSearchExtensionInstalled = true;
+});
+try { window.postMessage({ type: 'DUAL_SEARCH_PING' }, window.location.origin); } catch (_) { /* ignore */ }
+
 // ── IMAGE HELPERS ──
 function _resolveQImg(raw) {
   const v = String(raw || '').trim();
@@ -50,19 +58,21 @@ function _buildRichQuery(q) {
   return (GOOGLE_PROMPT_HEAD + body).slice(0, GOOGLE_PROMPT_MAX).trim();
 }
 
+// Plain "question + options" text that is sent to the extension.
+function _plainSearchText(q) {
+  const opts = (q.options || []).map((o, i) => String.fromCharCode(65 + i) + ') ' + String(o)).join(' ');
+  return String(q.q || '').trim() + (opts ? '  Options: ' + opts : '');
+}
+
 // ── SEARCH BUTTON HTML ──
 function qSearchHtml(q) {
-  // 1. Build the raw text (Question + Options) to send to the extension
-  const opts = (q.options || []).map((o, i) => String.fromCharCode(65 + i) + ') ' + String(o)).join(' ');
-  const textToSearch = String(q.q || '').trim() + (opts ? '  Options: ' + opts : '');
+  // 1. Text for the extension, escaped with the app's esc() (covers & < > " ' — not just quotes)
+  const safeQuery = esc(_plainSearchText(q));
   
-  // 2. Safely escape for the HTML attribute
-  const safeQuery = textToSearch.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  
-  // 3. Fallback URL (used ONLY if the extension is not installed)
+  // 2. Fallback URL (used ONLY if the extension is not installed)
   const fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(_buildRichQuery(q))}`;
 
-  // 4. Return the link with class "ext-search-btn" for Event Delegation
+  // 3. Return the link with class "ext-search-btn" for Event Delegation
   return `<a class="ib ext-search-btn" href="${fallbackUrl}" target="_blank" rel="noopener" `
        + `data-query="${safeQuery}" `
        + `title="Ask Google AI to analyse this question" `
@@ -74,13 +84,14 @@ function qSearchHtml(q) {
 // We intercept clicks globally instead of using inline onclick.
 document.addEventListener('click', function(e) {
     // Check if the clicked element (or its parent) is our search button
-    const btn = e.target.closest('.ext-search-btn');
+    const btn = e.target.closest && e.target.closest('.ext-search-btn');
     if (btn) {
-        if (window.isDualSearchExtensionInstalled) {
+        const plain = e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
+        if (window.isDualSearchExtensionInstalled && plain) {
             // Extension is installed! Stop the normal link and send the message.
             e.preventDefault();
             const queryText = btn.getAttribute('data-query');
-            window.postMessage({ type: 'DUAL_SEARCH_REQUEST', query: queryText }, '*');
+            window.postMessage({ type: 'DUAL_SEARCH_REQUEST', query: queryText }, window.location.origin);
         }
         // If extension is NOT ready, it falls back to the default href (normal Google search)
     }

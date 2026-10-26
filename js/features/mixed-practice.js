@@ -10,12 +10,12 @@ const PSY = {
       const names = ChapterData.chapters(lv);
       const items = Object.entries(names).map(([k,n])=>{
         const fc = ChapterData.fileCount(lv,k);
-        return `<div class="ch-item" tabindex="0" role="button" data-on-click="this.querySelector('input').click()" data-on-keydown="ACT.enterOrSpace(event)&&this.querySelector('input').click()">
-          <input type="checkbox" value="${esc(k)}" data-lv="${esc(lv)}" ${fc?'':'disabled'} data-on-click="event.stopPropagation();PSY._info()">
+        return `<label class="ch-item">
+          <input type="checkbox" value="${esc(k)}" data-lv="${esc(lv)}" ${fc?'':'disabled'} data-on-click="PSY._info()">
           <div class="ch-num">${esc(k)}</div>
           <div class="ch-name">${esc(n)}${fc?'':' <span style="color:var(--t3)">(no files)</span>'}</div>
           <div class="ch-cnt">${fc}f</div>
-        </div>`;
+        </label>`;
       }).join('');
       return `<div class="sb-lbl" style="margin-top:.7rem;display:flex;align-items:center;justify-content:space-between;padding-right:.2rem">
           <span>${label}</span>
@@ -77,7 +77,7 @@ const PSY = {
       qsArr = weak.length ? weak : qsArr.slice(0, 50);
       if (!weak.length) toast('ℹ️ No wrong answers yet — showing 50 random instead');
     }
-    QUIZ.startWith(qsArr, type === 'exam' ? 'exam' : 'flashcard', '⚡ Psycho Mode');
+    QUIZ.startWith(qsArr, type === 'exam' ? 'exam' : 'flashcard', '⚡ Psycho Mode', { sessionKind: 'drill' });
   }
 };
 

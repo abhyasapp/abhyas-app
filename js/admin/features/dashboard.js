@@ -190,14 +190,47 @@ const MISSED = {
         return;
       }
       const cache = {};
-      await Promise.all([...new Set(this.lastResults.map(r => r.fileId).filter(Boolean))].map(async fid => {
-        try {
-          const f = await _gate(() => ADMIN.post('getFile', { fileId: fid }));
-          const raw = _unwrapGetFileResponse(f);
-          if (raw == null) { cache[fid] = []; return; }
-          cache[fid] = Array.isArray(raw) ? raw : (raw.questions || raw.data || raw.quiz || raw.items || []);
-        } catch(e){ cache[fid] = []; }
-      }));
+      const fids = [...new Set(this.lastResults.map(r => r.fileId).filter(Boolean))];
+      /* getFiles returns up to 8 ids per request as { files: { id: { success, content: "<json>" } } },
+         so ask in chunks of 8 and unwrap `content`. Anything the batch could not resolve (unsupported
+         action, error, deferred, bad JSON) falls through to the gated per-file getFile path, so the
+         panel can never silently lose question text. */
+      const asList = raw => Array.isArray(raw)
+        ? raw
+        : (raw && (raw.questions || raw.data || raw.quiz || raw.items)) || null;
+      const readEntry = v => {
+        if (v == null) return null;
+        if (typeof v === 'string') { try { return asList(JSON.parse(v)); } catch (e) { return null; } }
+        if (Array.isArray(v)) return v;
+        if (v && v.success === false) return null;
+        if (v && typeof v.content === 'string') { try { return asList(JSON.parse(v.content)); } catch (e) { return null; } }
+        return asList(v);
+      };
+      const BATCH = 8;
+      if (fids.length > 1) {
+        for (let i = 0; i < fids.length; i += BATCH) {
+          const part = fids.slice(i, i + BATCH);
+          try {
+            const b = await ADMIN.post('getFiles', { fileIds: part.join(',') });
+            const map = (b && b.success) ? (b.files || b.data || b.results) : null;
+            if (map && typeof map === 'object') {
+              part.forEach(fid => { const list = readEntry(map[fid]); if (list) cache[fid] = list; });
+            }
+          } catch (e) { /* the remaining ids use the per-file path below */ }
+        }
+      }
+
+      const rest = fids.filter(fid => !cache[fid]);
+      if (rest.length) {
+        await Promise.all(rest.map(async fid => {
+          try {
+            const f = await _gate(() => ADMIN.post('getFile', { fileId: fid }));
+            const raw = _unwrapGetFileResponse(f);
+            if (raw == null) { cache[fid] = []; return; }
+            cache[fid] = Array.isArray(raw) ? raw : (raw.questions || raw.data || raw.quiz || raw.items || []);
+          } catch(e){ cache[fid] = []; }
+        }));
+      }
       box.innerHTML = trunc + this.lastResults.map(r => {
         const qs = cache[r.fileId];
         const q = (qs && r.index != null) ? qs[r.index] : null;

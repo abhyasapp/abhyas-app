@@ -290,12 +290,17 @@
       ux_mode: 'popup'
     });
 
+    /* GSI does not shrink its iframe: asking for a fixed 380 px made the
+       button 20 px wider than the auth card on a 360 px phone, which put a
+       horizontal scrollbar on the sign-in page. Size it to the slot instead. */
+    var hostW = btnEl.parentElement ? btnEl.parentElement.getBoundingClientRect().width : 0;
+    var btnW = Math.max(200, Math.min(380, Math.floor(hostW || (window.innerWidth - 64))));
     google.accounts.id.renderButton(btnEl, {
       theme: 'outline',
       size: 'large',
       text: 'continue_with',
       shape: 'rectangular',
-      width: 380
+      width: btnW
     });
 
     _googleReady = true;
@@ -725,7 +730,7 @@
       btn.type = 'button';
       btn.textContent = String.fromCharCode(65 + i) + '. ' + opt;
       btn.style.cssText =
-        'text-align:left;padding:.6rem .8rem;border-radius:10px;border:1px solid var(--sep-strong);' +
+        'text-align:left;padding:.6rem .8rem;min-height:44px;border-radius:10px;border:1px solid var(--sep-strong);' +
         'background:var(--surface-alt);font-size:var(--fs-callout);cursor:pointer;color:var(--ink)';
       btn.addEventListener('click', function () {
         optsEl.querySelectorAll('button').forEach(function (b, j) {
@@ -766,7 +771,6 @@
   }
 
   async function _boot() {
-    document.documentElement.classList.add('boot-session');
     _paintNet();
     window.addEventListener('online', _paintNet);
     window.addEventListener('offline', _paintNet);

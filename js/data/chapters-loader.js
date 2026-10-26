@@ -17,7 +17,10 @@
 (function () {
 'use strict';
 
-var CDN_BASE   = 'https://cdn.jsdelivr.net/gh/abhyasapp/content@main';
+/* One source of truth: ABHYAS_CONFIG.CONTENT_CDN_BASE (js/core/config.js). To pin content to a
+   commit or tag instead of the moving `main` branch, change it there and nowhere else. */
+var CDN_BASE   = (window.ABHYAS_CONFIG && window.ABHYAS_CONFIG.CONTENT_CDN_BASE)
+               || 'https://cdn.jsdelivr.net/gh/abhyasapp/content@main';
 var DATA_URL   = CDN_BASE + '/chapters-data.js';
 var CACHE_KEY  = 'abhyas_chapters_cache_v2';
 var TTL_MS     = 24 * 60 * 60 * 1000;

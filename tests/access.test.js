@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import vm from 'node:vm';
 import { loadGlobals } from './helpers/load-globals.js';
 
 // This function decides who gets paid content — it must never regress silently.
@@ -38,5 +39,30 @@ describe('computeAccessLevel', () => {
   });
   it('defaults accessType to permanent', () => {
     expect(computeAccessLevel({ permanentAccess: true }, {}).accessType).toBe('permanent');
+  });
+});
+
+// Offline access is granted without asking the server, so an expiry that is
+// not honoured here keeps working indefinitely on a device that never
+// reconnects.
+describe('AUTH._isValidOffline', () => {
+  const ctx = loadGlobals(['js/core/auth.js']);
+  const check = (access) => {
+    ctx.__access = access;
+    return vm.runInContext('AUTH._isValidOffline({ access: __access })', ctx);
+  };
+  const inDays = (n) => new Date(Date.now() + n * 86400000).toISOString();
+
+  it('keeps a live yearly licence working offline', () => {
+    expect(check({ level: 'permanent', accessType: 'yearly', accessExpiresAt: inDays(30) })).toBe(true);
+  });
+  it('rejects a yearly licence that expired months ago', () => {
+    expect(check({ level: 'permanent', accessType: 'yearly', accessExpiresAt: '2024-01-01T00:00:00Z' })).toBe(false);
+  });
+  it('allows a genuine permanent licence with no expiry', () => {
+    expect(check({ level: 'permanent', accessType: 'permanent' })).toBe(true);
+  });
+  it('rejects an expired trial', () => {
+    expect(check({ level: 'trial', trialExpiresAt: '2024-01-01T00:00:00Z' })).toBe(false);
   });
 });

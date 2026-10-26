@@ -36,7 +36,12 @@ const TUTORIAL = {
         </div>
         <button id="tut-skip" style="margin-top:.55rem;background:none;border:none;color:var(--t3);font-size:.72rem;cursor:pointer;font-family:var(--ff);text-decoration:underline">Skip tutorial</button>
       </div>`;
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Welcome to Abhyas');
+    modal.addEventListener('keydown', e => { if (e.key === 'Escape') TUTORIAL._finish(); });
     document.body.appendChild(modal);
+    try { document.getElementById('tut-next').focus(); } catch (e) {}
     document.getElementById('tut-next').onclick = ()=>TUTORIAL._finish();
     document.getElementById('tut-skip').onclick = ()=>TUTORIAL._finish();
     TUTORIAL._render();

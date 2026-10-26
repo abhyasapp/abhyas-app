@@ -47,7 +47,9 @@ for (const file of HTML_FILES) {
       const re = new RegExp(attr + '="([^"]*)"', 'g');
       let m;
       while ((m = re.exec(lines[i]))) {
-        const expr = m[1];
+        // Blank out string literals first: the "index" in
+        // ACT.go('index.html?pay=1') is an argument, not a handler.
+        const expr = m[1].replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g, (s) => ' '.repeat(s.length));
         // Match the first identifier before a '.' or '(' — not preceded by '.', word char, or '$'.
         const idRe = /(?<![.\w$])([A-Za-z_$][\w$]*)\s*(?:\.|\()/g;
         let im;

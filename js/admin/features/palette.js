@@ -47,38 +47,42 @@ const PALETTE = {
     const items = [];
     const add = (group, title, sub, icon, action) => items.push({ group, title, sub, icon, action });
 
-    add('Go to','Today','','ph-sun-horizon', () => UI.nav('today'));
-    add('Go to','Insights','','ph-chart-bar', () => UI.nav('dashboard'));
-    add('Go to','Students','','ph-users-three', () => UI.nav('users'));
-    add('Go to','Payments','','ph-credit-card', () => UI.nav('payments'));
-    add('Go to','Admins','','ph-shield-check', () => UI.nav('admins'));
-    add('Go to','Weekly sets','','ph-calendar-check', () => UI.nav('weeklysets'));
-    add('Go to','Grading','','ph-note-pencil', () => UI.nav('subjective'));
-    add('Go to','Reports','','ph-flag', () => UI.nav('qreports'));
-    add('Go to','Activity','','ph-clock-counter-clockwise', () => UI.nav('logs'));
-    add('Go to','Data & upkeep','','ph-database', () => UI.nav('data'));
-    add('Go to','Settings','','ph-gear', () => UI.nav('settings'));
+    const can = (k) => ADMIN.can(k);
+    const goto = (label, icon, view) => { if (ADMIN._viewAllowed(view)) add('Go to', label, '', icon, () => UI.nav(view)); };
+    goto('Today','ph-sun-horizon','today');
+    goto('Insights','ph-chart-bar','dashboard');
+    goto('Students','ph-users-three','users');
+    goto('Payments','ph-credit-card','payments');
+    goto('Admins','ph-shield-check','admins');
+    goto('Weekly sets','ph-calendar-check','weeklysets');
+    goto('Grading','ph-note-pencil','subjective');
+    goto('Reports','ph-flag','qreports');
+    goto('Activity','ph-clock-counter-clockwise','logs');
+    goto('Data & upkeep','ph-database','data');
+    goto('Settings','ph-gear','settings');
 
     add('Do','Refresh data','Ctrl R','ph-arrow-clockwise', () => ADMIN.refresh());
-    add('Do','Export students as CSV','','ph-download-simple', () => ADMIN.exportUsers());
-    add('Do','Export payments as CSV','','ph-download-simple', () => ADMIN.exportPayments());
-    add('Do','Schedule a weekly set','','ph-calendar-plus', () => { UI.nav('weeklysets'); setTimeout(() => WEEKLYSETS.openCreate(), 150); });
+    if (can('exports')) {
+      add('Do','Export students as CSV','','ph-download-simple', () => ADMIN.exportUsers());
+      add('Do','Export payments as CSV','','ph-download-simple', () => ADMIN.exportPayments());
+    }
+    if (can('weeklysets_manage')) add('Do','Schedule a weekly set','','ph-calendar-plus', () => { UI.nav('weeklysets'); setTimeout(() => WEEKLYSETS.openCreate(), 150); });
     add('Do','Switch theme','','ph-circle-half', () => toggleTheme());
     add('Do','Change my password','','ph-key', () => ADMIN.changePassword());
     add('Do','Sign out','','ph-sign-out', () => ADMIN.logout());
 
-    (ADMIN.data.payments || []).filter(p => p && p.status === 'pending').forEach(p => {
-      add('Payments awaiting review', p.name || p.username, 'TXN ' + (p.txId || '—'), 'ph-credit-card',
+    if (can('payments_view') || can('payments_review')) (ADMIN.data.payments || []).filter(p => p && p.status === 'pending').forEach(p => {
+      add('Payments awaiting review', p.name || p.username, 'TXN ' + (p.txId || '\u2014'), 'ph-credit-card',
         () => { UI.nav('payments'); setTimeout(() => PAYMENTS.review(p.username), 120); });
     });
-    (ADMIN.data.users || []).slice(0, 400).forEach(u => {
+    if (can('users_view')) (ADMIN.data.users || []).slice(0, 400).forEach(u => {
       if (!u || !u.username) return;
-      add('Students', u.name || u.username, u.username + (u.email ? ' · ' + u.email : ''), 'ph-user',
+      add('Students', u.name || u.username, u.username + (u.email ? ' \u00b7 ' + u.email : ''), 'ph-user',
         () => { UI.nav('users'); setTimeout(() => USERS.view(u.username), 120); });
     });
     /* Read WEEKLYSETS.list (populated in render) rather than WEEKLYSETS.sets
        (which doesn't exist — the field is called `list`). */
-    const sets = (typeof WEEKLYSETS !== 'undefined' && Array.isArray(WEEKLYSETS.list)) ? WEEKLYSETS.list : [];
+    const sets = (can('weeklysets_view') && typeof WEEKLYSETS !== 'undefined' && Array.isArray(WEEKLYSETS.list)) ? WEEKLYSETS.list : [];
     sets.forEach(s => {
       add('Weekly sets', s.title || '(untitled)', s.chapterLabel || '', 'ph-calendar-check', () => UI.nav('weeklysets'));
     });

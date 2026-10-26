@@ -35,10 +35,8 @@ window.MODAL = window.MODAL || {
     ov.querySelector('.dialog').style.maxWidth = wide ? '640px' : '520px';
     ov.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-    if (!this._onKey) {
-      this._onKey = e => { if (e.key === 'Escape') MODAL.close('sheet'); };
-      document.addEventListener('keydown', this._onKey);
-    }
+    /* Tab-trap + Escape + chrome hiding are all handled by the shared trap. */
+    DIALOG.open(ov, { onEscape: () => MODAL.close('sheet') });
     const first = ov.querySelector('#bd-sheet button, [data-modal-close]');
     if (first && first.focus) first.focus();
   },
@@ -47,8 +45,7 @@ window.MODAL = window.MODAL || {
     if (!this._el || this._el.style.display === 'none') return;
     this._el.style.display = 'none';
     document.body.style.overflow = '';
-    if (this._onKey) { document.removeEventListener('keydown', this._onKey); this._onKey = null; }
-    try { if (this._prevFocus && this._prevFocus.focus) this._prevFocus.focus(); } catch (e) {}
+    DIALOG.release(this._el);
     this._prevFocus = null;
   },
   closeAll() { this.close(); }

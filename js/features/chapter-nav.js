@@ -1,5 +1,10 @@
 // js/features/chapter-nav.js — chapter grid, mastery, verdicts, heatmap.
 
+// i18n.js loads before this file (both defer), so I18N exists by the time
+// anything here renders. Guard anyway: a missing dictionary must degrade to
+// English, never blank the chapter grid.
+const T = (s, v) => (typeof I18N !== 'undefined' ? I18N.t(s, v) : s);
+
 window.MASTERY = {
   _fids(lv, ch){ 
     try { return ChapterData.chapterFileRefs(lv, ch).map(r => r.fid); } catch(e){ return []; }
@@ -29,7 +34,33 @@ window.MASTERY = {
 
 window.CH_GRID = {
   lv: '',
+  mf: 'all',            // mastery filter: all | not-started | practising | strong
   LEVELS: [['level7', 'Level 7'], ['level5', 'Level 5'], ['gk', 'General Knowledge']],
+  MFILTERS: ['all', 'not-started', 'practising', 'strong'],
+  STATE_TAG: { 'not-started': '', practising: 'tw', strong: 'tg' },
+  /* What a student does next differs by state, so the copy teaches rather than
+     scores: nothing here says "weak", "behind" or "failed". */
+  EMPTY_COPY: {
+    'not-started': 'Every chapter here is untouched. Pick one and start — your first answer moves it to Practising.',
+    'practising': 'Nothing here yet. Work through a chapter and it joins this list.',
+    'strong': 'No strong chapters yet. Answer 85% or more of a chapter with nothing left in your wrong bank and it lands here.'
+  },
+
+  // One of the three student-facing states. `chapterMastery` can also report
+  // 'unknown' when question counts have not downloaded yet; an answer attempt
+  // is proof enough on its own, so that stays "Practising" rather than
+  // vanishing into an unknown bucket.
+  _state(mst){
+    if (!mst) return null;
+    if (mst.state === 'complete') return 'strong';
+    return (mst.attempted || 0) > 0 ? 'practising' : 'not-started';
+  },
+
+  _stateLabel(state){
+    if (state === 'strong') return T('Strong');
+    if (state === 'practising') return T('Practising');
+    return T('Not started');
+  },
 
   _stats(refs){
     if (!Array.isArray(refs)) return { seen: 0, total: 0, complete: false };
@@ -78,7 +109,7 @@ window.CH_GRID = {
       try { chs = ChapterData.chapters(this.lv) || {}; } catch(e){}
       
       requestAnimationFrame(() => {
-        const cards = Object.keys(chs).map(ch => {
+        const items = Object.keys(chs).map(ch => {
           const refs = (() => { try { return ChapterData.chapterFileRefs(this.lv, ch); } catch(e){ return []; } })();
           const has = refs.length > 0;
           const st = this._stats(refs);
@@ -87,20 +118,54 @@ window.CH_GRID = {
           const mst = has ? MASTERY.chapter(this.lv, ch) : null;
           const done = !!mst && mst.state === 'complete';
           const gate = (mst && mst.state === 'in-progress' && mst.needs && mst.needs.length) ? mst.needs[0] : '';
-          const meta = !has ? 'Coming soon'
-            : (done ? 'Complete \u00b7 ' + Math.round(mst.accuracy * 100) + '% accuracy \u00b7 ' : (pct !== null ? pct + '% seen \u00b7 ' : (st.seen ? st.seen + ' seen \u00b7 ' : ''))) + refs.length + (refs.length === 1 ? ' set' : ' sets') +
-              (missed ? ' \u00b7 ' + missed + ' missed' : '') + (gate ? ' \u00b7 ' + gate : '');
-          const missedBadge = missed
-            ? '<span class="ctag tr" style="position:absolute;top:.4rem;right:.4rem">' + missed + ' missed</span>'
-            : '';
-          return '<button type="button" class="chg-card" style="position:relative"' + (has ? '' : ' disabled') + ' data-on-click="CH_GRID.open(\'' + this.lv + '\',\'' + ch + '\')">' +
-            missedBadge +
-            '<span class="chg-name">' + (done ? '<i class="ph ph-seal-check" style="color:var(--success)" aria-label="Complete"></i> ' : '') + esc(chs[ch]) + '</span>' +
-            (has ? '<span class="pb" style="display:block"><span class="pb-f" style="display:block;width:' + (pct === null ? 0 : pct) + '%"></span></span>' : '') +
+          return { ch: ch, refs: refs, has: has, st: st, pct: pct, missed: missed,
+                   mst: mst, done: done, gate: gate, state: this._state(mst) };
+        });
+
+        // Counts cover only chapters you can act on: one with no downloaded
+        // sets has no state to show, so it appears under All and nowhere else.
+        const counts = { 'not-started': 0, practising: 0, strong: 0 };
+        items.forEach(it => { if (it.has && counts[it.state] != null) counts[it.state]++; });
+        const shown = items.filter(it => this.mf === 'all' ? true : (it.has && it.state === this.mf));
+
+        const filterRow = '<div class="chg-mfilter" role="group" aria-label="' + esc(T('Filter chapters by mastery')) + '">' +
+          this.MFILTERS.map(id => {
+            const n = id === 'all' ? items.length : counts[id];
+            return '<button type="button" class="chg-mf' + (id === this.mf ? ' active' : '') + '"' +
+              (id === this.mf ? ' aria-current="true"' : '') +
+              ' data-on-click="CH_GRID.setFilter(\'' + id + '\')">' +
+              esc(id === 'all' ? T('All') : this._stateLabel(id)) +
+              '<span class="n">' + n + '</span></button>';
+          }).join('') + '</div>';
+
+        const cards = shown.map(it => {
+          if (!it.has) {
+            return '<button type="button" class="chg-card" disabled>' +
+              '<span class="chg-name">' + esc(chs[it.ch]) + '</span>' +
+              '<span class="chg-meta">' + esc(T('Coming soon')) + '</span></button>';
+          }
+          const meta = (it.done ? Math.round(it.mst.accuracy * 100) + '% accuracy \u00b7 '
+                        : (it.pct !== null ? it.pct + '% seen \u00b7 ' : (it.st.seen ? it.st.seen + ' seen \u00b7 ' : ''))) +
+              it.refs.length + (it.refs.length === 1 ? ' set' : ' sets') +
+              (it.missed ? ' \u00b7 ' + it.missed + ' missed' : '') + (it.gate ? ' \u00b7 ' + it.gate : '');
+          // The missed chip used to float over the card and could collide with
+          // the title; both chips now share a row with the title below them.
+          const chips = '<span class="chg-top">' +
+            '<span class="ctag chg-state ' + this.STATE_TAG[it.state] + '">' + esc(this._stateLabel(it.state)) + '</span>' +
+            (it.missed ? '<span class="ctag tr">' + it.missed + ' missed</span>' : '') + '</span>';
+          return '<button type="button" class="chg-card" data-on-click="CH_GRID.open(\'' + this.lv + '\',\'' + it.ch + '\')">' +
+            chips +
+            '<span class="chg-name">' + esc(chs[it.ch]) + '</span>' +
+            '<span class="pb" style="display:block"><span class="pb-f" style="display:block;width:' + (it.pct === null ? 0 : it.pct) + '%"></span></span>' +
             '<span class="chg-meta">' + esc(meta) + '</span></button>';
         }).join('');
-        
-        box.innerHTML = html + '<div class="chg-tabs">' + tabs + '</div><div class="chg-grid">' + cards + '</div>';
+
+        const empty = cards ? '' :
+          '<div class="chg-empty"><p>' + esc(this.EMPTY_COPY[this.mf] || T('No chapters in this list yet.')) + '</p>' +
+          '<button type="button" class="btn btn-quiet" data-on-click="CH_GRID.setFilter(\'all\')">' + esc(T('Show all chapters')) + '</button></div>';
+
+        box.innerHTML = html + '<div class="chg-tabs">' + tabs + '</div>' + filterRow +
+          '<div class="chg-grid">' + cards + '</div>' + empty;
       });
     } catch (err) {
       console.error('[CH_GRID.render] failed:', err);
@@ -112,6 +177,14 @@ window.CH_GRID = {
     if (navigator.vibrate) navigator.vibrate(5);
     this.lv = id; 
     this.render(); 
+  },
+
+  // Tap a state to see only those chapters; tap it again or "Show all" to
+  // clear. Kept on the object (not in a store) so it survives the re-render.
+  setFilter(id){
+    if (navigator.vibrate) navigator.vibrate(5);
+    this.mf = this.MFILTERS.includes(id) ? id : 'all';
+    this.render();
   },
 
   async open(lv, ch){

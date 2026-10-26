@@ -76,12 +76,22 @@ window.QSEARCH = {
     modal.classList.add('show');
     document.body.style.overflow = 'hidden';
     setTimeout(() => { const inp = document.getElementById('qs-input'); if (inp){ inp.value=''; inp.focus(); } }, 40);
+    /* Tab-trap the panel; Escape already closes it via the input keydown below. */
+    DIALOG.open(modal);
     this._run('');
   },
   close(){
     const m = document.getElementById('qsearch-modal');
-    if (m) m.classList.remove('show');
+    if (!m || !m.classList.contains('show')) return;
+    m.classList.remove('show');
     if (!document.querySelector('.mbg.show')) document.body.style.overflow = '';
+    DIALOG.release(m);
+  },
+  _emptyHint(status){
+    status.innerHTML =
+      '<i class="ph ph-info"></i> No questions downloaded yet. ' +
+      'Open <b>Chapters</b> once while online — then everything is searchable here, ' +
+      'even with no connection.';
   },
   async _run(term){
     const status = document.getElementById('qs-status');
@@ -89,13 +99,7 @@ window.QSEARCH = {
     if (!box) return;
     if (!term || term.length < 2){
       box.innerHTML = '';
-      if (this._index && this._index.length === 0) {
-        status.innerHTML =
-          '<i class="ph ph-info"></i> No questions downloaded yet. ' +
-          'Open <b>Chapters</b> once while online — then everything is searchable here, ' +
-          'even with no connection.';
-        return;
-      }
+      if (this._index && this._index.length === 0) { this._emptyHint(status); return; }
       status.textContent = this._index
         ? this._index.length + ' questions indexed \u00b7 type at least 2 characters.'
         : 'Indexing questions\u2026';
@@ -103,6 +107,11 @@ window.QSEARCH = {
     }
     status.textContent = 'Searching\u2026';
     const hits = await this.search(term);
+    /* Nothing downloaded at all: "No matches" would mislead — the question may
+       exist, it just is not on this device yet. Point the user at Chapters. */
+    if (!hits.length && this._index && this._index.length === 0){
+      box.innerHTML = ''; this._emptyHint(status); return;
+    }
     if (!hits.length){ box.innerHTML = ''; status.textContent = 'No matches.'; return; }
     status.textContent = hits.length + ' result' + (hits.length === 1 ? '' : 's');
     const termLc = term.toLowerCase();
@@ -209,7 +218,7 @@ window.SIDEBAR_SEARCH = {
     wrap.innerHTML =
       '<div class="sb-filter-input">' +
         '<i class="ph ph-magnifying-glass"></i>' +
-        '<input id="sb-filter" type="search" placeholder="Find a screen or question\u2026" autocomplete="off" spellcheck="false" enterkeyhint="search">' +
+        '<input id="sb-filter" type="search" aria-label="Find a screen or question" placeholder="Find a screen or question\u2026" autocomplete="off" spellcheck="false" enterkeyhint="search">' +
       '</div>' +
       '<div id="sb-filter-results" class="sb-filter-results" style="display:none"></div>';
 

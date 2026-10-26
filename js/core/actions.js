@@ -97,6 +97,19 @@
     enterOrSpace(e) {
       return e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar';
     },
+
+    /* Full-page navigation from a data-on-click (the trial chip uses it to
+       reach the payment screen). Kept here because both pages need it. */
+    go(url) {
+      if (!url) return;
+      try { window.location.assign(String(url)); } catch (e) { console.error('[ACT.go]', e); }
+    },
+
+    /* "Save new chapters automatically on Wi-Fi". CACHE reads this key in
+       autoSync(), so persisting it here is all the wiring the toggle needs. */
+    autosync(el) {
+      try { _save('abhyas_autosync', !!(el && el.checked)); } catch (e) {}
+    },
     hideParent(el) {
       if (el && el.parentNode) el.parentNode.style.display = 'none';
     },

@@ -143,7 +143,7 @@ function mergeSyncData(local, remote) {
     ? 'a:' + s.at + ':' + (s.fid || s.chapter || '')
     : 'j:' + JSON.stringify(s);
   const sessions = unionBy(lp.sessions, rp.sessions, sessKey)
-    .sort((a, b) => (Number(b && b.at) || 0) - (Number(a && a.at) || 0)).slice(0, 50);
+    .sort((a, b) => (Number(b && b.at) || 0) - (Number(a && a.at) || 0));   // union of both devices; nothing dropped
 
   const sum = (list, f) => list.reduce((n, x) => n + (Number(x && x[f]) || 0), 0);
   const onlyIn = (a, b) => {
@@ -210,6 +210,11 @@ function mergeSyncData(local, remote) {
     isObj(R.qnotes) ? R.qnotes : {},
     isObj(L.qnotes) ? L.qnotes : {}
   );
+  /* Daily sprint log: per day the larger counter wins (never lost, never double counted); a reset drops older days. */
+  const cutT = Math.max(Number(resets.all) || 0, Number(resets.sprint) || 0);
+  const sprintLog = (typeof SPRINT_LOG !== 'undefined' && SPRINT_LOG.mergeLogs)
+    ? SPRINT_LOG.mergeLogs(isObj(L.sprintLog) ? L.sprintLog : null, isObj(R.sprintLog) ? R.sprintLog : null, cutT)
+    : (isObj(L.sprintLog) ? L.sprintLog : (isObj(R.sprintLog) ? R.sprintLog : undefined));
   const okDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
   let sprint = okDate(L.sprint) ? L.sprint : (okDate(R.sprint) ? R.sprint : '');
   if (resets.sprint && okDate(L.sprint) && okDate(R.sprint)) {
@@ -217,7 +222,7 @@ function mergeSyncData(local, remote) {
   }
 
   return {
-    prog, chapStats, cov, stk, qnotes, sprint, resets,
+    prog, chapStats, cov, stk, qnotes, sprint, sprintLog, resets,
     bk: unionBy(L.bk, R.bk, uidOf),
     fl: unionBy(L.fl, R.fl, uidOf),
     wr: unionBy(L.wr, R.wr, uidOf)

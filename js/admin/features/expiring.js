@@ -3,7 +3,17 @@
 // Uses TODAY.render() at call time.
 
 const EXPIRING = {
-  async load(){
+  _inflight: null,
+
+  /* TODAY.render() kicks a load, and the router calls it right after —
+     dedupe so that first visit costs one network round-trip, not two. */
+  load(){
+    if (this._inflight) return this._inflight;
+    this._inflight = this._load().finally(() => { this._inflight = null; });
+    return this._inflight;
+  },
+
+  async _load(){
     const box = $('expiring-list');
     if (!box) return;
     const hoursEl = $('exp-hours');

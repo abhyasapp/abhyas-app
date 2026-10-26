@@ -52,6 +52,7 @@ const UI = {
     }
 
     UI.cur = v;
+    UI._syncViewTitle(v, el);
     UI.sidebarClose();
     
     const mainEl = document.getElementById('main');
@@ -84,6 +85,21 @@ const UI = {
     UI._enterAny.forEach(fn => { 
       try { fn(v); } catch (e) { console.error('enter-any hook failed', e); } 
     });
+  },
+
+  /* One <h1> per screen: Home has its own greeting; every other screen gets a visually-hidden title. */
+  _VIEW_TITLES: {
+    home: 'Home', sprint: '60-day sprint', weekly: 'Weekly test', hourly: 'Hourly challenge', 'subj-qotd': 'Question of the day',
+    'subj-mine': 'My submissions', studydocs: 'Model answers and notes', 'subj-exam': 'Full paper', 'subj-list': 'Browse questions',
+    online: 'Chapters', local: 'Local files', psycho: 'Mixed practice', bookmarks: 'Saved questions', wrong: 'Wrong bank',
+    progress: 'Progress', offline: 'Offline downloads', data: 'Data and backup', timetable: 'Study timetable',
+  },
+  _syncViewTitle(v, el) {
+    const h = document.getElementById('view-title');
+    if (!h) return;
+    const own = el && el.querySelector('h1');
+    h.textContent = UI._VIEW_TITLES[v] || 'Abhyas';
+    h.hidden = !!own;
   },
 
   go(v) {
