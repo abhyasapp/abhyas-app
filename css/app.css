@@ -1445,3 +1445,52 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
 .set-actions{margin-top:var(--sp-3)}
 /* Manual "Reduce motion" switch; the device setting is already honoured by the media query above. */
 html.reduce-motion *,html.reduce-motion *::before,html.reduce-motion *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+
+/* ── Model answers & notes (STUDYDOCS) — these classes are rendered by
+   js/features/study-docs.js but had no styles, so chips and metadata
+   collapsed into run-together text. ─────────────────────────────── */
+#sd-chips{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-3)}
+.sd-chip{
+  display:inline-flex;align-items:center;gap:.45rem;
+  min-height:38px;padding:.25rem .5rem .25rem .85rem;
+  border:var(--hairline-w) solid var(--sep-strong);border-radius:var(--r-full);
+  background:var(--surface-alt);color:var(--ink-2);
+  font:inherit;font-size:var(--fs-foot);font-weight:600;cursor:pointer
+}
+.sd-chip small{
+  min-width:22px;padding:.05rem .4rem;border-radius:var(--r-full);
+  background:var(--bg-sunken);color:var(--ink-3);
+  font-size:var(--fs-cap);font-weight:650;text-align:center
+}
+.sd-chip:hover{border-color:var(--accent-line);color:var(--ink)}
+.sd-chip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.sd-chip.on small{background:rgba(255,255,255,.22);color:var(--on-accent)}
+.sd-list{display:flex;flex-direction:column;gap:var(--sp-3)}
+.sd-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--sp-3);align-items:start}
+.sd-ic{
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  width:42px;height:42px;border-radius:var(--r-full);
+  background:var(--accent-soft);color:var(--accent);font-size:1.2rem
+}
+.sd-main{min-width:0}
+.sd-title{font-size:var(--fs-callout);font-weight:700;letter-spacing:.02em;color:var(--ink);overflow-wrap:anywhere}
+.sd-desc{font-size:var(--fs-foot);color:var(--ink-2);line-height:1.45;margin-top:2px;overflow-wrap:anywhere}
+.sd-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2);font-size:var(--fs-cap);color:var(--ink-3)}
+.sd-meta > span{min-width:0}
+.sd-tag{
+  display:inline-flex;align-items:center;
+  padding:.14rem .5rem;border-radius:var(--r-full);white-space:nowrap;
+  background:var(--bg-sunken);color:var(--ink-2);font-weight:650
+}
+.sd-new{
+  display:inline-flex;align-items:center;
+  padding:.14rem .5rem;border-radius:var(--r-full);white-space:nowrap;
+  background:var(--accent-soft);color:var(--accent);font-weight:700
+}
+.sd-off{display:inline-flex;align-items:center;gap:.3rem;color:var(--success);font-weight:650}
+.sd-acts{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-3)}
+@media(max-width:480px){
+  .sd-card{grid-template-columns:minmax(0,1fr)}
+  .sd-ic{width:34px;height:34px;font-size:1rem}
+  .sd-acts .btn{flex:1}
+}

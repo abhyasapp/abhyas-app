@@ -145,6 +145,13 @@ background:#262c2e;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
 .pdfv.finding .pdfv-find{display:flex}
 .pdfv-find input{flex:1;min-width:0;max-width:280px}
 .pdfv-findcount{font-size:.72rem;opacity:.85;white-space:nowrap;min-width:4.6rem;text-align:center}
+.pdfv-note{position:absolute;left:1rem;right:1rem;bottom:1.2rem;z-index:5;
+display:flex;flex-direction:column;gap:.45rem;padding:.6rem;border-radius:12px;
+background:#262c2e;border:1px solid rgba(255,255,255,.16);box-shadow:0 10px 28px rgba(0,0,0,.5)}
+.pdfv-note .pdfv-note-cap{font-size:.72rem;font-weight:600;opacity:.85}
+.pdfv-note textarea{min-height:74px;padding:.4rem .5rem;border-radius:8px;border:1px solid rgba(255,255,255,.2);
+background:rgba(0,0,0,.35);color:inherit;font-family:inherit;font-size:16px;resize:vertical}
+.pdfv-note-row{display:flex;gap:.4rem;justify-content:flex-end}
 @media(max-width:620px){
 .pdfv-hide-sm{display:none}
 .pdfv-title{flex-basis:100%;order:-1;font-size:.74rem;padding:0 .15rem}
@@ -205,6 +212,13 @@ function b64ToBytes(b64) {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+
+/* A real PDF starts with %PDF-. When the server instead returns an error
+   page, a sign-in HTML page or a JSON blob, this check lets the failure
+   message say exactly that instead of a vague "could not be opened". */
+function looksLikePdf(b) {
+  return !!(b && b.length > 4 && b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46);
 }
 
 async function toBytes(src) {
@@ -413,10 +427,19 @@ async function open(opts) {
   } catch (err) {
     if (gen !== GEN) return;
     const pw = err && err.name === 'PasswordException';
-    showMsg('<div>' + (pw ? 'This PDF is password-protected.' : 'This file could not be opened as a PDF.') + '</div>',
-      '<button type="button" data-a="dl">Download</button>');
+    /* Say WHY it failed: bad bytes from the server vs a broken PDF. */
+    const notPdf = !looksLikePdf(S && S.bytes);
+    let html = pw ? 'This PDF is password-protected.'
+      : notPdf ? 'The server sent something other than a PDF for this document &mdash; likely an error or a sign-in page. Check your connection and try again, or download the file to inspect it.'
+      : 'This file could not be opened as a PDF.';
+    if (!pw && err && err.message) html += '<br><span style="opacity:.75">' + esc(String(err.message).slice(0, 160)) + '</span>';
+    showMsg('<div>' + html + '</div>',
+      '<button type="button" data-a="retry">Try again</button><button type="button" data-a="dl">Download</button>');
+    console.warn('[PDFVIEW] could not open PDF:', err);
     setBusy(false);
-    root.querySelectorAll('[data-a="dl"]').forEach(b => { b.disabled = false; });
+    root.querySelectorAll('[data-a="retry"],[data-a="dl"]').forEach(b => { b.disabled = false; });
+    const rb = root.querySelector('[data-a="retry"]');
+    if (rb) rb._retry = opts;
     return;
   }
   clearMsg();
@@ -487,7 +510,10 @@ function teardown() {
   }
   S = null;
   if (els.pages) els.pages.innerHTML = '';
-  if (els.scroll) clearMsg();
+  if (els.scroll) {
+    clearMsg();
+    els.scroll.querySelectorAll('.pdfv-note').forEach(n => n.remove());
+  }
 }
 
 function confirmDiscard() {
@@ -744,16 +770,53 @@ function bindInk(canvas, pageNum) {
   canvas.addEventListener('pointercancel', end);
 }
 
-function placeText(e, canvas, pageNum) {
-  const p = pos(e, canvas);
-  const text = window.prompt('Note for the student:');
-  if (!text) return;
-  (S.ink[pageNum] || (S.ink[pageNum] = [])).push({
-    tool: 'text', color: S.color, x: p.x, y: p.y, text: text, size: 9 + S.width * 2
+/* An in-viewer note editor — window.prompt() is blocked by some browsers
+   and looks out of place in here; this keeps the whole marking flow
+   inside the same surface. */
+function promptNote(initial) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'pdfv-note';
+    wrap.innerHTML =
+      '<div class="pdfv-note-cap">Write something for the student</div>' +
+      '<textarea maxlength="400" aria-label="Note text"></textarea>' +
+      '<div class="pdfv-note-row">' +
+        '<button type="button" data-b="cancel">Cancel</button>' +
+        '<button type="button" class="on" data-b="save">Add note</button>' +
+      '</div>';
+    const ta = wrap.querySelector('textarea');
+    if (initial) ta.value = initial;
+    let settled = false;
+    const done = (val) => {
+      if (settled) return;
+      settled = true;
+      wrap.remove();
+      if (root) root.classList.remove('note-open');
+      resolve(val);
+    };
+    wrap.querySelector('[data-b="cancel"]').addEventListener('click', () => done(null));
+    wrap.querySelector('[data-b="save"]').addEventListener('click', () => done(ta.value.trim()));
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); }
+      else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); done(ta.value.trim()); }
+    });
+    els.scroll.appendChild(wrap);
+    root.classList.add('note-open');
+    ta.focus();
   });
-  S.redo[pageNum] = [];
-  markDirty();
-  repaintInk(pageOf(pageNum));
+}
+
+function placeText(e, canvas, pageNum) {
+  const p = pos(e, canvas); // store before the async gap — zoom may change after
+  promptNote().then(text => {
+    if (!text || !S || !S.ann) return;
+    (S.ink[pageNum] || (S.ink[pageNum] = [])).push({
+      tool: 'text', color: S.color, x: p.x, y: p.y, text: text, size: 9 + S.width * 2
+    });
+    S.redo[pageNum] = [];
+    markDirty();
+    repaintInk(pageOf(pageNum));
+  }).catch(() => {});
 }
 
 function paintMark(ctx, a) {
@@ -1006,6 +1069,9 @@ function onClick(e) {
 
 function onKey(e) {
   if (!root || !root.classList.contains('on')) return;
+  /* While the note editor is open, Escape belongs to it (handled on the
+     textarea) — not to the viewer. */
+  if (root.classList.contains('note-open') && e.target.closest && e.target.closest('.pdfv-note')) return;
   const inInput = e.target === els.pgin || e.target === els.findq;
   if (e.key === 'Escape') {
     e.preventDefault(); e.stopPropagation();

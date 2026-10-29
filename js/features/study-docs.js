@@ -4,7 +4,7 @@
 
 window.STUDYDOCS = {
   LIST_KEY: 'abhyas_studydocs', SEEN_KEY: 'abhyas_studydocs_seen', CACHE_KEY: 'abhyas_studydocs_cache',
-  MAX_CACHE_BYTES: 8 * 1024 * 1024, STALE_MS: 10 * 60 * 1000,
+  MAX_CACHE_BYTES: 25 * 1024 * 1024, STALE_MS: 10 * 60 * 1000,
   docs: [], loaded: false, loading: false, cat: 'all', q: '', chapter: '', newIds: new Set(), _at: 0,
 
   _user(){ try { return (typeof S !== 'undefined' && S.user) ? S.user : null; } catch(e){ return null; } },
@@ -214,7 +214,15 @@ window.STUDYDOCS = {
         }
         if (!this._online()) throw new Error('You are offline and this PDF was not saved on this device yet. Open it once while online.');
         const res = await this._post({ action:'getStudyDocPdf', id: d.id });
-        if (res.base64) { this._cacheSet(d, res); return { base64: res.base64, filename: res.filename || d.fileName }; }
+        if (res.base64) {
+          /* The API can answer success with an error page's bytes. Refuse
+             anything that is not a PDF, so a broken file never reaches the
+             offline cache. */
+          if (String(res.base64).slice(0, 6) !== 'JVBERi') {
+            throw new Error('The server did not send a PDF for this document. Try again — if it keeps failing, ask your teacher to re-upload it.');
+          }
+          this._cacheSet(d, res); return { base64: res.base64, filename: res.filename || d.fileName };
+        }
         if (!res.url) throw new Error('The server did not return a PDF URL.');
         const blob = await fetch(res.url).then(rr => {
           if (!rr.ok) throw new Error('The signed URL replied with HTTP ' + rr.status + '.');
@@ -226,6 +234,10 @@ window.STUDYDOCS = {
           fr.onerror = () => bad(new Error('Could not read the PDF.'));
           fr.readAsDataURL(blob);
         });
+        /* Same guard for the signed-URL path: never cache a non-PDF. */
+        if (String(base64).slice(0, 6) !== 'JVBERi') {
+          throw new Error('That link did not return a PDF — it may have expired. Try again.');
+        }
         this._cacheSet(d, { base64, filename: res.filename || d.fileName });
         return { base64, filename: res.filename || d.fileName };
       }

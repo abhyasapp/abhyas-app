@@ -1284,9 +1284,15 @@ const QUIZ = {
             return `<div class="${cls}" style="cursor:default;pointer-events:none"><div class="ok">${String.fromCharCode(65+oi)}</div><div>${esc(opt)}</div></div>`;
           }).join('')}
           ${q.explanation?`<div class="expl show">${esc(q.explanation)}</div>`:''}
-          ${(typeof QNOTE !== 'undefined' && QNOTE.get(q.uid)) ? `<div class="qnote-box" style="margin-top:.5rem"><div class="qnote-hd"><i class="ph ph-note"></i> Your note</div><div class="qnote-text">${esc(QNOTE.get(q.uid))}</div></div>` : ''}
+          <div class="qnote-slot" style="margin-top:.3rem" id="res-note-${i}"></div>
         </div>`;
       }).join('');
+      /* Every results card gets the same editable note box as practice mode
+         (add / edit / delete, cloud-synced per question) — the natural moment
+         to write one is right after seeing why an answer was wrong. */
+      if (typeof QNOTE !== 'undefined') {
+        S.quiz.qs.forEach((q, i) => { try { QNOTE.render('res-note-' + i, q.uid); } catch (e) {} });
+      }
       renderMath(document.getElementById('res-review'));
     });
 
