@@ -12,10 +12,10 @@ window.STUDYDOCS = {
   _read(key, dflt){ try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? dflt : v; } catch(e){ return dflt; } },
   _write(key, v){ try { localStorage.setItem(key, JSON.stringify(v)); } catch(e){} },
 
-  _urlFor(action){
+  _urlFor(action, params){
     try {
       if (typeof abhyasEndpointFor === 'function' && typeof ABHYAS_CONFIG !== 'undefined') {
-        return abhyasEndpointFor(action) === 'gas'
+        return abhyasEndpointFor(action, params) === 'gas'
           ? (ABHYAS_CONFIG.GAS_URL || '')
           : (ABHYAS_CONFIG.SUPABASE_URL || '');
       }
@@ -26,14 +26,90 @@ window.STUDYDOCS = {
   async _post(body){
     const u = this._user();
     if (!u || !u.token) throw new Error('Please sign in again.');
-    const url = this._urlFor(body && body.action);
+    const url = this._urlFor(body && body.action, body);
     if (!url) throw new Error('The backend address is not set up.');
-    const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'text/plain' },
-      body: JSON.stringify(Object.assign({ username:u.username, token:u.token }, body)) });
+    const request = { method:'POST', headers:{ 'Content-Type':'text/plain' },
+      body: JSON.stringify(Object.assign({ username:u.username, token:u.token }, body)) };
+    const isGetFile = String(body && body.action || '').toLowerCase() === 'getfile';
+    const r = isGetFile && typeof netFetch === 'function'
+      ? await netFetch(url, request, 45000)
+      : await fetch(url, request);
     if (!r.ok) throw new Error('The server replied with an error (' + r.status + ').');
+    const contentType = String(r.headers && r.headers.get('content-type') || '').toLowerCase();
+    if (isGetFile && /application\/(?:pdf|octet-stream)/.test(contentType)) return await r.blob();
     const res = await r.json();
+    if (res && res.rateLimited) {
+      if (typeof GETFILE_GATE !== 'undefined') GETFILE_GATE.backoff((Number(res.retryAfterSec) || 10) * 1000);
+      const e = new Error('The file server is busy. Wait a moment, then try opening the PDF again.');
+      e.rateLimited = true; throw e;
+    }
     if (!res || !res.success) { const e = new Error((res && res.error) || 'Request failed.'); e.needsPayment = !!(res && res.needsPayment); throw e; }
     return res;
+  },
+
+  _base64FromBytes(value){
+    const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+    if (bytes.length < 8 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46 || bytes[4] !== 0x2d) {
+      throw new Error('The file server response is not a PDF. Check that this document has a valid PDF file attached.');
+    }
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 0x8000, bytes.length)));
+    }
+    return btoa(binary);
+  },
+
+  async _normalizePdfResponse(response, doc){
+    let filename = (doc && (doc.fileName || doc.file_name)) || 'study.pdf';
+    let payload = response;
+    for (let depth = 0; depth < 8; depth++) {
+      if (payload instanceof Blob) {
+        return { base64: this._base64FromBytes(new Uint8Array(await payload.arrayBuffer())), filename };
+      }
+      if (payload instanceof ArrayBuffer || ArrayBuffer.isView(payload) || Array.isArray(payload)) {
+        return { base64: this._base64FromBytes(payload), filename };
+      }
+      if (payload && typeof payload === 'object') {
+        if (payload.success === false) throw new Error(payload.error || 'Could not fetch this PDF.');
+        filename = payload.filename || payload.fileName || payload.file_name || filename;
+        const url = payload.signedUrl || payload.downloadUrl || payload.url;
+        if (url) {
+          const r = await fetch(url, { credentials:'omit' });
+          if (!r.ok) throw new Error('The PDF download link replied with HTTP ' + r.status + '.');
+          const blob = await r.blob();
+          return { base64: this._base64FromBytes(new Uint8Array(await blob.arrayBuffer())), filename };
+        }
+        const nested = ['base64', 'bytes', 'content', 'result', 'data', 'fileData', 'pdfData', 'file', 'pdf'].find(k => payload[k] != null);
+        if (nested) { payload = payload[nested]; continue; }
+      }
+      if (typeof payload === 'string') {
+        let value = payload.trim();
+        const dataUrl = value.match(/^data:application\/pdf(?:;[^,]*)?;base64,([\s\S]*)$/i);
+        if (dataUrl) value = dataUrl[1].replace(/\s+/g, '');
+        if (value.slice(0, 5) === '%PDF-') {
+          const bytes = Uint8Array.from(value, ch => ch.charCodeAt(0));
+          return { base64: this._base64FromBytes(bytes), filename };
+        }
+        if (value.slice(0, 6) === 'JVBERi') {
+          const normalized = value.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
+          const bytes = Uint8Array.from(atob(normalized), ch => ch.charCodeAt(0));
+          return { base64: this._base64FromBytes(bytes), filename };
+        }
+        if (/^[\[{]/.test(value)) {
+          try { payload = JSON.parse(value); continue; } catch(e){}
+        }
+      }
+      break;
+    }
+    throw new Error('The getFile response did not contain a readable PDF. Check that the study document has a PDF file attached.');
+  },
+
+  async _fetchStudyPdf(doc){
+    const fileId = doc && (doc.pdfPath || doc.pdf_path || doc.fileId || doc.file_id || doc.path);
+    if (!fileId) throw new Error('This study document has no file reference. Ask your teacher to re-upload it.');
+    if (typeof GETFILE_GATE !== 'undefined') await GETFILE_GATE.take('fg');
+    const response = await this._post({ action:'getFile', fileId });
+    return this._normalizePdfResponse(response, doc);
   },
 
   async _fetchList(){
@@ -213,7 +289,7 @@ window.STUDYDOCS = {
           if (hit && hit.base64) return { base64: hit.base64, filename: hit.filename || d.fileName };
         }
         if (!this._online()) throw new Error('You are offline and this PDF was not saved on this device yet. Open it once while online.');
-        const res = await this._post({ action:'getStudyDocPdf', id: d.id });
+        const res = await this._fetchStudyPdf(d);
         if (res.base64) {
           /* The API can answer success with an error page's bytes. Refuse
              anything that is not a PDF, so a broken file never reaches the
