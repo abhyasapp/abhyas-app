@@ -225,7 +225,17 @@ async function toBytes(src) {
   if (!src) throw new Error('No PDF provided.');
   if (src.bytes) return src.bytes instanceof Uint8Array ? src.bytes : new Uint8Array(src.bytes);
   if (src.blob) return new Uint8Array(await src.blob.arrayBuffer());
-  if (src.base64) return b64ToBytes(src.base64);
+  if (src.base64) {
+    let bytes;
+    try { bytes = b64ToBytes(src.base64); }
+    catch (e) {
+      throw new Error('The file was not received in full (bad transfer) — check your connection and try again.');
+    }
+    if (bytes.length < 200) {
+      throw new Error('The file came through incomplete (only ' + bytes.length + ' bytes) — try again.');
+    }
+    return bytes;
+  }
   if (src.data) {
     const s = String(src.data);
     const i = s.indexOf('base64,');
@@ -359,6 +369,14 @@ function showMsg(html, actions) {
 }
 function clearMsg() { els.scroll.querySelectorAll('[data-msg]').forEach(n => n.remove()); }
 
+/* Tell the caller (e.g. STUDYDOCS) that this document failed to open, so it
+   can drop a corrupt saved copy and self-heal. Never let a bad callback throw. */
+function _fireError(opts, err, info) {
+  if (opts && typeof opts.onError === 'function') {
+    try { opts.onError(err, info); } catch (e) { console.warn('[PDFVIEW] onError callback failed:', e); }
+  }
+}
+
 function setBusy(on) {
   root.querySelectorAll('[data-a]').forEach(b => { if (b.dataset.a !== 'close') b.disabled = on; });
   root.querySelectorAll('[data-tool]').forEach(b => { b.disabled = on; });
@@ -385,7 +403,7 @@ async function open(opts) {
 
   try {
     let src = opts;
-    if (typeof opts.load === 'function') src = Object.assign({}, opts, await opts.load());
+    if (typeof opts.load === 'function') src = Object.assign({ _fromCache: !!opts._fromCache }, opts, await opts.load());
     if (gen !== GEN) return;
     if (src.title) setTitle(src.title);
     const bytes = await toBytes(src);
@@ -394,6 +412,7 @@ async function open(opts) {
   } catch (err) {
     if (gen !== GEN) return;
     S = null;
+    _fireError(opts, err, { stage: 'load' });
     let html = '<div>' + String(err && err.message ? err.message : 'Could not load the PDF.');
     if (err && err.name === 'AbortError') html += ' — your connection may be too slow.';
     showMsg(html + '</div>', '<button type="button" data-a="retry">Try again</button>');
@@ -407,10 +426,13 @@ async function open(opts) {
   try { lib = await loadEngine(); }
   catch (err) {
     if (gen !== GEN) return;
+    _fireError(opts, err, { stage: 'engine' });
     showMsg('<div>The PDF reader could not load &mdash; you may be offline.<br>You can still download the file or open it in your browser.</div>',
-      '<button type="button" data-a="dl">Download</button><button type="button" data-a="openraw">Open in browser</button>');
+      '<button type="button" data-a="retry">Try again</button><button type="button" data-a="dl">Download</button><button type="button" data-a="openraw">Open in browser</button>');
     setBusy(false);
-    root.querySelectorAll('[data-a="dl"],[data-a="openraw"]').forEach(b => { b.disabled = false; });
+    root.querySelectorAll('[data-a="retry"],[data-a="dl"],[data-a="openraw"]').forEach(b => { b.disabled = false; });
+    const rb = root.querySelector('[data-a="retry"]');
+    if (rb) rb._retry = opts;
     return;
   }
   if (gen !== GEN) return;
@@ -429,6 +451,7 @@ async function open(opts) {
     const pw = err && err.name === 'PasswordException';
     /* Say WHY it failed: bad bytes from the server vs a broken PDF. */
     const notPdf = !looksLikePdf(S && S.bytes);
+    _fireError(opts, err, { stage: 'parse', fromCache: !!((src && src._fromCache) || (opts && opts._fromCache)) });
     let html = pw ? 'This PDF is password-protected.'
       : notPdf ? 'The server sent something other than a PDF for this document &mdash; likely an error or a sign-in page. Check your connection and try again, or download the file to inspect it.'
       : 'This file could not be opened as a PDF.';

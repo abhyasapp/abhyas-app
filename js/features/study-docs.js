@@ -46,7 +46,6 @@ window.STUDYDOCS = {
     if (!res || !res.success) { const e = new Error((res && res.error) || 'Request failed.'); e.needsPayment = !!(res && res.needsPayment); throw e; }
     return res;
   },
-
   _base64FromBytes(value){
     const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
     if (bytes.length < 8 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46 || bytes[4] !== 0x2d) {
@@ -95,7 +94,7 @@ window.STUDYDOCS = {
           const bytes = Uint8Array.from(atob(normalized), ch => ch.charCodeAt(0));
           return { base64: this._base64FromBytes(bytes), filename };
         }
-        if (/^[\[{]/.test(value)) {
+        if (/^["[{]/.test(value)) {
           try { payload = JSON.parse(value); continue; } catch(e){}
         }
       }
@@ -105,11 +104,38 @@ window.STUDYDOCS = {
   },
 
   async _fetchStudyPdf(doc){
+    /* The student backend hands out a study PDF by record id: getStudyDocPdf
+       answers with a short-lived signed URL (or inline base64). listStudyDocs
+       does not expose the storage path, so a record id is the only reference
+       the student screen always has — asking getFile for a path first would
+       fail on every document. When the server does send a path, the generic
+       getFile action is a working fallback. */
     const fileId = doc && (doc.pdfPath || doc.pdf_path || doc.fileId || doc.file_id || doc.path);
-    if (!fileId) throw new Error('This study document has no file reference. Ask your teacher to re-upload it.');
-    if (typeof GETFILE_GATE !== 'undefined') await GETFILE_GATE.take('fg');
-    const response = await this._post({ action:'getFile', fileId });
-    return this._normalizePdfResponse(response, doc);
+    const id = doc && doc.id;
+    let lastErr = null;
+
+    if (id) {
+      try {
+        const response = await this._post({ action:'getStudyDocPdf', id });
+        return await this._normalizePdfResponse(response, doc);
+      } catch(e){
+        if (e && (e.needsPayment || e.sessionInvalid)) throw e;
+        lastErr = e;
+      }
+    }
+
+    if (fileId) {
+      if (typeof GETFILE_GATE !== 'undefined') await GETFILE_GATE.take('fg');
+      try {
+        const response = await this._post({ action:'getFile', fileId });
+        return await this._normalizePdfResponse(response, doc);
+      } catch(e){
+        if (e && (e.needsPayment || e.sessionInvalid)) throw e;
+        lastErr = e;
+      }
+    }
+
+    throw lastErr || new Error('This study document has no file reference. Ask your teacher to re-upload it.');
   },
 
   async _fetchList(){
@@ -270,8 +296,7 @@ window.STUDYDOCS = {
   _purgeStale(){ /* intentionally does not delete anything */ },
 
   async removeOffline(id){
-    try { await QDB.del('studydoc:' + id); } catch(e){}
-    this._write(this.CACHE_KEY, this._cacheIndex().filter(x => x.id !== id));
+    this._purgeCache(id);
     this.render();
     toast('Removed from this device');
   },
@@ -281,12 +306,22 @@ window.STUDYDOCS = {
     if (!d) { toast('That PDF is no longer available.'); return; }
     if (!window.PDFVIEW) { toast('The PDF reader did not load. Reload the page and try again.', 5000); return; }
 
+    /* If the saved offline copy is broken, opening once more from the network
+       must succeed — but never loop: at most one self-heal per shell-open. */
+    const self = this;
+    let healed = false;
+
     PDFVIEW.open({
       title: d.title,
       load: async () => {
         if (this._isCached(d)) {
           const hit = await QDB.get('studydoc:' + d.id);
-          if (hit && hit.base64) return { base64: hit.base64, filename: hit.filename || d.fileName };
+          if (hit && hit.base64 && String(hit.base64).slice(0, 6) === 'JVBERi') {
+            return { base64: hit.base64, filename: hit.filename || d.fileName, _fromCache: true };
+          }
+          /* A damaged cache entry (missing or not-a-PDF): drop it quietly and
+             continue to the network path below, instead of failing forever. */
+          this._purgeCache(d.id);
         }
         if (!this._online()) throw new Error('You are offline and this PDF was not saved on this device yet. Open it once while online.');
         const res = await this._fetchStudyPdf(d);
@@ -316,9 +351,22 @@ window.STUDYDOCS = {
         }
         this._cacheSet(d, { base64, filename: res.filename || d.fileName });
         return { base64, filename: res.filename || d.fileName };
+      },
+      onError: (err, info) => {
+        if (info && info.fromCache && !healed) {
+          healed = true;
+          self._purgeCache(d.id);
+          toast('The saved copy was damaged — re-downloading…', 4000);
+          setTimeout(() => self.open(id), 60);
+        }
       }
     });
-  }
+  },
+
+  _purgeCache(id){
+    try { QDB.del('studydoc:' + id); } catch(e){}
+    this._write(this.CACHE_KEY, this._cacheIndex().filter(x => x.id !== id));
+  },
 };
 
 window.RECOVER = {
