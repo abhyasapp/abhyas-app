@@ -401,12 +401,17 @@ async function open(opts) {
   showMsg('<div class="pdfv-spin" aria-hidden="true"></div><div>Loading&hellip;</div>');
   els.scroll.focus({ preventScroll: true });
 
+  /* Declared out here so the parse handler below can still tell whether the
+     bytes came from the offline cache. Declaring it inside the try left the
+     catch block referencing an out-of-scope binding, which threw a
+     ReferenceError and left the reader on "Loading…" for ever. */
+  let src = opts;
+  let bytes = null;
   try {
-    let src = opts;
     if (typeof opts.load === 'function') src = Object.assign({ _fromCache: !!opts._fromCache }, opts, await opts.load());
     if (gen !== GEN) return;
     if (src.title) setTitle(src.title);
-    const bytes = await toBytes(src);
+    bytes = await toBytes(src);
     if (gen !== GEN) return;
     S = newState(gen, bytes, src.filename || opts.filename || 'document.pdf', ann);
   } catch (err) {
