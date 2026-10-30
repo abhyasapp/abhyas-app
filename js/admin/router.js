@@ -64,6 +64,7 @@ const UI = {
       }
       if (id === 'admins') ADMIN._paintCurrentView('admins');
       if (id === 'studydocs') STUDYDOCS.load();
+      if (id === 'qna' && typeof QNA_ADMIN !== 'undefined') QNA_ADMIN.load();
       if (id === 'qreports' && typeof QREPORTS !== 'undefined') QREPORTS.load();
     } catch (e) {
       console.warn('[router] paint for', id, 'failed:', e && e.message);

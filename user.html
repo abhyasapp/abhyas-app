@@ -403,6 +403,18 @@
         </div>
       </div>
 
+      <!-- QNA — one PDF per question, filed under the syllabus -->
+      <div class="view" id="view-qna">
+        <div class="pg-head" data-head="qna"></div>
+        <div class="card sd-bar" style="margin-bottom:var(--sp-3)">
+          <div class="toolbar"><input type="search" id="qna-q" placeholder="Search a question, a topic or a key word" autocomplete="off" data-on-input="QNA.setQuery(this.value)" aria-label="Search questions"></div>
+          <div class="sd-chips" id="qna-chips" role="group" aria-label="Filter by syllabus group"></div>
+        </div>
+        <div id="qna-body">
+          <div class="card"><div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div></div>
+        </div>
+      </div>
+
       <!-- SUBJ-EXAM -->
       <div class="view" id="view-subj-exam">
         <div class="pg-head" data-head="subj-exam"></div>
@@ -997,6 +1009,7 @@
 <script defer src="js/core/insights.js"></script>
 <script defer src="js/core/sync.js"></script>
 <script defer src="js/core/study-docs.js"></script>
+<script defer src="js/core/qna.js"></script>
 <script defer src="js/core/loksewa.js"></script>
 <script defer src="js/core/perf.js"></script>
 <script defer src="js/core/float-space.js"></script>
@@ -1045,6 +1058,7 @@
 <script defer src="js/features/print-q.js"></script>
 <script defer src="js/features/wrong-bank-ui.js"></script>
 <script defer src="js/features/study-docs.js"></script>
+<script defer src="js/features/qna.js"></script>
 <script defer src="js/features/insights.js"></script>
 <script defer src="js/features/today-plan.js"></script>
 <script defer src="js/features/submissions.js"></script>

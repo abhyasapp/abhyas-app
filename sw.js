@@ -13,7 +13,7 @@ const CACHE_NAME = 'abhyas-v' + APP_VERSION;
    importScripts below) does not trigger an update, so an already-installed
    app keeps its old shell cache and never sees a deployed fix. Bump SW_BUILD
    together with APP_VERSION in config.js, version.js and package.json. */
-const SW_BUILD = '2.04';
+const SW_BUILD = '2.05';
 const CDN_CACHE  = 'abhyas-cdn-v1';
 const NETWORK_TIMEOUT_MS = 2500;
 const CDN_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
@@ -130,7 +130,9 @@ const SHELL = [
   './css/tokens.css',
   './js/core/i18n.js',
   './css/app.css',
-  './js/features/settings-ui.js'
+  './js/features/settings-ui.js',
+  './js/core/qna.js',
+  './js/features/qna.js'
 ];
 
 function offlinePage() {

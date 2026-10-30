@@ -26,6 +26,7 @@
   /* One entry per view: sidebar + phone-sheet + page header all read this. */
   const HEADS = {
     studydocs:  { icon: 'ph-file-pdf',        label: 'Model answers & notes',   text: 'PDFs your teacher added: model answers for written questions, notes and past papers. Opened ones work offline.' },
+    qna:        { icon: 'ph-text-columns',     label: 'Questions & answers',     text: 'One PDF per question: the question, its worked solution and the mistake to avoid. Pick a chapter or topic, or search the question.' },
     weekly:     { icon: 'ph-calendar-check',  label: 'Weekly test',             text: 'A new set unlocks on schedule and stays open for a limited window. You get one attempt; after that you can review your answers.' },
     hourly:     { icon: 'ph-clock-countdown', label: 'Hourly challenge',        text: 'A fresh written question and a 50-question sprint, reset at the top of every hour. Pick your level to begin.' },
     'subj-qotd':{ icon: 'ph-sun-horizon',     label: 'Question of the day',     text: 'Everyone gets the same question. Write it on paper against the clock, then photograph your answer and upload it as one PDF.' },
@@ -60,6 +61,7 @@
       { view: 'subj-exam', sub: '100 marks, three hours' },
       { view: 'subj-list', sub: 'The whole written bank' },
       { view: 'studydocs', sub: 'PDFs from your teacher',           count: { id: 'sdc', cls: 'ok', hidden: true } },
+      { view: 'qna', sub: 'One PDF per question' },
       { view: 'subj-mine', sub: 'What you sent, and your score',    hint:  { id: 'subj-mine-hint', text: 'Nothing submitted yet' }, badge: { id: 'subj-mine-badge', cls: '', text: '0', hidden: true } }
     ]},
     { key: 'review', label: 'Review', tab: 'progress', items: [

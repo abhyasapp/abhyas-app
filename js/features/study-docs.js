@@ -147,9 +147,16 @@ window.STUDYDOCS = {
     return this.docs;
   },
 
+  /* The badge and the list count whole documents only: per-question PDFs
+     live in the Questions & answers screen (js/features/qna.js) and reading
+     this badge would otherwise never clear. */
+  _noteDocs(){
+    return (this.docs || []).filter(d => !(typeof studyDocsIsQna === 'function' && studyDocsIsQna(d)));
+  },
+
   _updateBadge(){
     const seen = this._read(this.SEEN_KEY, null);
-    const n = seen === null ? 0 : studyDocsNewIds(this.docs, seen).length;
+    const n = seen === null ? 0 : studyDocsNewIds(this._noteDocs(), seen).length;
     const b = $('sdc');
     if (b) { b.hidden = n === 0; b.textContent = n > 99 ? '99+' : String(n); }
     const hint = document.querySelector('#nav-studydocs');
@@ -201,7 +208,7 @@ window.STUDYDOCS = {
     }
     
     const seen = this._read(this.SEEN_KEY, null);
-    this.newIds = new Set(seen === null ? [] : studyDocsNewIds(this.docs, seen));
+    this.newIds = new Set(seen === null ? [] : studyDocsNewIds(this._noteDocs(), seen));
     this.render(offlineNote);
     this._write(this.SEEN_KEY, this.docs.map(d => d.id));
     this._updateBadge();
@@ -238,7 +245,7 @@ window.STUDYDOCS = {
     
     if (chips) {
       chips.innerHTML = cats.length < 2 ? '' :
-        '<button type="button" class="sd-chip' + (this.cat === 'all' ? ' on' : '') + '" data-on-click="STUDYDOCS.setCat(\'all\')">All<small>' + this.docs.length + '</small></button>' +
+        '<button type="button" class="sd-chip' + (this.cat === 'all' ? ' on' : '') + '" data-on-click="STUDYDOCS.setCat(\'all\')">All<small>' + this._noteDocs().length + '</small></button>' +
         cats.map(c => '<button type="button" class="sd-chip' + (this.cat === c.category ? ' on' : '') + '" data-on-click="STUDYDOCS.setCat(\'' + c.category + '\')">' + esc(c.label) + '<small>' + c.count + '</small></button>').join('');
     }
     

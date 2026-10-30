@@ -695,6 +695,7 @@ const ADMIN = {
       if (view === 'dashboard')  { TRENDS.load(); if (!MISSED.lastResults.length) MISSED.load(); }
       if (view === 'settings')   SETTINGS.load();
       if (view === 'studydocs' && typeof STUDYDOCS !== 'undefined') STUDYDOCS.load();
+      if (view === 'qna' && typeof QNA_ADMIN !== 'undefined') QNA_ADMIN.load();
       if (view === 'qreports'  && typeof QREPORTS  !== 'undefined') QREPORTS.render(this.data.qreports);
     } catch (e) { console.warn('[ADMIN] paint after refresh failed:', e); }
   },

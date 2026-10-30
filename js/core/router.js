@@ -67,6 +67,7 @@ const UI = {
                       if (typeof PROG !== 'undefined') PROG.render(); 
                       if (typeof PUSH !== 'undefined') PUSH.refreshButtonUI(); 
                     },
+        qna:        () => typeof QNA !== 'undefined' && QNA.load(),
         online:     () => typeof ONPROG !== 'undefined' && ONPROG.render(),
         offline:    () => typeof CACHE !== 'undefined' && CACHE.render(),
         bookmarks:  () => typeof REV !== 'undefined' && REV.renderList('bk'),
@@ -90,7 +91,7 @@ const UI = {
   /* One <h1> per screen: Home has its own greeting; every other screen gets a visually-hidden title. */
   _VIEW_TITLES: {
     home: 'Home', sprint: '60-day sprint', weekly: 'Weekly test', hourly: 'Hourly challenge', 'subj-qotd': 'Question of the day',
-    'subj-mine': 'My submissions', studydocs: 'Model answers and notes', 'subj-exam': 'Full paper', 'subj-list': 'Browse questions',
+    'subj-mine': 'My submissions', studydocs: 'Model answers and notes', qna: 'Questions and answers', 'subj-exam': 'Full paper', 'subj-list': 'Browse questions',
     online: 'Chapters', local: 'Local files', psycho: 'Mixed practice', bookmarks: 'Saved questions', wrong: 'Wrong bank',
     progress: 'Progress', offline: 'Offline downloads', data: 'Data and backup', timetable: 'Study timetable',
   },

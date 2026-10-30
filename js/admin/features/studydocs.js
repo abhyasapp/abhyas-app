@@ -22,10 +22,18 @@ const STUDYDOCS = {
     }
   },
 
+  /* Per-question PDFs share this table but are managed by the Q&A splitter:
+     their chapter id carries the syllabus topic, and this editor would wipe
+     it on save. List them there, not here. */
+  _docs(){
+    return (this.list || []).filter(d => !(typeof isQnaDoc === 'function' && isQnaDoc(d)));
+  },
+
   render(){
     const box = $('studydocs-list');
     if (!box) return;
-    if (!this.list.length) {
+    const docs = this._docs();
+    if (!docs.length) {
       box.innerHTML = '<div class="empty"><i class="ph ph-file-pdf"></i><div class="t">No study PDFs yet</div>' +
         '<div class="d">Upload a model-answer PDF and students will find it under Written answers.</div>' +
         '<div class="a"><button class="btn btn-primary" data-perm="studydocs_manage" data-on-click="STUDYDOCS.openUpload()">Upload a PDF</button></div></div>';
@@ -33,7 +41,7 @@ const STUDYDOCS = {
       return;
     }
     const canManage = ADMIN.can('studydocs_manage');
-    box.innerHTML = '<div class="rows">' + this.list.map(d => {
+    box.innerHTML = '<div class="rows">' + docs.map(d => {
       const hidden = d.status === 'hidden';
       const id = escAttrJs(d.id);
       return '<div class="row">' +

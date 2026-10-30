@@ -27,6 +27,7 @@
     { label: 'Content', items: [
       { view: 'weeklysets', label: 'Weekly sets',    icon: 'ph-calendar-check',          feature: 'weeklysets_view' },
       { view: 'studydocs',  label: 'Study PDFs',     icon: 'ph-file-pdf',                feature: 'studydocs_view' },
+      { view: 'qna',        label: 'Q&A splitter',   icon: 'ph-scissors',                feature: 'studydocs_view' },
       { view: 'subjective', label: 'Grading',        icon: 'ph-note-pencil',             feature: 'subjective_view', badge: 'badge-subjective' },
       { view: 'qreports',   label: 'Reports',        icon: 'ph-flag',                    feature: 'qreports_view',   badge: 'badge-qreports' }
     ]},

@@ -772,6 +772,58 @@ th,td{border-bottom-width:var(--hairline-w)}
   50%      { background: color-mix(in srgb, var(--warning-soft) 70%, var(--warning) 30%); }
 }
 </style>
+<style id="qna-split">
+/* ═══════════════════════════════════════════════════════════════════════
+   QUESTIONS & ANSWERS (js/admin/features/qna.js)
+   Page grid for marking where each question starts, and the per-question
+   editor under it.
+   ═══════════════════════════════════════════════════════════════════════ */
+.qna-admin-group + .qna-admin-group { margin-top: var(--sp-4); }
+.qna-admin-h {
+  display: flex; align-items: baseline; gap: var(--sp-2);
+  padding: 0 0 var(--sp-2); color: var(--ink);
+  font-size: var(--fs-foot); font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+}
+.qna-admin-h span { color: var(--ink-3); font-weight: 600; text-transform: none; letter-spacing: 0; }
+
+.qna-pages {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: var(--sp-2); max-height: 320px; overflow-y: auto;
+  margin-top: var(--sp-2); padding: var(--sp-2);
+  background: var(--bg-grouped); border: var(--hairline-w) solid var(--sep); border-radius: var(--r-input);
+}
+.qna-page {
+  position: relative; padding: 0; border: 2px solid transparent; border-radius: 6px;
+  cursor: pointer; overflow: hidden; aspect-ratio: 3 / 4;
+  /* shows through until the thumbnail is painted */
+  background: repeating-linear-gradient(45deg, var(--bg-grouped), var(--bg-grouped) 6px, var(--surface) 6px, var(--surface) 12px);
+}
+.qna-page img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.qna-page.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.qna-page-n {
+  position: absolute; left: 3px; bottom: 3px; padding: 0 .3rem;
+  border-radius: 4px; background: rgba(0,0,0,.62); color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 1.5;
+}
+.qna-page-flag {
+  position: absolute; right: 3px; top: 3px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--accent); color: var(--on-accent);
+  font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+}
+
+.qna-rows { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-3); }
+.qna-row-edit {
+  padding: var(--sp-3); border: var(--hairline-w) solid var(--sep);
+  border-radius: var(--r-input); background: var(--surface);
+}
+.qna-row-h {
+  display: flex; align-items: center; gap: var(--sp-2);
+  margin-bottom: var(--sp-2); font-size: var(--fs-foot); color: var(--ink-3);
+}
+.qna-row-h b { color: var(--ink); font-size: var(--fs-callout); }
+.qna-row-h .icon-btn { margin-left: auto; }
+.qna-row-edit textarea.input { width: 100%; resize: vertical; min-height: 2.6rem; }
+</style>
 </head>
 <body>
 
@@ -1087,6 +1139,15 @@ th,td{border-bottom-width:var(--hairline-w)}
           <div class="acts"><button class="btn btn-primary btn-sm" data-perm="studydocs_manage" data-on-click="STUDYDOCS.openUpload()"><i class="ph ph-upload-simple"></i> Upload PDF</button></div>
         </div>
         <div class="panel"><div id="studydocs-list" class="stack2"></div></div>
+      </section>
+
+      <!-- ══════════════════ QUESTIONS & ANSWERS ══════════════════════ -->
+      <section class="view" id="view-qna" aria-label="Questions and answers">
+        <div class="page-head">
+          <div><h2>Questions &amp; answers</h2><p>Cut a question paper into one PDF per question, each with its worked solution, and file it under the syllabus. Students find them by chapter, topic or search.</p></div>
+          <div class="acts"><button class="btn btn-primary btn-sm" data-perm="studydocs_manage" data-on-click="QNA_ADMIN.openSplit()"><i class="ph ph-scissors"></i> Split a question paper</button></div>
+        </div>
+        <div class="panel"><div id="qna-list" class="stack2"></div></div>
       </section>
 
       <!-- ═══════════════════════════ REPORTS ═══════════════════════════ -->
@@ -1461,6 +1522,7 @@ th,td{border-bottom-width:var(--hairline-w)}
 <script src="js/core/insights.js"></script>
 <script src="js/core/sync.js"></script>
 <script src="js/core/study-docs.js"></script>
+<script src="js/core/qna.js"></script>
 <script src="js/core/loksewa.js"></script>
 <script src="js/core/perf.js"></script>
 <script src="js/core/float-space.js"></script>
@@ -1492,6 +1554,7 @@ th,td{border-bottom-width:var(--hairline-w)}
 <script src="js/admin/features/dashboard.js"></script>
 <script src="js/admin/features/weeklysets.js"></script>
 <script src="js/admin/features/studydocs.js"></script>
+<script src="js/admin/features/qna.js"></script>
 <script src="js/admin/features/subjective-store.js"></script>
 <script src="js/admin/features/subjective-grade-card.js"></script>
 <script src="js/admin/features/subjective-qotd.js"></script>
