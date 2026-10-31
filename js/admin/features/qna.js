@@ -232,6 +232,16 @@ const QNA_ADMIN = {
         '<div class="field mt4"><span class="field-label">Step 3 — name each question</span>' +
           '<div class="t-foot">Students search these words, so write the question as it appears on the paper.</div>' +
           '<div id="qna-rows" class="qna-rows"></div>' +
+          /* A scan has no text layer, so every box would have to be typed.
+             A typed paper (or the question list read off the scan) can be
+             pasted once and laid over the rows in page order. */
+          '<label for="qna-bulk" class="mt3" style="display:block">Paste the questions instead</label>' +
+          '<div class="t-foot">One per line, in page order. Each line fills the next question above.</div>' +
+          '<textarea class="input mt2" id="qna-bulk" rows="3" placeholder="Define bearing capacity of soil.&#10;Compute the transmissivity of an 8 m confined aquifer.&#10;Design a singly reinforced beam for Mu = 120 kNm."></textarea>' +
+          '<div class="flex g2" style="align-items:center">' +
+            '<button class="btn btn-sm btn-quiet" data-on-click="QNA_ADMIN.applyBulk()">Fill the questions</button>' +
+            '<span class="t-foot" id="qna-bulk-msg" aria-live="polite"></span>' +
+          '</div>' +
         '</div>' +
         '<label class="flex g2 mt3" style="align-items:center;cursor:pointer"><input type="checkbox" id="qna-publish" checked> ' +
           '<span class="t-callout">Visible to students as soon as it is created</span></label>' +
@@ -433,6 +443,41 @@ const QNA_ADMIN = {
     row[field] = value;
     if (field === 'title') row.auto = false;
     if (field === 'chapter') { row.topic = ''; this._chapter = value; this._paintRows(); }
+  },
+
+  /* One question per line, laid over the marked page ranges in order. Extra
+     lines are reported rather than silently dropped, because a mismatch
+     means the page marks and the list disagree and the cut would file the
+     wrong question under a page range. */
+  applyBulk(){
+    const box = $('qna-bulk'), msg = $('qna-bulk-msg');
+    if (!box || !this._rows.length) {
+      if (msg) msg.textContent = 'Mark the question pages first.';
+      return;
+    }
+    const lines = String(box.value || '')
+      .split(/\r?\n/)
+      .map(s => s.replace(/^\s*(?:Q(?:uestion)?\s*)?\d{1,2}\s*[.):-]\s*/i, '').trim())
+      .filter(Boolean);
+
+    if (!lines.length) {
+      if (msg) msg.textContent = 'Paste at least one question.';
+      return;
+    }
+
+    const n = Math.min(lines.length, this._rows.length);
+    for (let i = 0; i < n; i++) {
+      this._rows[i].title = qnaTitle(lines[i]);
+      this._rows[i].auto = false;
+    }
+    this._paintRows();
+
+    if (msg) {
+      msg.textContent = lines.length === this._rows.length
+        ? n + ' question' + (n === 1 ? '' : 's') + ' filled.'
+        : n + ' of ' + lines.length + ' lines used — ' + this._rows.length + ' page range' + (this._rows.length === 1 ? '' : 's') + ' marked.' +
+          (lines.length > this._rows.length ? ' Mark another page for each extra question.' : ' Add a line for each remaining range.');
+    }
   },
 
   async previewRow(i){
