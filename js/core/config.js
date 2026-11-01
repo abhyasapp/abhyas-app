@@ -4,7 +4,7 @@
    MUST load EXACTLY ONCE (do not reference from any shim or app.js).
    ═══════════════════════════════════════════════════════════════════════ */
 
-const APP_VERSION = '2.10';
+const APP_VERSION = '2.11';
 window.APP_VERSION = APP_VERSION;
 
 /* ═══════════════ Retry policy (read by js/core/net.js) ═══════════════════
