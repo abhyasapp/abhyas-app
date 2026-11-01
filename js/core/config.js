@@ -4,7 +4,7 @@
    MUST load EXACTLY ONCE (do not reference from any shim or app.js).
    ═══════════════════════════════════════════════════════════════════════ */
 
-const APP_VERSION = '2.06';
+const APP_VERSION = '2.07';
 window.APP_VERSION = APP_VERSION;
 
 /* ═══════════════ Retry policy (read by js/core/net.js) ═══════════════════
@@ -42,7 +42,24 @@ const ABHYAS_CONFIG = Object.freeze({
     'resendverification',
     'verifyemail',
     'requestpasswordreset',
-    'resetpassword'
+    'resetpassword',
+
+    /* Question reports and question edits belong to Drive/Sheets, not to
+       Supabase storage: students post reports to Apps Script, the file an
+       admin edits is a Drive file, and the refresh signal students poll is
+       the Apps Script corrections map. Leaving these on Supabase made
+       "Fix the question" look up a Drive file id in a storage bucket, which
+       answered "File not found". */
+    'adminlistquestionreports',
+    'listreports',
+    'admingetquestion',
+    'adminupdatequestion',
+    'adminupdatequestionreportstatus',
+    'resolvereport',
+    'admindeletequestionreport',
+    'adminmarkfilecorrected',
+    'adminlistcorrections',
+    'adminexportcorrections'
   ]
 });
 window.ABHYAS_CONFIG = ABHYAS_CONFIG;
