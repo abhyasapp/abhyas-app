@@ -315,8 +315,14 @@ const ADMIN_REPORT = {
     const m = String(r.uid || '').match(/^(.+)_(\d+)$/);
     if (!m) return TOAST.show('This report has no question reference', 'error');
     MODAL.sheet('Fix the question',
-      '<div class="skeleton sk-100"></div><div class="skeleton sk-80"></div>' +
-      '<div class="skeleton sk-60"></div>');
+      '<div class="banner banner-info"><i class="ph ph-spinner"></i>' +
+        '<span>Loading the current file version...</span></div>' +
+      '<div class="field"><label>Reported question</label>' +
+        '<div class="t-callout" style="line-height:1.6">' +
+          esc(r.questionSnapshot || 'The question text was not captured.') +
+        '</div></div>' +
+      this._optionsHtml(r) +
+      '<div class="t-cap mt3">The editable fields appear as soon as Drive responds.</div>');
     try {
       const res = await ADMIN.post('adminGetQuestion', {
         fileId: m[1], index: Number(m[2])
@@ -335,7 +341,7 @@ const ADMIN_REPORT = {
       const letters = 'ABCDEF';
       const opts = q.options || [];
       $('bd-sheet').innerHTML =
-        '<p class="t-foot mb3">A copy of the file is saved before your change. ' +
+        '<p class="t-foot mb3">Drive keeps the previous version in its version history. ' +
         'Every student\'s app replaces its copy within minutes of opening online, and updates ' +
         'the questions they saved for review. Correct questions in place: do not delete or ' +
         'reorder questions in the file, because students\' progress is tied to each ' +
