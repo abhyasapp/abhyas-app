@@ -103,7 +103,7 @@ window.CH_GRID = {
       }
 
       const tabs = this.LEVELS.map(l =>
-        '<button type="button" class="' + (l[0] === this.lv ? 'active' : '') + '" data-on-click="CH_GRID.setLevel(\'' + l[0] + '\')">' + esc(l[1]) + '</button>').join('');
+        '<button type="button" class="' + (l[0] === this.lv ? 'active' : '') + '" aria-pressed="' + (l[0] === this.lv ? 'true' : 'false') + '" data-on-click="CH_GRID.setLevel(\'' + l[0] + '\')">' + esc(l[1]) + '</button>').join('');
       
       let chs = {};
       try { chs = ChapterData.chapters(this.lv) || {}; } catch(e){}
