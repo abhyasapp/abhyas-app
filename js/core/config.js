@@ -4,7 +4,7 @@
    MUST load EXACTLY ONCE (do not reference from any shim or app.js).
    ═══════════════════════════════════════════════════════════════════════ */
 
-const APP_VERSION = '2.07';
+const APP_VERSION = '2.08';
 window.APP_VERSION = APP_VERSION;
 
 /* ═══════════════ Retry policy (read by js/core/net.js) ═══════════════════
@@ -44,22 +44,13 @@ const ABHYAS_CONFIG = Object.freeze({
     'requestpasswordreset',
     'resetpassword',
 
-    /* Question reports and question edits belong to Drive/Sheets, not to
-       Supabase storage: students post reports to Apps Script, the file an
-       admin edits is a Drive file, and the refresh signal students poll is
-       the Apps Script corrections map. Leaving these on Supabase made
-       "Fix the question" look up a Drive file id in a storage bucket, which
-       answered "File not found". */
-    'adminlistquestionreports',
-    'listreports',
+    /* Only the two actions that physically read or write a Drive JSON file
+       belong on Apps Script. Every report and correction read is a Postgres
+       query and belongs on Supabase, where it is fast. The GAS edit mirrors
+       its snapshot into Supabase before returning (see gas/report.gs), so the
+       console and the correction pipeline see the fix immediately. */
     'admingetquestion',
-    'adminupdatequestion',
-    'adminupdatequestionreportstatus',
-    'resolvereport',
-    'admindeletequestionreport',
-    'adminmarkfilecorrected',
-    'adminlistcorrections',
-    'adminexportcorrections'
+    'adminupdatequestion'
   ]
 });
 window.ABHYAS_CONFIG = ABHYAS_CONFIG;
