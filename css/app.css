@@ -462,7 +462,7 @@ input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(-
   backdrop-filter:blur(18px) saturate(1.5);
   border-bottom:var(--hairline-w) solid var(--sep)
 }
-.tb-brand{display:flex;align-items:center;gap:var(--sp-2);min-width:0;min-height:44px;background:transparent;border:none;padding:0;text-align:left;transition:opacity var(--dur-fast) var(--ease)}
+.tb-brand{display:flex;align-items:center;gap:var(--sp-2);min-width:0;min-height:44px;flex-shrink:0;background:transparent;border:none;padding:0;text-align:left;transition:opacity var(--dur-fast) var(--ease)}
 .tb-brand:hover{opacity:.75}
 .bd-mark{width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .bd-mark img{width:100%;height:100%;object-fit:contain;border-radius:7px}
@@ -477,6 +477,9 @@ input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(-
 .tb-admin{background:var(--violet)!important;color:#fff!important;border-color:transparent!important;padding:0 var(--sp-3)!important;height:34px;font-weight:650}
 .tb-admin:hover{background:var(--violet)!important;color:#fff!important;filter:brightness(1.08)}
 @media (max-width:560px){.tb-admin .tb-admin-label{display:none}}
+/* The icon-only admin shortcut is the first thing to go when the bar is tight;
+   admin accounts still reach the console from the Home card and sidebar. */
+@media (max-width:420px){.tb-admin{display:none}}
 #tb-sync-dot{position:absolute;bottom:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--ink-4);border:1.5px solid var(--bg);transition:background var(--dur-slow) var(--ease)}
 #net-mode-btn.forced{animation:netpulse 2.4s ease-in-out infinite}
 @keyframes netpulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px var(--danger-soft)}}
@@ -676,7 +679,7 @@ input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(-
 .due-item.urgent{border-left-color:var(--danger)}
 .due-ic{width:34px;height:34px;border-radius:var(--r-input);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.05rem;background:var(--accent-soft);color:var(--accent)}
 .due-item.urgent .due-ic{background:var(--danger-soft);color:var(--danger)}
-.due-body{flex:1;min-width:0}
+.due-body{flex:1;min-width:0;display:flex;flex-direction:column}
 .due-title{font-size:var(--fs-callout);font-weight:650;line-height:1.25}
 .due-sub{font-size:var(--fs-cap);color:var(--ink-3);margin-top:1px}
 .due-meta{font-size:var(--fs-foot);font-weight:700;color:var(--accent);flex-shrink:0}
@@ -1273,6 +1276,17 @@ input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(-
 .chg-mf .n{font-family:var(--mono);font-size:var(--fs-cap);font-weight:700;opacity:.85}
 .chg-empty{padding:var(--sp-4) var(--sp-3);text-align:center;color:var(--ink-3);background:var(--bg-sunken);border:var(--hairline-w) dashed var(--sep-strong);border-radius:var(--r-card)}
 .chg-empty p{font-size:var(--fs-foot);line-height:1.55;max-width:44ch;margin:0 auto var(--sp-3)}
+
+/* Chapter sheet rows: metadata gets the full width, actions sit underneath.
+   Four controls in a 440px sheet used to squeeze "saved on this device" into
+   a three-line sliver. */
+.ch-parts .row{flex-wrap:wrap;gap:var(--sp-2);padding:var(--sp-3) 0}
+.ch-parts .row-main{flex:1 0 100%;min-width:0}
+.ch-part-name{display:flex;flex-wrap:wrap;align-items:baseline;gap:.15rem .35rem}
+.ch-part-book{font-size:var(--fs-cap);font-weight:500;color:var(--ink-3)}
+.ch-parts .row-main .t-cap{line-height:1.5;overflow-wrap:anywhere}
+.ch-part-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);width:100%}
+.ch-part-actions .ch-row-print{margin-left:auto;width:36px;height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px}
 
 .qnote-box{margin-top:var(--sp-3);padding:var(--sp-3);background:var(--violet-soft);border:var(--hairline-w) solid var(--violet-line);border-radius:var(--r-control);animation:view-in var(--dur-base) var(--ease-out)}
 .qnote-hd{display:flex;align-items:center;gap:.4rem;font-size:var(--fs-cap);font-weight:700;color:var(--violet);margin-bottom:.35rem}

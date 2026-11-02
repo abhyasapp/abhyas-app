@@ -4,8 +4,67 @@ const CNT_AUTO_LIMIT = 20;
 
 const CNT = {
   _lastError: null,
+  _remember(fid, n) {
+    if (!fid || n == null) return false;
+    n = n | 0;
+    if (n <= 0 || S.fcount[fid] === n) return false;
+    S.fcount[fid] = n;
+    return true;
+  },
+  /* A downloaded set is the copy the quiz will actually use, so its length is
+     more trustworthy than a count learned before the content changed. */
+  async _cachedCount(ref) {
+    if (!ref || !ref.fid || !ref.key || typeof QDB === 'undefined') return null;
+    try {
+      const raw = await QDB.get(ref.key);
+      if (!raw) return null;
+      const n = normQ(raw, ref.fid).length;
+      return n > 0 ? n : null;
+    } catch (e) { return null; }
+  },
+  /* Reconcile every cached file in a chapter before its sheet renders. */
+  async reconcileCached(refs) {
+    if (!Array.isArray(refs) || !refs.length || typeof QDB === 'undefined') return false;
+    let changed = false;
+    await Promise.all(refs.map(async ref => {
+      const n = await this._cachedCount(ref);
+      if (n != null && this._remember(ref.fid, n)) changed = true;
+    }));
+    if (changed) _save(LS.FCOUNT, S.fcount);
+    return changed;
+  },
+  /* Counts for downloaded rows should track the published file, not merely the
+     copy learned earlier. Revalidate in the background; the sheet has already
+     rendered, so a slow network never blocks it. */
+  async refreshRemote(refs, onCount) {
+    if (!Array.isArray(refs) || !refs.length || typeof QUIZ === 'undefined') return false;
+    if (!S.online || S.forcedOffline) return false;
+    const queue = refs.slice();
+    let changed = false;
+    const worker = async () => {
+      while (queue.length) {
+        const ref = queue.shift();
+        try {
+          const raw = await QUIZ._fetch(ref.fid, ref.key, 1, 'bg');
+          const n = normQ(raw, ref.fid).length;
+          if (n > 0 && this._remember(ref.fid, n)) {
+            changed = true;
+            if (onCount) onCount(ref, n);
+          }
+        } catch (e) { /* keep the cached count */ }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, refs.length) }, worker));
+    if (changed) _save(LS.FCOUNT, S.fcount);
+    return changed;
+  },
   async forFile(ref) {
     if (!ref.fid) return null;
+    const cached = await this._cachedCount(ref);
+    if (cached != null) {
+      if (this._remember(ref.fid, cached)) _save(LS.FCOUNT, S.fcount);
+      return cached;
+    }
     if (S.fcount[ref.fid] != null) return S.fcount[ref.fid];
     try {
       const raw = await QUIZ._fetch(ref.fid, ref.key);

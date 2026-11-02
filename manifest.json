@@ -45,6 +45,16 @@
     }
   ],
 
+  "screenshots": [
+    {
+      "src": "og-cover.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Abhyas practice and offline study"
+    }
+  ],
+
   "shortcuts": [
     {
       "name": "Dashboard",

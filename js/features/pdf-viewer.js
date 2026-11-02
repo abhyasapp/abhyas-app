@@ -229,7 +229,7 @@ async function toBytes(src) {
     let bytes;
     try { bytes = b64ToBytes(src.base64); }
     catch (e) {
-      throw new Error('The file was not received in full (bad transfer) — check your connection and try again.');
+      throw new Error('The file was not received in full (bad transfer) — check your connection and try again.', { cause: e });
     }
     if (bytes.length < 200) {
       throw new Error('The file came through incomplete (only ' + bytes.length + ' bytes) — try again.');
@@ -406,7 +406,7 @@ async function open(opts) {
      catch block referencing an out-of-scope binding, which threw a
      ReferenceError and left the reader on "Loading…" for ever. */
   let src = opts;
-  let bytes = null;
+  let bytes;
   try {
     if (typeof opts.load === 'function') src = Object.assign({ _fromCache: !!opts._fromCache }, opts, await opts.load());
     if (gen !== GEN) return;

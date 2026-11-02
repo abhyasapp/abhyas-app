@@ -71,6 +71,9 @@ window.CH_GRID = {
       const n = S.fcount && S.fcount[r.fid];
       if (n != null) { total += n; known++; }
     });
+    // A removed question can leave an old coverage bit behind. Never report
+    // more seen than the set now contains.
+    if (total > 0) seen = Math.min(seen, total);
     return { seen: seen, total: total, complete: refs.length > 0 && known === refs.length };
   },
 
@@ -192,6 +195,11 @@ window.CH_GRID = {
       const refs = ChapterData.chapterFileRefs(lv, ch);
       if (!refs.length) return;
       const name = ChapterData.chapterName(lv, ch);
+      // The stored count can be older than the file after a content update.
+      // Reconcile the cached copies now so the sheet counts what Practice uses.
+      if (typeof CNT !== 'undefined' && CNT.reconcileCached) {
+        try { await CNT.reconcileCached(refs); } catch(e){}
+      }
       let keys = new Set();
       try { keys = new Set(await QDB.keys()); } catch(e){}
       const offline = !(S.online && !S.forcedOffline);
@@ -203,16 +211,21 @@ window.CH_GRID = {
           const cached = keys.has(r.key);
           const blocked = offline && !cached;
           const m = missedFor(r.fid);
-          return '<div class="row" style="padding:var(--sp-2) 0">' +
-            '<div class="row-main"><div class="t-callout" style="color:var(--ink);font-weight:600">' + esc(prettySub(r.subtopic)) + '</div>' +
-            '<div class="t-cap">' + (st.total ? st.seen + ' of ' + st.total + ' seen' : (st.seen ? st.seen + ' seen' : 'Not started')) +
-            (cached ? ' · saved on this device' : (blocked ? ' · needs a connection' : '')) +
-            (m ? ' · ' + m + ' missed' : '') + '</div></div>' +
-            '<button class="btn btn-sm btn-a" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'flashcard\')">Practise</button>' +
-            (m ? '<button class="btn btn-sm btn-r" type="button" data-on-click="closeMod();WRONGBY.startFile(\'' + escAttrJs(r.fid) + '\',false)">Missed (' + m + ')</button>' : '') +
-            '<button class="btn btn-sm btn-quiet" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'exam\')">Test</button>' +
-            '<button class="btn btn-sm ch-row-print" type="button" title="Print a revision sheet"' + (blocked ? ' disabled' : '') + ' data-on-click="PRINT_Q.sheet(\'' + escAttrJs(r.fid) + '\')"><i class="ph ph-printer"></i></button>' +
-            '</div>';
+          return '<div class="row">' +
+            '<div class="row-main">' +
+              '<div class="t-callout ch-part-name">' + esc(prettySub(r.subtopic)) +
+                (r.book ? '<span class="ch-part-book">' + esc(r.book) + '</span>' : '') + '</div>' +
+              '<div class="t-cap"><span class="ch-part-seen" data-fid="' + esc(r.fid) + '">' +
+              (st.total ? st.seen + ' of ' + st.total + ' seen' : (st.seen ? st.seen + ' seen' : 'Not started')) + '</span>' +
+              (cached ? ' · saved on this device' : (blocked ? ' · needs a connection' : '')) +
+              (m ? ' · ' + m + ' missed' : '') + '</div>' +
+            '</div>' +
+            '<div class="ch-part-actions">' +
+              '<button class="btn btn-sm btn-a" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'flashcard\')">Practise</button>' +
+              (m ? '<button class="btn btn-sm btn-r" type="button" data-on-click="closeMod();WRONGBY.startFile(\'' + escAttrJs(r.fid) + '\',false)">Missed (' + m + ')</button>' : '') +
+              '<button class="btn btn-sm btn-quiet" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'exam\')">Test</button>' +
+              '<button class="btn btn-sm ch-row-print" type="button" title="Print a revision sheet"' + (blocked ? ' disabled' : '') + ' data-on-click="PRINT_Q.sheet(\'' + escAttrJs(r.fid) + '\')"><i class="ph ph-printer"></i></button>' +
+            '</div></div>';
         }).join('');
         
         const head = refs.length > 1
@@ -220,7 +233,23 @@ window.CH_GRID = {
             '<button class="btn btn-quiet" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'exam\')">Timed test</button></div>'
           : '';
           
-        openMod(name, head + '<div class="rows">' + rows + '</div>');
+        openMod(name, head + '<div class="rows ch-parts">' + rows + '</div>', { wide: true });
+        // Cached files answer instantly, but a content update can leave their
+        // counts behind the published files. Refresh only rows we actually hold
+        // and patch the visible count when the network answers.
+        if (typeof CNT !== 'undefined' && CNT.refreshRemote) {
+          const cachedRefs = refs.filter(r => keys.has(r.key));
+          CNT.refreshRemote(cachedRefs, (ref, n) => {
+            const el = [...document.querySelectorAll('#mbody .ch-part-seen')]
+              .find(x => x.dataset.fid === ref.fid);
+            if (!el) return;
+            let seen = 0;
+            const c = S.cov && S.cov[ref.fid];
+            if (c && c.p) for (let i = 0; i < c.p.length; i++) if (c.p[i] !== '0') seen++;
+            seen = Math.min(seen, n);
+            el.textContent = seen + ' of ' + n + ' seen';
+          }).catch(() => {});
+        }
       });
     } catch(e) {
       console.error('[CH_GRID.open] failed:', e);

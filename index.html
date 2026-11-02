@@ -21,7 +21,6 @@
 
 <title>Abhyas — Loksewa Civil Engineering practice, online and offline</title>
 <meta name="description" content="Loksewa Level 7 Civil Engineering practice for Nepal: chapter-wise questions, offline study, and written answers marked by a person. Free trial.">
-<meta name="keywords" content="abhyas app, loksewa, lok sewa aayog, loksewa civil engineering, civil engineering exam prep nepal, level 7 engineering, PSC nepal, loksewa offline">
 <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
 <meta name="application-name" content="Abhyas">
 <meta name="author" content="Abhyas">
@@ -114,7 +113,6 @@
 <link rel="stylesheet" href="tools/vendor/fonts/fonts.css">
 <link rel="preload" href="tools/vendor/phosphor/Phosphor.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="tools/vendor/phosphor/phosphor-regular.css">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <link rel="stylesheet" href="css/tokens.css">
 <style>
@@ -181,8 +179,6 @@ html.boot-session #form-login,
 html.boot-session #g-signin-wrap{display:none!important}
 #boot-wait{display:none}
 html.boot-session #boot-wait{display:block}
-
-body.cookie-open #toasts{bottom:calc(var(--sp-5) + var(--safe-b) + 80px)}
 
 /* ── Page frame ───────────────────────────────────────────────── */
 .page{max-width:460px;margin:0 auto;padding:calc(var(--sp-5) + var(--safe-t)) var(--sp-4) var(--sp-10)}
@@ -315,6 +311,10 @@ body.cookie-open #toasts{bottom:calc(var(--sp-5) + var(--safe-b) + 80px)}
 #g-signin-wrap.g-hidden{visibility:hidden;height:0;margin:0;overflow:hidden;pointer-events:none}
 #g-signin-wrap.g-busy{opacity:.5;pointer-events:none}
 #g-signin-btn{display:flex;justify-content:center;min-height:46px}
+/* GSI can render its 380px control inside a narrower card. Constrain both
+   its wrapper and the generated button so it never pushes the page wide. */
+#g-signin-btn > div{width:100%!important;max-width:100%!important;min-width:0!important}
+#g-signin-btn > div > div{width:100%!important;max-width:100%!important;min-width:0!important}
 .g-or{
   display:flex;align-items:center;gap:var(--sp-3);
   margin:var(--sp-4) 0;color:var(--ink-3);font-size:var(--fs-cap);font-weight:600
@@ -495,11 +495,13 @@ details.faq p{
 @keyframes toast-out{to{opacity:0;transform:translateY(-6px)}}
 
 /* ── Cookie banner ────────────────────────────────────────────── */
+/* In flow, above the sign-in card. A fixed banner covered the bottom of the
+   primary button on short phones; this keeps the notice visible without
+   making anything underneath unclickable. */
 .cookie-banner{
-  position:fixed;left:var(--sp-3);right:var(--sp-3);bottom:calc(var(--sp-3) + var(--safe-b));
-  z-index:700;display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
+  display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
   background:var(--surface);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-card);
-  padding:var(--sp-3) var(--sp-4);box-shadow:var(--sh-3);max-width:520px;margin:0 auto
+  padding:var(--sp-3) var(--sp-4);box-shadow:var(--sh-1);margin:0 0 var(--sp-4)
 }
 .cookie-banner p{flex:1;min-width:200px;font-size:var(--fs-foot);color:var(--ink-2);line-height:1.5}
 .cookie-banner .btn{width:auto;min-height:38px;padding:0 var(--sp-4);font-size:var(--fs-foot)}
@@ -532,6 +534,11 @@ details.faq p{
     <p class="what" data-i18n>Loksewa Civil Engineering practice — online or offline</p>
     <div class="net" role="status" aria-live="polite"><span class="ndot" id="ndot" aria-hidden="true"></span><span id="nstat">Online</span></div>
   </header>
+
+  <div class="cookie-banner" id="cookie-banner" hidden role="region" aria-label="Cookie notice">
+    <p>Abhyas keeps you signed in and saves your progress on this device. No ads, no tracking. <a href="privacy.html">Privacy</a></p>
+    <button class="btn" data-on-click="COOKIE_NOTICE.accept()">Got it</button>
+  </div>
 
   <div class="card" id="main-card">
 
@@ -871,11 +878,6 @@ details.faq p{
 </script>
 
 <div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
-
-<div class="cookie-banner" id="cookie-banner" hidden role="region" aria-label="Cookie notice">
-  <p>Abhyas keeps you signed in and saves your progress on this device. No ads, no tracking. <a href="privacy.html">Privacy</a></p>
-  <button class="btn" data-on-click="COOKIE_NOTICE.accept()">Got it</button>
-</div>
 
 <!-- ─── Scripts ─── -->
 <script defer src="js/core/text.js"></script>

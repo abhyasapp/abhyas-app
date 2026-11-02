@@ -12,8 +12,6 @@
 <meta name="apple-mobile-web-app-title" content="Abhyas Admin">
 <meta name="format-detection" content="telephone=no">
 <meta name="robots" content="noindex,nofollow">
-<script src="js/core/config.js"></script>
-<script src="js/core/actions.js"></script>
 <title>Abhyas Admin — teaching console</title>
 <link rel="preload" href="tools/vendor/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="tools/vendor/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -210,7 +208,7 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;accent-color:var(-
   padding:var(--sp-5);margin-bottom:var(--sp-4)}
 .panel.flush{padding:0;overflow:hidden}
 .panel-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-4)}
-.panel-hd h3{font-size:var(--fs-t3);font-weight:600;display:flex;align-items:center;gap:var(--sp-2)}
+.panel-hd h2,.panel-hd h3{font-size:var(--fs-t3);font-weight:600;display:flex;align-items:center;gap:var(--sp-2)}
 .panel-hd .sub{font-size:var(--fs-foot);color:var(--ink-3);margin-top:3px;line-height:1.45}
 .panel-hd .acts{display:flex;align-items:center;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
 .panel > p.lead{font-size:var(--fs-callout);color:var(--ink-2);margin-bottom:var(--sp-4);line-height:1.55;max-width:68ch}
@@ -234,7 +232,7 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;accent-color:var(-
   padding:var(--sp-2) var(--sp-2) var(--sp-4);font-weight:650;font-size:var(--fs-t3);color:var(--ink)}
 #rail-brand img{width:26px;height:26px;border-radius:7px;flex-shrink:0}
 #rail-brand .sub{display:block;font-size:var(--fs-cap);color:var(--ink-3);font-weight:500;margin-top:1px}
-.rail-group{font-size:var(--fs-cap);font-weight:600;color:var(--ink-4);padding:var(--sp-4) var(--sp-2) var(--sp-1)}
+.rail-group{font-size:var(--fs-cap);font-weight:600;color:var(--ink-3);padding:var(--sp-4) var(--sp-2) var(--sp-1)}
 .rail-item{display:flex;align-items:center;gap:var(--sp-2);width:100%;text-align:left;
   padding:var(--sp-2);border-radius:var(--r-input);margin-bottom:1px;position:relative;
   font-size:var(--fs-callout);font-weight:550;color:var(--ink-2);
@@ -246,7 +244,7 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;accent-color:var(-
   min-width:18px;height:18px;border-radius:var(--r-full);
   display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
 .rail-foot{margin-top:auto;padding-top:var(--sp-3);border-top:1px solid var(--sep)}
-.rail-version{text-align:center;font-size:var(--fs-cap);color:var(--ink-4);padding-top:var(--sp-2)}
+.rail-version{text-align:center;font-size:var(--fs-cap);color:var(--ink-3);padding-top:var(--sp-2)}
 @media (max-width:1100px){
   #rail{width:var(--rail-compact);align-items:center}
   #rail-brand span,.rail-group,.rail-item span,.rail-foot span,.rail-version{display:none}
@@ -539,7 +537,7 @@ td .empty{padding:var(--sp-10) var(--sp-4)}
   padding:var(--sp-8) var(--sp-6);box-shadow:var(--sh-2);animation:gate-in var(--dur-slow) var(--ease-out)}
 @keyframes gate-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .gate-card img.mark{width:52px;height:52px;margin:0 auto var(--sp-4);border-radius:13px}
-.gate-card h1{font-size:var(--fs-t1);font-weight:700;letter-spacing:-.017em;text-align:center}
+.gate-card h1,.gate-card h2{font-size:var(--fs-t1);font-weight:700;letter-spacing:-.017em;text-align:center}
 .gate-card .gsub{font-size:var(--fs-callout);color:var(--ink-2);text-align:center;margin:4px 0 var(--sp-6)}
 .gate-err{display:none;align-items:flex-start;gap:var(--sp-2);
   background:var(--danger-soft);color:var(--danger);
@@ -845,13 +843,14 @@ th,td{border-bottom-width:var(--hairline-w)}
 <body>
 
 <a href="#content" class="skip-link">Skip to content</a>
+<h1 class="sr-only">Abhyas Admin</h1>
 <div id="busy" role="progressbar" aria-label="Loading" aria-hidden="true"></div>
 
 <!-- ═══════════════════════════ SIGN IN ═══════════════════════════ -->
 <div id="gate">
   <div class="gate-card">
     <img class="mark" src="icon-192.png" alt="">
-    <h1>Abhyas Admin</h1>
+    <h2>Abhyas Admin</h2>
     <p class="gsub">Sign in to manage students, payments and grading.</p>
 
     <div class="gate-err" id="gate-err" role="alert" aria-live="assertive"><i class="ph ph-warning-circle"></i><span id="gate-err-text"></span></div>
@@ -920,7 +919,7 @@ th,td{border-bottom-width:var(--hairline-w)}
       <button class="icon-btn" id="rail-toggle" data-on-click="UI.railOpen()" aria-label="Open navigation"><i class="ph ph-list"></i></button>
       <div id="crumb">Today</div>
 
-      <button id="search-pill" data-on-click="PALETTE.open()" aria-label="Search (Control K)">
+      <button id="search-pill" data-on-click="PALETTE.open()" aria-label="Search or run a command Ctrl K">
         <i class="ph ph-magnifying-glass"></i>
         <span class="grow">Search or run a command</span>
         <kbd id="kbd-hint">Ctrl K</kbd>
@@ -932,8 +931,9 @@ th,td{border-bottom-width:var(--hairline-w)}
         <button class="icon-btn" data-on-click="ADMIN.refresh()" title="Refresh data (Ctrl R)" aria-label="Refresh data"><i class="ph ph-arrow-clockwise"></i></button>
         <button class="icon-btn" data-on-click="toggleTheme()" title="Switch theme" aria-label="Switch theme"><i class="ph ph-circle-half"></i></button>
         <div class="menu-wrap">
-          <button class="icon-btn" id="account-btn" data-on-click="UI.toggleMenu(event)" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">
+          <button class="icon-btn" id="account-btn" data-on-click="UI.toggleMenu(event)" aria-haspopup="menu" aria-expanded="false">
             <span class="avatar" id="account-avatar">AD</span>
+            <span class="sr-only">Account menu</span>
           </button>
           <div class="menu" id="account-menu" role="menu">
             <div class="menu-head">
@@ -977,7 +977,7 @@ th,td{border-bottom-width:var(--hairline-w)}
           </div>
         </div>
 
-        <div class="queue" id="queue" role="list"></div>
+        <div class="queue" id="queue"></div>
 
         <div class="section-head">
           <h2>Trials ending soon</h2>
@@ -1251,7 +1251,7 @@ th,td{border-bottom-width:var(--hairline-w)}
           <div class="panel">
             <div class="panel-hd">
               <div>
-                <h3>Paste questions</h3>
+                <h2>Paste questions</h2>
                 <div class="sub">Paste raw text from a PDF, Word file or WhatsApp. Each line that starts with a number, <span class="mono">Qn.</span> or a bullet becomes one question.</div>
               </div>
             </div>
@@ -1286,7 +1286,7 @@ th,td{border-bottom-width:var(--hairline-w)}
           <div class="panel">
             <div class="panel-hd">
               <div>
-                <h3>Upload a new chapter file</h3>
+                <h2>Upload a new chapter file</h2>
                 <div class="sub">Shape: <span class="mono" style="font-size:var(--fs-cap)">{ "group":"…", "sections":[ {"section":"…","questions":[{"q":"…","marks":5}] } ] }</span>. Paste the returned file ID into <span class="mono">subjective-data.js</span>.</div>
               </div>
             </div>
@@ -1333,7 +1333,7 @@ th,td{border-bottom-width:var(--hairline-w)}
         <div class="page-head"><div><h2>Data &amp; upkeep</h2><p>Import student progress, prune backups, trim logs and lock down old screenshots.</p></div></div>
 
         <div class="panel">
-          <div class="panel-hd"><div><h3>Import student progress</h3><div class="sub">Preview first — it reports exactly what would change without touching anything.</div></div></div>
+          <div class="panel-hd"><div><h2>Import student progress</h2><div class="sub">Preview first — it reports exactly what would change without touching anything.</div></div></div>
           <label class="file-drop" for="imp-file">
             <input type="file" id="imp-file" accept="application/json,.json" data-on-change="IMPORT.onFilePicked()">
             <i class="ph ph-file-arrow-up fd-icon"></i>
@@ -1361,7 +1361,7 @@ th,td{border-bottom-width:var(--hairline-w)}
 
         <div class="panel">
           <div class="panel-hd">
-            <div><h3>Upkeep</h3><div class="sub">These delete data. Each one asks before it runs.</div></div>
+            <div><h2>Upkeep</h2><div class="sub">These delete data. Each one asks before it runs.</div></div>
           </div>
           <div class="maint">
             <div class="info"><div class="t">Prune old progress backups</div><div class="d">Deletes backup rows older than the cutoff. Newer ones stay.</div></div>
@@ -1389,7 +1389,7 @@ th,td{border-bottom-width:var(--hairline-w)}
         <div class="page-head"><div><h2>Settings</h2><p>What students see on the payment screen, and how long the free trial runs.</p></div></div>
 
         <div class="panel">
-          <div class="panel-hd"><div><h3>Payment</h3></div></div>
+          <div class="panel-hd"><div><h2>Payment</h2></div></div>
           <div class="field-row">
             <div class="field"><label for="set-name">App name</label><input class="input" type="text" id="set-name" placeholder="Abhyas"></div>
             <div class="field"><label for="set-amount">Amount (Rs)</label><input class="input" type="number" id="set-amount" inputmode="numeric" placeholder="100" min="1"></div>
@@ -1434,12 +1434,12 @@ th,td{border-bottom-width:var(--hairline-w)}
         </div>
 
         <div class="panel">
-          <div class="panel-hd"><div><h3>Your account</h3><div class="sub" id="settings-account-line">—</div></div></div>
+          <div class="panel-hd"><div><h2>Your account</h2><div class="sub" id="settings-account-line">—</div></div></div>
           <button class="btn btn-secondary" data-on-click="ADMIN.changePassword()"><i class="ph ph-key"></i> Change password</button>
         </div>
 
         <div class="panel" id="lks-panel">
-          <div class="panel-hd"><div><h3>Loksewa mark scheme</h3></div></div>
+          <div class="panel-hd"><div><h2>Loksewa mark scheme</h2></div></div>
           <p class="t-foot mb3">How the <b>daily paper</b> is built and how <b>marks by group</b> are shown on the results of the weekly test, the daily paper and the hourly 50. Enter the groups and their marks from the PSC syllabus. Each group draws its questions from the chapters you tick, taking turns between chapters. If nothing is saved, the daily paper is 25 General Knowledge + 50 Level 7 Civil Engineering.</p>
           <div id="lks-rows"></div>
           <div class="flex between center wrap g2 mt2">
@@ -1520,6 +1520,8 @@ th,td{border-bottom-width:var(--hairline-w)}
      ═══════════════════════════════════════════════════════════════════════ -->
 
 <!-- core utilities (admin-nav loads immediately after text so esc is defined) -->
+<script src="js/core/config.js"></script>
+<script src="js/core/actions.js"></script>
 <script src="js/core/text.js"></script>
 <script src="js/core/admin-nav.js"></script>
 <script src="js/core/dom.js"></script>

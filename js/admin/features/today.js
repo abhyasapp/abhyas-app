@@ -44,7 +44,7 @@ const TODAY = {
     const open = items.filter(i => i.n > 0).length;
 
     el.innerHTML = items.map(i =>
-      '<button class="queue-row ' + (i.n ? i.tone : 'clear') + '" role="listitem" data-on-click="' + i.go + '">' +
+      '<button class="queue-row ' + (i.n ? i.tone : 'clear') + '" data-on-click="' + i.go + '">' +
         '<span class="q-icon"><i class="ph ' + i.icon + '"></i></span>' +
         '<span class="q-body">' +
           '<span class="q-title">' + esc(i.t) + '</span>' +

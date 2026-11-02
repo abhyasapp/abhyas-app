@@ -19,6 +19,11 @@
   var GOOGLE_CLIENT_ID =
     (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GOOGLE_CLIENT_ID) || '';
   var _googleReady = false;
+  /* The OAuth client is registered for the live origin and local development.
+     Any other host (including the temporary Sites preview URL) gets no button,
+     instead of a button that fails with a 403 when clicked. */
+  var GOOGLE_ALLOWED_HOSTS = ['app.mku.name.np', 'localhost', '127.0.0.1'];
+  var _googleScriptState = 0;                     // 0 idle, 1 loading, 2 loaded, -1 failed
 
   function _get(id) { return document.getElementById(id); }
   function _show(id) { var el = _get(id); if (el) el.style.display = ''; }
@@ -274,11 +279,12 @@
     var wrap  = _get('g-signin-wrap');
     var btnEl = _get('g-signin-btn');
     if (!wrap || !btnEl || !GOOGLE_CLIENT_ID) return;
+    if (GOOGLE_ALLOWED_HOSTS.indexOf(window.location.hostname) === -1) return;
     if (_googleReady) return;
 
     if (typeof google === 'undefined' ||
         !google.accounts || !google.accounts.id) {
-      setTimeout(_initGoogleSignIn, 250);         // GSI script still loading
+      _loadGoogleScript();
       return;
     }
 
@@ -290,21 +296,49 @@
       ux_mode: 'popup'
     });
 
+    _renderGoogleButton();
+
+    _googleReady = true;
+    _applyGoogleVisibility();
+  }
+
+  /* Load GSI only on the hosts the OAuth client authorizes. The hosted Sites
+     build must not fetch Google's script on an origin that cannot use it. */
+  function _loadGoogleScript() {
+    if (_googleScriptState) return;
+    _googleScriptState = 1;
+    var s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = function () {
+      _googleScriptState = 2;
+      _initGoogleSignIn();
+    };
+    s.onerror = function () { _googleScriptState = -1; };
+    document.head.appendChild(s);
+  }
+
+  /* Keep Google's iframe in the same language as the page. GSI otherwise
+     follows the browser/geo locale, which produced Nepali on an English
+     page for visitors in Nepal. Re-rendering is safe: the old iframe is
+     replaced rather than stacked. */
+  function _renderGoogleButton() {
+    var btnEl = _get('g-signin-btn');
+    if (!btnEl || typeof google === 'undefined' || !google.accounts || !google.accounts.id) return;
     /* GSI does not shrink its iframe: asking for a fixed 380 px made the
        button 20 px wider than the auth card on a 360 px phone, which put a
        horizontal scrollbar on the sign-in page. Size it to the slot instead. */
     var hostW = btnEl.parentElement ? btnEl.parentElement.getBoundingClientRect().width : 0;
     var btnW = Math.max(200, Math.min(380, Math.floor(hostW || (window.innerWidth - 64))));
+    btnEl.innerHTML = '';
     google.accounts.id.renderButton(btnEl, {
       theme: 'outline',
       size: 'large',
       text: 'continue_with',
       shape: 'rectangular',
-      width: btnW
+      width: btnW,
+      locale: (typeof I18N !== 'undefined' && I18N.lang === 'ne') ? 'ne' : 'en'
     });
-
-    _googleReady = true;
-    _applyGoogleVisibility();
   }
 
   function _applyGoogleVisibility() {
@@ -777,6 +811,9 @@
 
     _bindForms();
     _initGoogleSignIn();
+    document.addEventListener('abhyas:lang', function () {
+      if (_googleReady) _renderGoogleButton();
+    });
 
     await _loadPublicInfo();
 

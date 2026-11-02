@@ -47,7 +47,7 @@ const SUBJ_QOTD = {
       : '';
 
     banner.innerHTML = truncNote + '<div class="qotd-head">' +
-      '<h3 class="t-t3">' + (sample ? 'The question students answered' : 'Nothing submitted on this date') + '</h3>' +
+      '<h2 class="t-t3">' + (sample ? 'The question students answered' : 'Nothing submitted on this date') + '</h2>' +
       (sample
         ? '<div class="qotd-text">' + esc(sample.questionText || 'The question text was not stored with these submissions.') + '</div>' +
           '<div class="sub-meta mt3"><span>Worth ' + (sample.questionMarks || '?') + ' marks</span><span>' + esc(sample.chapterId || 'chapter unknown') + '</span></div>'

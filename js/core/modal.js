@@ -89,8 +89,10 @@ const DIALOG = (() => {
 })();
 window.DIALOG = DIALOG;
 
-function openMod(title, html) {
+function openMod(title, html, opts) {
   const bg = document.getElementById('mbg');
+  const box = bg.querySelector('.mbox');
+  if (box) box.classList.toggle('wide', !!(opts && opts.wide));
   document.getElementById('mtitle').textContent = title;
   document.getElementById('mbody').innerHTML = html;
   bg.classList.add('show');
