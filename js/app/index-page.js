@@ -19,10 +19,10 @@
   var GOOGLE_CLIENT_ID =
     (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GOOGLE_CLIENT_ID) || '';
   var _googleReady = false;
-  /* The OAuth client is registered for the live origin and local development.
-     Any other host (including the temporary Sites preview URL) gets no button,
+  /* Only hosts the OAuth client is expected to authorize get a button. Any
+     other host (including the temporary Sites preview URL) gets no button,
      instead of a button that fails with a 403 when clicked. */
-  var GOOGLE_ALLOWED_HOSTS = ['app.mku.name.np', 'localhost', '127.0.0.1'];
+  var GOOGLE_ALLOWED_HOSTS = ['app.mku.name.np', 'abhyasapp.github.io', 'localhost', '127.0.0.1'];
   var _googleScriptState = 0;                     // 0 idle, 1 loading, 2 loaded, -1 failed
 
   function _get(id) { return document.getElementById(id); }
