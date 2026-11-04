@@ -9,6 +9,19 @@ reasons a page is ignored and make the site easy to crawl, understand and quote.
 That is what was fixed here. Section 6 is the work that actually moves rankings,
 and most of it is content and links.
 
+## 4 November 2026 follow-up
+
+- The landing title, description, Open Graph tags, manifest and visible copy now
+  use the exact phrase **“Abhyas Civil Loksewa”**. The FAQ and its `FAQPage`
+  schema carry the same question, so the crawler sees the phrase in both the
+  page and structured data.
+- A Google `site:app.mku.name.np` search on 4 November 2026 returned **no
+  results**. The technical audit is clean, but the domain is not indexed yet;
+  metadata alone cannot force a crawl or a ranking.
+- The next action is Search Console verification, sitemap submission and URL
+  Inspection (see §8), followed by real links from the Loksewa communities in
+  §7. Until those exist, expect no ranking for “abhyas civil loksewa.”
+
 ---
 
 ## 1. Audit result

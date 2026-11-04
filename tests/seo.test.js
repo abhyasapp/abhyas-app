@@ -84,4 +84,11 @@ describe('SEO audit', () => {
       expect(q.acceptedAnswer.text.length).toBeGreaterThan(20);
     }
   });
+
+  it('targets the Abhyas Civil Loksewa query in metadata and visible copy', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    expect(html).toMatch(/<title>[^<]*Civil Loksewa[^<]*<\/title>/);
+    expect(html).toMatch(/<meta name="description" content="[^"]*Civil Loksewa/);
+    expect(html).toMatch(/<summary>What is Abhyas Civil Loksewa\?<\/summary>/);
+  });
 });
