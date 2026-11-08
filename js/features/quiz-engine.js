@@ -405,6 +405,7 @@ const QUIZ = {
       examTotal: mode==='exam' ? examSeconds : 0, warned: [],
       active:true, ch: chapterName||'Study', scope, skipped:new Set(), shown:new Set(),
       startedAt: Date.now(),
+      run: 0, bestRun: 0, bestRunBefore: (S.prog && Number(S.prog.bestRun)) || 0,
       reviewOnly: reviewMode
     };
     document.getElementById('quiz-wrap').style.display='';
@@ -769,7 +770,33 @@ const QUIZ = {
       const ansIdx = S.quiz.ans[S.quiz.idx];
       const answered = ansIdx !== null;
       const optsEl = document.getElementById('fc-opts');
-      
+
+      /* Momentum is visible but never blocks the next question. It fills only
+         after two correct answers, so it reads as earned rather than noisy. */
+      const runEl = document.getElementById('fc-run');
+      if(runEl){
+        const run = Number(S.quiz.run) || 0;
+        const showRun = run >= 2 && !S.quiz.reviewOnly;
+        runEl.hidden = !showRun;
+        runEl.textContent = showRun ? '🔥 ' + run + ' in a row' : '';
+      }
+      const feedbackEl = document.getElementById('fc-feedback');
+      if(feedbackEl){
+        if(answered && !S.quiz.reviewOnly){
+          const correctNow = isOk(ansIdx, q.correct);
+          const run = Number(S.quiz.run) || 0;
+          feedbackEl.hidden = false;
+          feedbackEl.className = 'fc-feedback ' + (correctNow ? 'ok' : 'bad');
+          feedbackEl.textContent = correctNow
+            ? (run >= 2 ? 'Correct — ' + run + ' in a row. Keep the rhythm.' : 'Correct. Nicely done.')
+            : 'Not quite. The correct option is highlighted — read why below.';
+        } else {
+          feedbackEl.hidden = true;
+          feedbackEl.textContent = '';
+          feedbackEl.className = 'fc-feedback';
+        }
+      }
+
       requestAnimationFrame(() => {
         optsEl.innerHTML = q.options.map((opt,i)=>{
           let cls='eo';
@@ -873,8 +900,15 @@ const QUIZ = {
     S.quiz.ans[S.quiz.idx]=i;
     const q=S.quiz.qs[S.quiz.idx];
     const correct=isOk(i,q.correct);
-    if(correct){ PROG.track(true); REV.trackAnswer(q, true); }
-    else { PROG.track(false); REV.trackAnswer(q, false); }
+    if(correct){
+      S.quiz.run = (Number(S.quiz.run) || 0) + 1;
+      S.quiz.bestRun = Math.max(Number(S.quiz.bestRun) || 0, S.quiz.run);
+      PROG.noteRun(S.quiz.run);
+      PROG.track(true); REV.trackAnswer(q, true);
+    } else {
+      S.quiz.run = 0;
+      PROG.track(false); REV.trackAnswer(q, false);
+    }
     QUIZ._renderFlashcard();
   },
   fcNav(dir){
@@ -1075,6 +1109,30 @@ const QUIZ = {
     const total = sc.total, correct = sc.correct, wrong = sc.wrong, skipped = sc.skipped;
     const pct = sc.pct;
 
+    /* Compare with what came before this session, not with itself. The recap
+       below turns a finished set into a small moment of progress. */
+    const priorSessions = (Array.isArray(S.prog && S.prog.sessions) ? S.prog.sessions : [])
+      .filter(s => s && Number(s.total) > 0);
+    const previousSession = priorSessions[0] || null;
+    const priorChapterBest = priorSessions
+      .filter(s => s.chapter === S.quiz.ch && s.mode === S.quiz.mode)
+      .reduce((best, s) => best === null ? (Number(s.pct) || 0) : Math.max(best, Number(s.pct) || 0), null);
+    const longestRun = (() => {
+      let best = 0, run = 0;
+      (S.quiz.qs || []).forEach((q, i) => {
+        const a = S.quiz.ans[i];
+        if (a === null || a === undefined) return;
+        if (isOk(a, q.correct)) { run++; if (run > best) best = run; }
+        else run = 0;
+      });
+      return best;
+    })();
+    const priorRunBest = Number(S.quiz.bestRunBefore) || 0;
+    const newRunBest = longestRun > priorRunBest;
+    const newChapterBest = priorChapterBest !== null && pct > priorChapterBest;
+    const practiceRetake = !!(S.quiz.scope && S.quiz.scope.weeklyRetake);
+    if (longestRun > 0) PROG.noteRun(longestRun);
+
     document.getElementById('res-ring').style.setProperty('--p', pct+'%');
     document.getElementById('res-pct').textContent = pct+'%';
     document.getElementById('res-chap').textContent = S.quiz.ch;
@@ -1103,6 +1161,48 @@ const QUIZ = {
       negEl.style.textAlign = 'center';
     } else {
       negEl.textContent = '';
+    }
+
+    const elapsedSec = S.quiz.startedAt
+      ? Math.min(3*60*60, Math.round((Date.now() - S.quiz.startedAt) / 1000))
+      : 0;
+    const recapBits = [];
+    if(elapsedSec > 0) recapBits.push({ icon: 'ph-clock', text: fmt(elapsedSec) });
+    if(longestRun >= 2) recapBits.push({
+      icon: 'ph-fire',
+      text: newRunBest ? 'New best run: ' + longestRun : 'Best run: ' + longestRun,
+      cls: newRunBest ? 'best' : ''
+    });
+    if(previousSession){
+      const delta = pct - (Number(previousSession.pct) || 0);
+      if(Math.abs(delta) >= 1) recapBits.push({
+        icon: delta > 0 ? 'ph-trend-up' : 'ph-trend-down',
+        text: (delta > 0 ? '+' : '−') + Math.abs(delta) + '% vs last session',
+        cls: delta > 0 ? 'up' : 'down'
+      });
+    }
+    if(newChapterBest) recapBits.push({ icon: 'ph-medal', text: 'New best for this chapter', cls: 'best' });
+    else if(priorChapterBest !== null) recapBits.push({ icon: 'ph-medal', text: 'Chapter best: ' + priorChapterBest + '%' });
+
+    let recapEl = document.getElementById('res-recap');
+    if(!recapEl){
+      recapEl = document.createElement('div');
+      recapEl.id = 'res-recap';
+      recapEl.className = 'res-recap';
+    }
+    if(recapBits.length){
+      recapEl.innerHTML = recapBits.map(b =>
+        '<span class="res-recap-i' + (b.cls ? ' ' + b.cls : '') + '"><i class="ph ' + b.icon + '"></i> ' + esc(b.text) + '</span>'
+      ).join('');
+      recapEl.hidden = false;
+      const anchor = (negEl && negEl.parentNode) ? negEl : document.getElementById('res-grade');
+      if(anchor && anchor.parentNode) anchor.after(recapEl);
+    } else {
+      recapEl.hidden = true;
+      recapEl.remove();
+    }
+    if(newChapterBest && !practiceRetake){
+      toast('🏅 New best on ' + S.quiz.ch + ' — ' + pct + '%', 3200);
     }
 
     document.getElementById('res-stats').innerHTML = `

@@ -1025,6 +1025,13 @@ input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(-
 .qcard{background:var(--surface);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-panel);padding:var(--sp-4);margin-bottom:var(--sp-3);box-shadow:var(--sh-1)}
 .qm{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin-bottom:var(--sp-3);flex-wrap:wrap}
 .qn{font-size:var(--fs-foot);font-weight:700;color:var(--ink-3)}
+.fc-run-chip{margin-right:auto;margin-left:var(--sp-2);display:inline-flex;align-items:center;gap:3px;padding:2px var(--sp-2);border-radius:var(--r-full);background:var(--warning-soft);border:var(--hairline-w) solid var(--warning-line);color:var(--warning);font-size:var(--fs-cap);font-weight:700;white-space:nowrap;animation:fc-run-in var(--dur-base) var(--ease)}
+.fc-run-chip[hidden]{display:none}
+@keyframes fc-run-in{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.fc-feedback{margin-top:var(--sp-3);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-control);border-left:3px solid transparent;font-size:var(--fs-foot);font-weight:600;line-height:1.5}
+.fc-feedback[hidden]{display:none}
+.fc-feedback.ok{background:var(--success-soft);border-left-color:var(--success);color:var(--success)}
+.fc-feedback.bad{background:var(--warning-soft);border-left-color:var(--warning);color:var(--warning)}
 .qt{font-size:var(--fs-t3);font-weight:500;line-height:1.65;color:var(--ink)}
 .fc-acts{display:flex;gap:var(--sp-1);align-items:center;flex-wrap:wrap}
 
@@ -1060,6 +1067,11 @@ input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(-
 .ring-v{position:relative;z-index:1;font-size:var(--fs-num-lg);font-weight:700;color:var(--ink)}
 .rs{font-size:var(--fs-t2);font-weight:650;color:var(--ink)}
 .rg{font-size:var(--fs-callout);color:var(--ink-2);margin-top:var(--sp-1)}
+.res-recap{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--sp-2) var(--sp-3);margin-top:var(--sp-2);font-size:var(--fs-foot);color:var(--ink-2)}
+.res-recap-i{display:inline-flex;align-items:center;gap:3px;line-height:1.4;white-space:nowrap}
+.res-recap-i.up{color:var(--success);font-weight:650}
+.res-recap-i.down{color:var(--warning);font-weight:650}
+.res-recap-i.best{color:var(--accent);font-weight:650}
 
 .qotd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-4)}
 .qotd-meta{font-size:var(--fs-cap);color:var(--ink-3);font-weight:650}

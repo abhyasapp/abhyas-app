@@ -8,7 +8,7 @@ const S = {
   bk: _load(LS.BK, []),
   fl: _load(LS.FL, []),
   wr: _load(LS.WR, []),
-  prog: _load(LS.PROG, { total: 0, correct: 0, sessions: [] }),
+  prog: _load(LS.PROG, { total: 0, correct: 0, sessions: [], bestRun: 0 }),
   tt: _load(LS.TT, { sessions: [], reminders: { enabled: false, leadMinutes: 5 } }),
   stk: _load(LS.STK, { days: [], last: '' }),
   fcount: _load(LS.FCOUNT, {}),
@@ -40,7 +40,8 @@ const S = {
   if (!isArr(S.tt.sessions)) S.tt.sessions = [];
 
   // 3. Ensure objects are objects
-  if (!isObj(S.prog)) S.prog = { total: 0, correct: 0, sessions: [] };
+  if (!isObj(S.prog)) S.prog = { total: 0, correct: 0, sessions: [], bestRun: 0 };
+  if (!Number.isFinite(Number(S.prog.bestRun))) S.prog.bestRun = 0;
   if (!isObj(S.stk)) S.stk = { days: [], last: '' };
   if (!isObj(S.fcount)) S.fcount = {};
   if (!isObj(S.chapStats)) S.chapStats = {};

@@ -12,6 +12,16 @@ const PROG = {
     }
   },
 
+  /* Longest run of correct answers is a personal best across every practice
+     session. Kept small and persisted with the rest of progress so it syncs. */
+  noteRun(n){
+    const run = Math.max(0, Math.floor(Number(n) || 0));
+    if(!S.prog || typeof S.prog !== 'object') S.prog = { total: 0, correct: 0, sessions: [] };
+    const prev = Math.max(0, Math.floor(Number(S.prog.bestRun) || 0));
+    if(run > prev){ S.prog.bestRun = run; PROG._saveSoon(); return { bestRun: run, isBest: true, previous: prev }; }
+    return { bestRun: prev, isBest: false, previous: prev };
+  },
+
   _st: null,
   _saveSoon(){
     if(PROG._st) clearTimeout(PROG._st);

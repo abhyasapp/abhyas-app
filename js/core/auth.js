@@ -118,7 +118,7 @@ const AUTH = {
       [LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.TT, LS.COV].forEach(k => {
         try { localStorage.removeItem(k); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
       });
-      S.prog = { total: 0, correct: 0, sessions: [] };
+      S.prog = { total: 0, correct: 0, sessions: [], bestRun: 0 };
       S.bk = []; S.fl = []; S.wr = [];
       S.stk = { days: [], last: '' };
       S.cov = {};

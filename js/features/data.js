@@ -132,7 +132,7 @@ const DATA = {
     }catch(e){ toast('Could not reach the server. Nothing was changed.'); return; }
     if(!res || !res.success){ toast((res && res.error) || 'Reset failed'); return; }
     clearTimeout(PSYNC._timer); PSYNC._timer = null;
-    S.prog = {total:0,correct:0,sessions:[]}; S.bk = []; S.fl = []; S.wr = [];
+    S.prog = {total:0,correct:0,sessions:[],bestRun:0}; S.bk = []; S.fl = []; S.wr = [];
     S.stk = {days:[],last:''}; S.chapStats = {}; S.fcount = {}; S.cov = {};
     [LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.FCOUNT, LS.EXAM_SNAP, LS.COV].forEach(k=>localStorage.removeItem(k));
     toast('Progress reset everywhere. Reloading…');
