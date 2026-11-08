@@ -103,6 +103,55 @@ const MARKS_MAP = {
 
   best(){ return this.rows()[0] || null; },
 
+  _groups(rows){
+    const seen = new Set();
+    return rows.map(r => r.group).filter(g => {
+      if(!g || seen.has(g)) return false;
+      seen.add(g);
+      return true;
+    });
+  },
+
+  _rowHtml(r){
+    const acc = r.attempted ? Math.round(r.accuracy * 100) + '% accuracy' : 'not started';
+    return '<div class="row" style="align-items:flex-start;gap:var(--sp-2);padding:var(--sp-2) 0;border-top:1px solid var(--sep-soft)">' +
+      '<div class="row-main" style="min-width:0">' +
+        '<div class="t-callout" style="color:var(--ink);font-weight:650">' + esc(r.name) + '</div>' +
+        '<div class="t-cap">' + esc(r.group) + ' \u00b7 ' + acc + ' \u00b7 ' + r.questions + ' question' + (r.questions === 1 ? '' : 's') + '</div>' +
+      '</div>' +
+      '<div style="text-align:right;white-space:nowrap">' +
+        '<div class="ctag ta">' + r.marks + ' marks</div>' +
+        '<div class="t-cap">' + (r.attempted ? (r.wrong ? r.wrong + ' missed' : 'no missed') : 'not started') + '</div>' +
+      '</div>' +
+      '<button class="btn btn-sm btn-quiet" type="button" aria-label="Study ' + esc(r.name) + '" data-on-click="MARKS_MAP.start(\'' + escAttrJs(r.lv) + '\',\'' + escAttrJs(r.ch) + '\')">Study</button>' +
+    '</div>';
+  },
+
+  /* The Home card stays short; this sheet is the complete ranking. Filters use
+     the scheme group name, so they follow the syllabus rather than a hard-coded
+     level list. */
+  openAll(group){
+    if(typeof openMod !== 'function') return;
+    const all = this.rows().filter(r => r.marks > 0);
+    if(!all.length){ if(typeof toast === 'function') toast('No chapter marks available yet.'); return; }
+    const groups = this._groups(all);
+    const selected = (group && groups.indexOf(group) !== -1) ? group : 'all';
+    const rows = selected === 'all' ? all : all.filter(r => r.group === selected);
+    const chip = (id, label, n) =>
+      '<button class="btn btn-sm ' + (selected === id ? 'btn-solid' : 'btn-quiet') + '" type="button" data-on-click="MARKS_MAP.openAll(\'' + escAttrJs(id) + '\')">' +
+        esc(label) + ' (' + n + ')</button>';
+
+    const html =
+      '<div class="bg" style="flex-wrap:wrap;gap:var(--sp-1);margin-bottom:var(--sp-3)">' +
+        chip('all', 'All chapters', all.length) +
+        groups.map(g => chip(g, g, all.filter(r => r.group === g).length)).join('') +
+      '</div>' +
+      '<p class="t-foot" style="margin:0 0 var(--sp-2);line-height:1.5">Exam weight \u00d7 the gap in your accuracy. The chapters at the top can add the most marks in your next study block.</p>' +
+      '<div class="rows">' + rows.map(r => this._rowHtml(r)).join('') + '</div>' +
+      '<p class="t-cap" style="margin-top:var(--sp-3);line-height:1.5">Marks are estimated by sharing each scheme group\u2019s marks across its chapters by question count. Accuracy uses chapter practice and quiz history.</p>';
+    openMod('Marks map', html, { wide:true });
+  },
+
   render(){
     const box = document.getElementById('marks-map-slot');
     if(!box) return;
@@ -126,12 +175,14 @@ const MARKS_MAP = {
         '<p class="t-foot" style="margin-bottom:var(--sp-2);line-height:1.5">Exam weight \u00d7 the gap in your accuracy. Start with the chapter that can gain you the most marks.</p>' +
         rowsHtml +
         '<button class="btn btn-solid btn-blk" style="margin-top:var(--sp-3)" data-on-click="MARKS_MAP.start()"><i class="ph ph-play-circle"></i> Start with ' + esc(top[0].name) + '</button>' +
+        '<button class="btn btn-quiet btn-blk" style="margin-top:var(--sp-2)" data-on-click="MARKS_MAP.openAll()"><i class="ph ph-squares-four"></i> View all ' + rows.length + ' chapters</button>' +
       '</section>';
   },
 
   start(lv, ch){
     const row = (lv && ch) ? { lv: lv, ch: ch } : this.best();
     if(!row || typeof CH_GRID === 'undefined') return;
+    try { if(typeof closeMod === 'function') closeMod(); } catch (e) { window.warnCaught && window.warnCaught('js/features/marks-map.js', e); }
     CH_GRID.startChapter(row.lv, row.ch, 'flashcard');
   }
 };

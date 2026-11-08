@@ -69,4 +69,19 @@ describe('wrong-bank mastery and chapter downloads', () => {
     `);
     expect(await p.ev('window.__dl')).toEqual({ n: 1, uid: 'f_survey_0', title: 'Surveying — Missed questions' });
   });
+
+  it('downloads every missed question as one sheet', async () => {
+    await p.ev(`
+      S.wr = [
+        { uid: 'f_soil_0', q: 'A' },
+        { uid: 'f_survey_0', q: 'B' }
+      ];
+      window.__origMissedAll = PRINT_Q.missed;
+      window.__dlAll = null;
+      PRINT_Q.missed = function(items, title){ window.__dlAll = { n: items.length, title: title }; };
+      WRONGBY.downloadAll();
+      PRINT_Q.missed = window.__origMissedAll;
+    `);
+    expect(await p.ev('window.__dlAll')).toEqual({ n: 2, title: 'All missed questions' });
+  });
 });

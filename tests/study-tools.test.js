@@ -55,12 +55,27 @@ describe('study planning and adaptive tools', () => {
     expect(rows[0].name).toBe('Surveying');
   });
 
-  it('renders the top three with a study action', async () => {
+  it('renders the top three with a study action and a link to the full map', async () => {
     await p.ev('MARKS_MAP.render()');
     const slot = p.w.document.getElementById('marks-map-slot');
     expect(slot.textContent).toContain('Surveying');
     expect(slot.textContent).toContain('Highest return next');
     expect(slot.querySelectorAll('[data-on-click^="MARKS_MAP.start"]').length).toBeGreaterThan(1);
+    expect(slot.querySelector('[data-on-click="MARKS_MAP.openAll()"]')).toBeTruthy();
+  });
+
+  it('opens the full map and filters it by scheme group', async () => {
+    await p.ev('MARKS_MAP.openAll()');
+    const body = p.w.document.getElementById('mbody');
+    expect(await p.ev(`document.getElementById('mbg').classList.contains('show')`)).toBe(true);
+    expect(body.textContent).toContain('All chapters');
+    expect(body.textContent).toContain('Surveying');
+    expect(body.textContent).toContain('General Knowledge');
+
+    await p.ev(`MARKS_MAP.openAll('General Knowledge')`);
+    expect(body.textContent).toContain('General Knowledge');
+    expect(body.textContent).not.toContain('Surveying');
+    await p.ev('closeMod()');
   });
 
   it('learns per-question difficulty and puts the target band first', async () => {

@@ -105,6 +105,13 @@ window.WRONGBY = {
     PRINT_Q.missed(items, c.name + ' \u2014 Missed questions');
   },
 
+  downloadAll(){
+    const items = this._items();
+    if (!items.length) { toast('No missed questions to download yet.'); return; }
+    if (typeof PRINT_Q === 'undefined' || typeof PRINT_Q.missed !== 'function') { toast('Download is not available right now.'); return; }
+    PRINT_Q.missed(items, 'All missed questions');
+  },
+
   missCount(uid){
     if (!uid) return 0;
     if (!this._missCache) this._missCache = {};
@@ -300,7 +307,10 @@ window.WRONGBY = {
             '</div>'
           : '') +
         (withdrawn ? '<div class="t-foot mt2" style="color:var(--ink-2)"><i class="ph ph-prohibit"></i> ' + withdrawn + ' withdrawn question' + (withdrawn === 1 ? '' : 's') + ' (removed from the question bank) ' + (withdrawn === 1 ? 'is' : 'are') + ' kept in the full list and left out of practice.</div>' : '') +
-        (dueTotal ? '<button class="btn btn-solid btn-blk mt3" data-on-click="WRONGBY.dueAll()"><i class="ph ph-repeat"></i> Review all ' + dueTotal + ' due now</button>' : '') +
+        '<div class="bg" style="margin-top:var(--sp-3)">' +
+          (dueTotal ? '<button class="btn btn-solid" data-on-click="WRONGBY.dueAll()"><i class="ph ph-repeat"></i> Review all ' + dueTotal + ' due now</button>' : '') +
+          '<button class="btn btn-quiet" data-on-click="WRONGBY.downloadAll()" title="Download every missed question as one printable sheet" aria-label="Download all missed questions"><i class="ph ph-download-simple"></i> Download all ' + total + '</button>' +
+        '</div>' +
       '</div>';
 
     el.innerHTML = head + this._last.map((c, i) => {
