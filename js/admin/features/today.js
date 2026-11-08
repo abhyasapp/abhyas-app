@@ -20,7 +20,7 @@ const TODAY = {
        kick the load off here — it re-renders when the count arrives. */
     if (expiringEl && !(expiringEl.dataset && expiringEl.dataset.count) &&
         typeof EXPIRING !== 'undefined' && typeof EXPIRING.load === 'function') {
-      try { EXPIRING.load(); } catch (e) {}
+      try { EXPIRING.load(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/today.js', e); }
     }
     const expiring     = Number((expiringEl && expiringEl.dataset && expiringEl.dataset.count) || 0);
 

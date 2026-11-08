@@ -24,7 +24,7 @@ const STORE_GUARD = {
 
   usedBytes() {
     let n = 0;
-    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += (k.length + (localStorage.getItem(k) || '').length) * 2; } } catch (e) {}
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += (k.length + (localStorage.getItem(k) || '').length) * 2; } } catch (e) { window.warnCaught && window.warnCaught('js/core/storage.js', e); }
     return n;
   },
   percent() { return Math.min(100, Math.round(this.usedBytes() / this.LIMIT * 100)); },
@@ -37,10 +37,10 @@ const STORE_GUARD = {
     const pct = this.percent();
     if (pct < this.WARN_AT * 100) return;
     let last = this._mem;
-    try { last = Math.max(last, Number(localStorage.getItem(this.KEY)) || 0); } catch (e) {}
+    try { last = Math.max(last, Number(localStorage.getItem(this.KEY)) || 0); } catch (e) { window.warnCaught && window.warnCaught('js/core/storage.js', e); }
     if (now - last < this.WARN_EVERY_MS) return;
     this._mem = now;
-    try { localStorage.setItem(this.KEY, String(now)); } catch (e) {}
+    try { localStorage.setItem(this.KEY, String(now)); } catch (e) { window.warnCaught && window.warnCaught('js/core/storage.js', e); }
     this.warn(pct, false);
   },
 
@@ -82,7 +82,7 @@ function _save(k, v) {
 }
 
 /* First check shortly after boot, off the critical path. */
-try { setTimeout(() => { try { STORE_GUARD.maybeCheck(true); } catch (e) {} }, 8000); } catch (e) {}
+try { setTimeout(() => { try { STORE_GUARD.maybeCheck(true); } catch (e) { window.warnCaught && window.warnCaught('js/core/storage.js', e); } }, 8000); } catch (e) { window.warnCaught && window.warnCaught('js/core/storage.js', e); }
 
 /* IndexedDB question-set cache. Same public shape as before. */
 const QDB = (() => {
@@ -134,7 +134,7 @@ const QDB = (() => {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/storage.js', e); }
   }
   async function keys() {
     try {
@@ -155,7 +155,7 @@ const QDB = (() => {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/storage.js', e); }
   }
   async function migrateFromLocalStorage() {
     const oldKeys = Object.keys(localStorage).filter(k => k.startsWith(LS.QC));
@@ -164,7 +164,7 @@ const QDB = (() => {
       try {
         const value = JSON.parse(localStorage.getItem(k));
         await set(k.slice(LS.QC.length), value);
-      } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/core/storage.js', e); }
       localStorage.removeItem(k);
     }
   }

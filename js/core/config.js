@@ -79,3 +79,11 @@ function abhyasTimeoutFor(kind) {
   return RETRY_CONFIG.timeouts[kind] || RETRY_CONFIG.timeouts.normal;
 }
 window.abhyasTimeoutFor = abhyasTimeoutFor;
+
+/* Every catch block that has nothing useful to do reports here instead of
+   vanishing. Silent by default (a blocked localStorage read or an offline CDN
+   request is normal); set localStorage.abhyas_debug = '1' to see them. */
+window.warnCaught = function (where, err) {
+  if (!window.ABHYAS_DEBUG) return;
+  console.warn('[caught ' + where + ']', err);
+};

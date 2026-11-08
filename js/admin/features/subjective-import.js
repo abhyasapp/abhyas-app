@@ -104,7 +104,7 @@ const SUBJADMIN = {
       const status = $('sp-status'); if (status) status.textContent = 'Added ' + r.inserted + ' to "' + (r.section || 'the default bucket') + '"';
       /* Refresh the section dropdown so the newly created section is
          immediately available for the next batch. */
-      try { await this._onChapterChange(fileId); } catch (e) {}
+      try { await this._onChapterChange(fileId); } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/subjective-import.js', e); }
     } catch(e){ TOAST.show(e.message, 'error', 6000); }
     BUSY.stop();
   },

@@ -18,10 +18,10 @@ const SUBJ_STORE = {
         /* today.js may not have parsed yet (or may have failed to load).
            A bare call would throw ReferenceError inside this try/catch and
            silently skip the repaint — so guard both. */
-        try { if (typeof BADGES !== 'undefined') BADGES.update(); } catch (e) {}
-        try { if (typeof TODAY !== 'undefined') TODAY.render(); } catch (e) {}
+        try { if (typeof BADGES !== 'undefined') BADGES.update(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/subjective-store.js', e); }
+        try { if (typeof TODAY !== 'undefined') TODAY.render(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/subjective-store.js', e); }
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/subjective-store.js', e); }
     this.loading = false;
     return this.all;
   },

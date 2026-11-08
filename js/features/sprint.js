@@ -42,7 +42,7 @@
     } catch (e) { /* use defaults */ }
     if (!Array.isArray(rest)) rest = [];
     if (!Array.isArray(off)) off = [];
-    if (!P.validIso(start)) { start = _todayIso(); try { localStorage.setItem(KEY_START, start); } catch (e) {} }
+    if (!P.validIso(start)) { start = _todayIso(); try { localStorage.setItem(KEY_START, start); } catch (e) { window.warnCaught && window.warnCaught('js/features/sprint.js', e); } }
     if (!P.validIso(examDate) || examDate <= start) examDate = '';
     let end = P.addDays(start, 59);
     if (examDate && P.addDays(examDate, -1) < end) end = P.addDays(examDate, -1);
@@ -88,14 +88,14 @@
       const n = fcount[r.fid];
       if (n == null) { unknown.push(r); return; }
       let name = r.fid;
-      try { name = ChapterData.chapterName(r.lv, r.ch) || r.fid; } catch (e) {}
+      try { name = ChapterData.chapterName(r.lv, r.ch) || r.fid; } catch (e) { window.warnCaught && window.warnCaught('js/features/sprint.js', e); }
       units.push({ fid: r.fid, lv: r.lv, ch: r.ch, book: r.book, name, n: Number(n) || 0, seen: _seenIn(r.fid, Number(n) || 0) });
     });
     return { units, unknown };
   }
 
   function _dueReviews() {
-    try { if (typeof REV !== 'undefined' && REV.dueWrong) return REV.dueWrong().length; } catch (e) {}
+    try { if (typeof REV !== 'undefined' && REV.dueWrong) return REV.dueWrong().length; } catch (e) { window.warnCaught && window.warnCaught('js/features/sprint.js', e); }
     const now = Date.now();
     return ((_S().wr) || []).filter((q) => q && !q._withdrawn && (q._nextDue == null || Number(q._nextDue) <= now)).length;
   }

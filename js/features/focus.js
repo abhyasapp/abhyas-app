@@ -12,7 +12,7 @@
         const r = el.getBoundingClientRect();
         const vh = window.innerHeight || document.documentElement.clientHeight;
         if (r.top > vh * 0.55) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } catch (err) {}
+      } catch (err) { window.warnCaught && window.warnCaught('js/features/focus.js', err); }
     }, 300);
   });
 })();
@@ -24,11 +24,11 @@
     const now = dayStart(new Date());
     if (now === last) return;
     last = now;
-    try { if (typeof EXAM_DATE !== 'undefined' && EXAM_DATE.render) EXAM_DATE.render(); } catch (e) {}
-    try { if (typeof DAILY10 !== 'undefined' && DAILY10.render) DAILY10.render(); } catch (e) {}
-    try { if (typeof SPRINT !== 'undefined' && SPRINT.render) SPRINT.render(); } catch (e) {}
-    try { if (typeof TODAY_PLAN !== 'undefined' && TODAY_PLAN.render) TODAY_PLAN.render(); } catch (e) {}
-    try { if (typeof SYLLABUS_MOCK !== 'undefined' && SYLLABUS_MOCK.render) SYLLABUS_MOCK.render(); } catch (e) {}
+    try { if (typeof EXAM_DATE !== 'undefined' && EXAM_DATE.render) EXAM_DATE.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/focus.js', e); }
+    try { if (typeof DAILY10 !== 'undefined' && DAILY10.render) DAILY10.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/focus.js', e); }
+    try { if (typeof SPRINT !== 'undefined' && SPRINT.render) SPRINT.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/focus.js', e); }
+    try { if (typeof TODAY_PLAN !== 'undefined' && TODAY_PLAN.render) TODAY_PLAN.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/focus.js', e); }
+    try { if (typeof SYLLABUS_MOCK !== 'undefined' && SYLLABUS_MOCK.render) SYLLABUS_MOCK.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/focus.js', e); }
   }
   setInterval(check, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });

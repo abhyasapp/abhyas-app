@@ -12,7 +12,7 @@ const AUTH = {
 
     if (!u.token) {
       try { localStorage.setItem('abhyas_notice',
-        'Please sign in again — we needed to refresh your session.'); } catch (e) {}
+        'Please sign in again — we needed to refresh your session.'); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
       localStorage.removeItem(LS.USER);
       AUTH._bounce();
       return;
@@ -26,7 +26,7 @@ const AUTH = {
       if (!res.success) {
         if (res.sessionInvalid) {
           try { localStorage.setItem('abhyas_notice',
-            'Your session expired. Please sign in again.'); } catch (e) {}
+            'Your session expired. Please sign in again.'); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
           localStorage.removeItem(LS.USER);
           AUTH._bounce();
           return;
@@ -106,17 +106,17 @@ const AUTH = {
     AUTH._paywallNotifiedAt = Date.now();
     try {
       if (typeof toast === 'function') toast('Your access has ended. Complete payment to continue.', 8000);
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
   },
 
   _resetUserScopedLocalDataIfDifferentUser(username) {
-    try { if (typeof CONTENT_CRYPTO !== 'undefined') CONTENT_CRYPTO.clear(); } catch (e) {}
+    try { if (typeof CONTENT_CRYPTO !== 'undefined') CONTENT_CRYPTO.clear(); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
     const lastUser = _load(LS.LAST_USER, '');
     const norm = v => String(v || '').trim().toLowerCase();
     if (lastUser && norm(lastUser) !== norm(username)) {
-      try { const keepUser = S.user; S.user = { username: lastUser }; PSYNC._snapshot('before-account-switch'); S.user = keepUser; } catch (e) {}
+      try { const keepUser = S.user; S.user = { username: lastUser }; PSYNC._snapshot('before-account-switch'); S.user = keepUser; } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
       [LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.TT, LS.COV].forEach(k => {
-        try { localStorage.removeItem(k); } catch (e) {}
+        try { localStorage.removeItem(k); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
       });
       S.prog = { total: 0, correct: 0, sessions: [] };
       S.bk = []; S.fl = []; S.wr = [];
@@ -178,7 +178,7 @@ const AUTH = {
   },
 
   async logout() {
-    try { if (typeof CONTENT_CRYPTO !== 'undefined') CONTENT_CRYPTO.clear(); } catch (e) {}
+    try { if (typeof CONTENT_CRYPTO !== 'undefined') CONTENT_CRYPTO.clear(); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
     if (!(await ASK.confirm({ title: 'Log out?', body: 'Your progress is saved to your account.', ok: 'Log out' }))) return;
     if (S.user && S.user.token && S.online && !S.forcedOffline && PSYNC._timer) {
       let confirmed = false;
@@ -257,7 +257,7 @@ const AUTH = {
 
     if (!S.user.token) {
       try { localStorage.setItem('abhyas_notice',
-        'Please sign in again — we needed to refresh your session.'); } catch (e) {}
+        'Please sign in again — we needed to refresh your session.'); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
       localStorage.removeItem(LS.USER);
       AUTH._bounce();
       return;
@@ -272,7 +272,7 @@ const AUTH = {
         AUTH._updateSidebarCard(updated);
         if (updated.needsPayment) AUTH._notifyPaymentNeeded();
       } else if (res.sessionInvalid) {
-        try { localStorage.setItem('abhyas_notice', 'You were signed out because this account was used on another device, or the session expired. Please sign in again.'); } catch (e) {}
+        try { localStorage.setItem('abhyas_notice', 'You were signed out because this account was used on another device, or the session expired. Please sign in again.'); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
         localStorage.removeItem(LS.USER);
         AUTH._bounce();
       }

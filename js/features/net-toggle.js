@@ -59,14 +59,14 @@ window.addEventListener('online', async () => {
     toast('🌐 Back online');
     if (PSYNC._timer) PSYNC.pushNow();
     if (typeof WEEKLY !== 'undefined') WEEKLY.retryUnsynced();
-    try { if (typeof USER_REPORT !== 'undefined' && USER_REPORT.flush) USER_REPORT.flush(); } catch (e) {}
+    try { if (typeof USER_REPORT !== 'undefined' && USER_REPORT.flush) USER_REPORT.flush(); } catch (e) { window.warnCaught && window.warnCaught('js/features/net-toggle.js', e); }
     }
      else {
     toast('🌐 Network restored — still in forced offline mode');
   }
 });
 
-setTimeout(() => { try { if (typeof USER_REPORT !== 'undefined' && USER_REPORT.flush) USER_REPORT.flush(); } catch (e) {} }, 8000);
+setTimeout(() => { try { if (typeof USER_REPORT !== 'undefined' && USER_REPORT.flush) USER_REPORT.flush(); } catch (e) { window.warnCaught && window.warnCaught('js/features/net-toggle.js', e); } }, 8000);
 
 window.addEventListener('offline', () => {
   const wasForcedOff = S.forcedOffline;

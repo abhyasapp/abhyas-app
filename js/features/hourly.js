@@ -28,7 +28,7 @@ window.HOURLY = {
   },
   setLevel(lv){
     if (lv !== 'level7' && lv !== 'level5' && lv !== 'gk') return;
-    try { localStorage.setItem(this.LS_LV, lv); } catch(e){}
+    try { localStorage.setItem(this.LS_LV, lv); } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); }
     this._pick = null;
     this.render();
   },
@@ -75,9 +75,9 @@ window.HOURLY = {
 
   // ── storage ──────────────────────────────────────────────────────────
   _getSubj(){ try { const r = localStorage.getItem(this.LS_SUBJ); return r ? JSON.parse(r) : null; } catch(e){ return null; } },
-  _setSubj(s){ try { s ? localStorage.setItem(this.LS_SUBJ, JSON.stringify(s)) : localStorage.removeItem(this.LS_SUBJ); } catch(e){} },
+  _setSubj(s){ try { s ? localStorage.setItem(this.LS_SUBJ, JSON.stringify(s)) : localStorage.removeItem(this.LS_SUBJ); } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); } },
   _getObj(){ try { const r = localStorage.getItem(this.LS_OBJ); return r ? JSON.parse(r) : null; } catch(e){ return null; } },
-  _setObj(s){ try { s ? localStorage.setItem(this.LS_OBJ, JSON.stringify(s)) : localStorage.removeItem(this.LS_OBJ); } catch(e){} },
+  _setObj(s){ try { s ? localStorage.setItem(this.LS_OBJ, JSON.stringify(s)) : localStorage.removeItem(this.LS_OBJ); } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); } },
 
   // ── written bank ─────────────────────────────────────────────────────
   async _ensureBank(){
@@ -428,7 +428,7 @@ window.HOURLY = {
       if (!canNet && typeof navigator !== 'undefined') {
         canNet = !!navigator.onLine && !(typeof S !== 'undefined' && S.forcedOffline);
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); }
 
     QUIZ._showLoader('Building this hour\'s sprint…');
 
@@ -455,7 +455,7 @@ window.HOURLY = {
             const valid = c && !(typeof c === 'object' && !Array.isArray(c) && c.success === false);
             if (valid){ raw = c; cacheHits++; }
           }
-        } catch(e){}
+        } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); }
 
         if (!raw && canNet){
           try {
@@ -633,7 +633,7 @@ window.HOURLY = {
       user = (S && S.user) || null;
       hasUser  = !!(user && user.username);
       hasToken = !!(user && user.token);
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); }
 
     const refs = (typeof ChapterData !== 'undefined' ? ChapterData.allFileRefs() : []).filter(r => r.lv === lv);
 
@@ -647,7 +647,7 @@ window.HOURLY = {
     if (!refs.length){ console.warn('No refs found for this level.'); return; }
 
     let keys = new Set();
-    try { if (typeof QDB !== 'undefined') keys = new Set(await QDB.keys()); } catch(e){}
+    try { if (typeof QDB !== 'undefined') keys = new Set(await QDB.keys()); } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); }
     console.log('QDB cached keys   :', keys.size);
 
     const canNet = online && !forced;
@@ -681,8 +681,8 @@ window.HOURLY = {
     this._setSubj(null);
     this._pendingFile = null;
     this._pick = null;
-    try { toast('This hour\'s hourly state has been cleared.'); } catch(e){}
-    try { if (typeof UI !== 'undefined' && UI.cur === 'hourly') this.render(); } catch(e){}
+    try { toast('This hour\'s hourly state has been cleared.'); } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); }
+    try { if (typeof UI !== 'undefined' && UI.cur === 'hourly') this.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); }
   },
 
   // ── badge + hint ─────────────────────────────────────────────────────
@@ -705,5 +705,5 @@ window.HOURLY = {
   }
 };
 
-setTimeout(() => { try { HOURLY._refreshBadge(); } catch(e){} }, 1500);
-setInterval(() => { try { HOURLY._refreshBadge(); } catch(e){} }, 5000);
+setTimeout(() => { try { HOURLY._refreshBadge(); } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); } }, 1500);
+setInterval(() => { try { HOURLY._refreshBadge(); } catch (e) { window.warnCaught && window.warnCaught('js/features/hourly.js', e); } }, 5000);

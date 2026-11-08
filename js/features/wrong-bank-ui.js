@@ -74,7 +74,7 @@ window.WRONGBY = {
       try {
         const raw = await QUIZ._fetch(ref.fid, ref.key);
         normQ(raw, ref.fid).forEach(q => { fresh[q.uid] = q; });
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/wrong-bank-ui.js', e); }
     }
     QUIZ._hideLoader();
     const merged = items.map(q => {
@@ -96,6 +96,14 @@ window.WRONGBY = {
   },
   startFile(fid, dueOnly, mode){ this.start([fid], dueOnly, mode); },
   toggle(i){ const c = this._last[i]; if (!c) return; this._open[c.key] = !this._open[c.key]; this.render(); },
+  downloadChapter(i){
+    const c = this._last[i];
+    if (!c) { toast('That chapter is not available.'); return; }
+    const items = c.files.reduce((all, f) => all.concat((f && f.items) || []), []).filter(q => q && !q._withdrawn);
+    if (!items.length) { toast('No missed questions to download here.'); return; }
+    if (typeof PRINT_Q === 'undefined' || typeof PRINT_Q.missed !== 'function') { toast('Download is not available right now.'); return; }
+    PRINT_Q.missed(items, c.name + ' \u2014 Missed questions');
+  },
 
   missCount(uid){
     if (!uid) return 0;
@@ -225,7 +233,8 @@ window.WRONGBY = {
         '<div class="t-callout" style="color:var(--ink)"><b>' + dueTotal + '</b> ready for review now, in ' + due.length + ' chapter' + (due.length === 1 ? '' : 's') + '.</div>' +
         '<button class="btn btn-solid btn-blk mt3" data-on-click="WRONGBY.dueAll()"><i class="ph ph-repeat"></i> Review all ' + dueTotal + ' due now</button></div>' +
       due.map(x => '<div class="card" style="margin-bottom:var(--sp-2)"><div class="card-hd"><h3>' + esc(x.c.name) + '</h3><span class="ctag tr">' + x.c.due + ' due</span></div>' +
-        '<div class="bg"><button class="btn btn-sm btn-solid" data-on-click="WRONGBY.startChapter(' + x.i + ',true)">Do what\'s due</button></div></div>').join('');
+        '<div class="bg"><button class="btn btn-sm btn-solid" data-on-click="WRONGBY.startChapter(' + x.i + ',true)">Do what\'s due</button>' +
+        '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.downloadChapter(' + x.i + ')" title="Download missed questions for this chapter" aria-label="Download missed questions for this chapter"><i class="ph ph-download-simple"></i> Download</button></div></div>').join('');
   },
 
   _renderReasons(el){
@@ -313,6 +322,7 @@ window.WRONGBY = {
         '<div class="bg">' +
           (c.due ? '<button class="btn btn-sm btn-solid" data-on-click="WRONGBY.startChapter(' + i + ',true)">Do what\'s due</button>' : '') +
           '<button class="btn btn-sm btn-a" data-on-click="WRONGBY.startChapter(' + i + ',false)">All ' + c.n + '</button>' +
+          '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.downloadChapter(' + i + ')" title="Download missed questions for this chapter" aria-label="Download missed questions for this chapter"><i class="ph ph-download-simple"></i> Download</button>' +
           '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.toggle(' + i + ')">' + (open ? 'Hide files' : 'By file (' + c.files.length + ')') + '</button>' +
         '</div>' +
         files +

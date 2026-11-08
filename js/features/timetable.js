@@ -128,7 +128,7 @@ const TT = {
       } else {
         new Notification(title, { body, icon:'./icon-192.png' });
       }
-    }catch(e){ }
+    }catch (e) { window.warnCaught && window.warnCaught('js/features/timetable.js', e); }
   },
   _clockTimer:null,
   render(){

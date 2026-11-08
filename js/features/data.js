@@ -160,8 +160,8 @@ const DATA = {
     }catch(e){ toast('❌ Could not reach the server — nothing was deleted'); return; }
     if(!res || !res.success){ toast('❌ ' + ((res && res.error) || 'Could not delete the account')); return; }
     clearTimeout(PSYNC._timer); PSYNC._timer = null;
-    try{ Object.keys(localStorage).filter(k=>k.indexOf('abhyas')===0).forEach(k=>localStorage.removeItem(k)); }catch(e){}
-    try{ await QDB.clear(); }catch(e){}
+    try{ Object.keys(localStorage).filter(k=>k.indexOf('abhyas')===0).forEach(k=>localStorage.removeItem(k)); }catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
+    try{ await QDB.clear(); }catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
     toast('✅ Account deleted');
     setTimeout(()=>{ window.location.href = 'index.html'; }, 1200);
   }

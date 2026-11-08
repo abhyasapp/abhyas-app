@@ -78,7 +78,7 @@ window.RECOVERY = {
   DAYS: 3,
 
   markActive(){
-    try { localStorage.setItem(this.KEY, String(Date.now())); } catch(e){}
+    try { localStorage.setItem(this.KEY, String(Date.now())); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
   },
   _gapMs(){
     try {
@@ -119,7 +119,7 @@ window.RECOVERY = {
       try {
         const raw = await QUIZ._fetch(ref.fid, ref.key);
         all.push(...normQ(raw, ref.fid));
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
       if (all.length >= 15) break;
     }
     if (!all.length) { QUIZ.daily(); return; }
@@ -177,11 +177,11 @@ window.READALOUD = {
       u.onerror = () => READALOUD.render();
       window.speechSynthesis.speak(u);
       this.render();
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
   },
   stop(){
     if (!this.supported()) return;
-    try { window.speechSynthesis.cancel(); } catch(e){}
+    try { window.speechSynthesis.cancel(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
     this.render();
   }
 };
@@ -262,7 +262,7 @@ window.QNOTE = {
     return this._cache;
   },
   _save(){
-    try { localStorage.setItem(this.KEY, JSON.stringify(this._cache || {})); } catch(e){}
+    try { localStorage.setItem(this.KEY, JSON.stringify(this._cache || {})); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
   },
 
   get(uid){

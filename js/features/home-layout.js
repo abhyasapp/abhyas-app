@@ -80,7 +80,7 @@
         hidden: Array.from(layout.hidden),
         size: layout.size,
       }));
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/home-layout.js', e); }
   }
 
   function _captureNodes() {

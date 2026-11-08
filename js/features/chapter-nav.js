@@ -20,7 +20,7 @@ window.MASTERY = {
         Object.keys(ChapterData.chapters(lv)).forEach(ch => { 
           if (ChapterData.chapterFileRefs(lv, ch).length) out.push({ lv, ch }); 
         }); 
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
     });
     return out;
   },
@@ -109,7 +109,7 @@ window.CH_GRID = {
         '<button type="button" class="' + (l[0] === this.lv ? 'active' : '') + '" aria-pressed="' + (l[0] === this.lv ? 'true' : 'false') + '" data-on-click="CH_GRID.setLevel(\'' + l[0] + '\')">' + esc(l[1]) + '</button>').join('');
       
       let chs = {};
-      try { chs = ChapterData.chapters(this.lv) || {}; } catch(e){}
+      try { chs = ChapterData.chapters(this.lv) || {}; } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
       
       requestAnimationFrame(() => {
         const items = Object.keys(chs).map(ch => {
@@ -198,10 +198,10 @@ window.CH_GRID = {
       // The stored count can be older than the file after a content update.
       // Reconcile the cached copies now so the sheet counts what Practice uses.
       if (typeof CNT !== 'undefined' && CNT.reconcileCached) {
-        try { await CNT.reconcileCached(refs); } catch(e){}
+        try { await CNT.reconcileCached(refs); } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
       }
       let keys = new Set();
-      try { keys = new Set(await QDB.keys()); } catch(e){}
+      try { keys = new Set(await QDB.keys()); } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
       const offline = !(S.online && !S.forcedOffline);
       const missedFor = fid => (typeof WRONGBY !== 'undefined') ? WRONGBY.countFor(fid) : 0;
       
@@ -211,6 +211,8 @@ window.CH_GRID = {
           const cached = keys.has(r.key);
           const blocked = offline && !cached;
           const m = missedFor(r.fid);
+          const imp = (typeof PROGRESS_RESET !== 'undefined') ? PROGRESS_RESET.setImpact(r.fid) : null;
+          const canSetReset = !!(imp && (imp.sessions || imp.missed || imp.sets));
           return '<div class="row">' +
             '<div class="row-main">' +
               '<div class="t-callout ch-part-name">' + esc(prettySub(r.subtopic)) +
@@ -225,6 +227,7 @@ window.CH_GRID = {
               (m ? '<button class="btn btn-sm btn-r" type="button" data-on-click="closeMod();WRONGBY.startFile(\'' + escAttrJs(r.fid) + '\',false)">Missed (' + m + ')</button>' : '') +
               '<button class="btn btn-sm btn-quiet" type="button"' + (blocked ? ' disabled' : '') + ' data-on-click="CH_GRID.go(\'' + r.fid + '\',\'exam\')">Test</button>' +
               '<button class="btn btn-sm ch-row-print" type="button" title="Print a revision sheet"' + (blocked ? ' disabled' : '') + ' data-on-click="PRINT_Q.sheet(\'' + escAttrJs(r.fid) + '\')"><i class="ph ph-printer"></i></button>' +
+              (canSetReset ? '<button class="btn btn-sm btn-quiet ch-row-reset" type="button" title="' + esc(T('Reset this set')) + '" aria-label="' + esc(T('Reset this set') + ': ' + prettySub(r.subtopic)) + '" data-on-click="CH_GRID.resetSet(\'' + escAttrJs(r.fid) + '\')"><i class="ph ph-trash"></i></button>' : '') +
             '</div></div>';
         }).join('');
         
@@ -233,7 +236,10 @@ window.CH_GRID = {
             '<button class="btn btn-quiet" type="button"' + (offline ? ' disabled' : '') + ' data-on-click="CH_GRID.startChapter(\'' + lv + '\',\'' + ch + '\',\'exam\')">Timed test</button></div>'
           : '';
           
-        openMod(name, head + '<div class="rows ch-parts">' + rows + '</div>', { wide: true });
+        const reset = '<div class="bg" style="margin-top:var(--sp-3)">' +
+          '<button class="btn btn-quiet" type="button" data-on-click="CH_GRID.resetChapter(\'' + lv + '\',\'' + ch + '\')">' +
+          '<i class="ph ph-trash"></i> ' + esc(T('Reset chapter progress')) + '</button></div>';
+        openMod(name, head + '<div class="rows ch-parts">' + rows + '</div>' + reset, { wide: true });
         // Cached files answer instantly, but a content update can leave their
         // counts behind the published files. Refresh only rows we actually hold
         // and patch the visible count when the network answers.
@@ -255,6 +261,61 @@ window.CH_GRID = {
       console.error('[CH_GRID.open] failed:', e);
       toast('Could not open chapter. Please try again.');
     }
+  },
+
+  /* Reset one chapter's progress from its sheet, with an undo toast. The work
+     itself lives in PROGRESS_RESET so the chapter sheet and the reset dialog
+     always clear the same things. */
+  async resetChapter(lv, ch){
+    if(typeof PROGRESS_RESET === 'undefined' || typeof ASK === 'undefined'){ toast(T('Reset is not available right now.')); return; }
+    let name = '';
+    try { name = ChapterData.chapterName(lv, ch) || ''; } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
+    const impact = PROGRESS_RESET.chapterImpact(lv, ch);
+    if(!impact.sessions && !impact.missed && !impact.sets){ toast(T('Nothing to reset in this chapter.')); return; }
+    const ok = await ASK.confirm({
+      title: T('Reset chapter progress?'),
+      body: T('Clear all practice progress for {chapter}? This removes its sessions, accuracy, coverage and missed questions. Bookmarks, flags and notes are kept.', { chapter: name }) + ' ' +
+        T('Sessions: {sessions} · Answered: {answered} · Missed: {missed}.', impact),
+      ok: T('Reset'),
+      danger: true
+    });
+    if(!ok) return;
+    closeMod();
+    const at = PROGRESS_RESET.runChapter(lv, ch);
+    if(!at){ toast(T('Nothing to reset in this chapter.')); return; }
+    try { CH_GRID.render(); PROG.render(); HOME.render(); HOME.updateBadges(); } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
+    toastUndo(T('Chapter progress reset'), () => {
+      if(!RESET_SNAPSHOT.restore()) return;
+      try { CH_GRID.render(); PROG.render(); HOME.render(); HOME.updateBadges(); RESET_SNAPSHOT.renderCard(); } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
+      toast('Restored.');
+    }, 12000);
+  },
+
+  /* One downloaded set: its own sessions, its coverage and missed questions,
+     and its answers inside chapter-wide sessions. Other sets stay intact. */
+  async resetSet(fid){
+    if(typeof PROGRESS_RESET === 'undefined' || typeof ASK === 'undefined'){ toast(T('Reset is not available right now.')); return; }
+    const ref = this._ref(fid);
+    const label = ref ? ChapterData.chapterName(ref.lv, ref.ch) + ' \u2014 ' + prettySub(ref.subtopic) : '';
+    const impact = PROGRESS_RESET.setImpact(fid);
+    if(!impact.sessions && !impact.missed && !impact.sets){ toast(T('Nothing to reset in this set.')); return; }
+    const ok = await ASK.confirm({
+      title: T('Reset set progress?'),
+      body: T('Clear progress for {set}? This removes its coverage, missed questions and the answers it recorded inside chapter sessions. Bookmarks, flags and notes are kept.', { set: label }) + ' ' +
+        T('Sessions: {sessions} · Answered: {answered} · Missed: {missed}.', impact),
+      ok: T('Reset'),
+      danger: true
+    });
+    if(!ok) return;
+    closeMod();
+    const at = PROGRESS_RESET.runSet(fid);
+    if(!at){ toast(T('Nothing to reset in this set.')); return; }
+    try { CH_GRID.render(); PROG.render(); HOME.render(); HOME.updateBadges(); } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
+    toastUndo(T('Set progress reset'), () => {
+      if(!RESET_SNAPSHOT.restore()) return;
+      try { CH_GRID.render(); PROG.render(); HOME.render(); HOME.updateBadges(); RESET_SNAPSHOT.renderCard(); } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
+      toast('Restored.');
+    }, 12000);
   },
 
   go(fid, mode){ closeMod(); this.startFid(fid, mode); },
@@ -299,7 +360,7 @@ window.CHAP_VERDICTS = {
     const box = $('chap-verdicts');
     if (!box) return;
     let entries = [];
-    try { entries = (typeof CHAPSTATS !== 'undefined') ? CHAPSTATS.entries() : []; } catch(e){}
+    try { entries = (typeof CHAPSTATS !== 'undefined') ? CHAPSTATS.entries() : []; } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
     entries = entries.filter(e => e.attempted >= 3);
     if (!entries.length) {
       box.innerHTML = '<p class="t-foot" style="padding:var(--sp-2) 0">Complete a few sessions to see which chapters are strongest.</p>';
@@ -352,7 +413,7 @@ window.HEATMAP = {
     requestAnimationFrame(() => {
       box.innerHTML = levels.map(([lv, name]) => {
         let chs = {};
-        try { chs = ChapterData.chapters(lv) || {}; } catch(e){}
+        try { chs = ChapterData.chapters(lv) || {}; } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-nav.js', e); }
         const cards = Object.keys(chs).map(ch => {
           const refs = (() => { try { return ChapterData.chapterFileRefs(lv, ch); } catch(e){ return []; } })();
           if (!refs.length) return '';

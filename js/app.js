@@ -21,14 +21,14 @@
   /* 2. Service worker + install banner. PWA.init() is safe to call before
         login — it only sets up listeners. It handles beforeinstallprompt
         and calls navigator.serviceWorker.register(). */
-  try { if (typeof PWA !== 'undefined' && PWA.init) PWA.init(); } catch (e) {}
+  try { if (typeof PWA !== 'undefined' && PWA.init) PWA.init(); } catch (e) { window.warnCaught && window.warnCaught('js/app.js', e); }
 
   /* 3. Start the reachability poller so S.online reflects real network
         health, not just navigator.onLine (which lies on flaky mobile). */
-  try { if (typeof NETCHECK !== 'undefined' && NETCHECK.start) NETCHECK.start(); } catch (e) {}
+  try { if (typeof NETCHECK !== 'undefined' && NETCHECK.start) NETCHECK.start(); } catch (e) { window.warnCaught && window.warnCaught('js/app.js', e); }
 
   /* 4. If the browser supports push and the user has previously granted
         permission, refresh the button state. PUSH.refreshButtonUI() is a
         no-op when the module is not loaded. */
-  try { if (typeof PUSH !== 'undefined' && PUSH.refreshButtonUI) PUSH.refreshButtonUI(); } catch (e) {}
+  try { if (typeof PUSH !== 'undefined' && PUSH.refreshButtonUI) PUSH.refreshButtonUI(); } catch (e) { window.warnCaught && window.warnCaught('js/app.js', e); }
 })();

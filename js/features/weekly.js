@@ -24,7 +24,7 @@ const WEEKLY = {
       pct:     Number(stats.pct)     || 0,
       at: Date.now()
     };
-    try { localStorage.setItem(this.LS_RETAKES, JSON.stringify(all)); } catch (e) {}
+    try { localStorage.setItem(this.LS_RETAKES, JSON.stringify(all)); } catch (e) { window.warnCaught && window.warnCaught('js/features/weekly.js', e); }
   },
   _lastAttemptFor(id) {
     const retake = this._loadRetakes()[id];
@@ -200,7 +200,7 @@ const WEEKLY = {
           a.standing = {rank:res.rank, total:res.total, percentile:res.percentile};
           changed = true;
         }
-      } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/weekly.js', e); }
     }
     if (changed) { this._saveAttempts(); this._renderHomeCard(); }
   },
@@ -296,7 +296,7 @@ const WEEKLY = {
           this._saveAttempts();
           this._renderHomeCard();
         }
-      } catch (e) { }
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/weekly.js', e); }
     }
 
     if (attempt) {
@@ -425,7 +425,7 @@ const WEEKLY = {
     if (!weeklyId) return;
 
     if (quiz.scope && quiz.scope.weeklyRetake) {
-      try { this._savePaper(weeklyId, quiz.qs, quiz.ans); } catch (e) {}
+      try { this._savePaper(weeklyId, quiz.qs, quiz.ans); } catch (e) { window.warnCaught && window.warnCaught('js/features/weekly.js', e); }
       this._saveRetakeScore(weeklyId, stats);
       return;
     }
@@ -444,7 +444,7 @@ const WEEKLY = {
     };
     this.attempts[weeklyId] = attempt;
     this._saveAttempts();
-    try { this._savePaper(weeklyId, quiz.qs, quiz.ans); } catch (e) {}
+    try { this._savePaper(weeklyId, quiz.qs, quiz.ans); } catch (e) { window.warnCaught && window.warnCaught('js/features/weekly.js', e); }
     this._renderHomeCard();
     await this._syncAttempt(attempt);
   },
@@ -477,7 +477,7 @@ const WEEKLY = {
         this._renderHomeCard();
         toast('ℹ️ This set was already submitted on another device — showing the recorded result.', 5000);
       }
-    } catch (e) { }
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/weekly.js', e); }
   },
 
   retryUnsynced() {

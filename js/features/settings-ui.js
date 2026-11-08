@@ -45,7 +45,7 @@ window.SETTINGS = (function () {
   function motionOn() { try { return localStorage.getItem(MOTION_KEY) === '1'; } catch (e) { return false; } }
   function applyMotion() { document.documentElement.classList.toggle('reduce-motion', motionOn()); }
   function toggleMotion() {
-    try { localStorage.setItem(MOTION_KEY, motionOn() ? '0' : '1'); } catch (e) {}
+    try { localStorage.setItem(MOTION_KEY, motionOn() ? '0' : '1'); } catch (e) { window.warnCaught && window.warnCaught('js/features/settings-ui.js', e); }
     applyMotion();
     renderDisplay();
   }
@@ -153,7 +153,7 @@ window.SETTINGS = (function () {
 
   async function protect() {
     let ok = false;
-    try { ok = !!(await navigator.storage.persist()); } catch (e) {}
+    try { ok = !!(await navigator.storage.persist()); } catch (e) { window.warnCaught && window.warnCaught('js/features/settings-ui.js', e); }
     if (typeof toast === 'function') toast(ok ? T('Your data is now protected.') : T('The browser did not allow it. Installing Abhyas to your home screen usually helps.'), 5000);
     renderStorage();
   }

@@ -21,10 +21,10 @@ window.QSEARCH = {
           if (!valid) continue;
           const qs = normQ(raw, key);
           for (const q of qs) out.push(q);
-        } catch(e){}
+        } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-search.js', e); }
         if (out.length >= 8000) break;
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-search.js', e); }
     this._index = out;
     this._loading = false;
     return out;
@@ -286,7 +286,7 @@ window.SIDEBAR_SEARCH = {
     if (typeof QSEARCH === 'undefined') return;
 
     let hits = [];
-    try { hits = await QSEARCH.search(term); } catch(e){}
+    try { hits = await QSEARCH.search(term); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-search.js', e); }
     if (!this._input || !this._results) return;
     if (this._input.value.trim().length < 2) return;
 

@@ -9,15 +9,15 @@ function _backendUrlFor(action, params) {
       ? abhyasEndpointFor(action, params)
       : 'supabase';
     return which === 'gas' ? ABHYAS_CONFIG.GAS_URL : ABHYAS_CONFIG.SUPABASE_URL;
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/core/subjective-api.js', e); }
   try {
     if (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG && ABHYAS_CONFIG.SUPABASE_URL) {
       return ABHYAS_CONFIG.SUPABASE_URL;
     }
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/core/subjective-api.js', e); }
   try {
     if (typeof APPS !== 'undefined' && APPS) return APPS;
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/core/subjective-api.js', e); }
   return '';
 }
 
@@ -26,12 +26,12 @@ function _authParams() {
     if (typeof S !== 'undefined' && S && S.user) {
       return { username: S.user.username || '', token: S.user.token || '' };
     }
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/core/subjective-api.js', e); }
   try {
     if (typeof window !== 'undefined' && window.S && window.S.user) {
       return { username: window.S.user.username || '', token: window.S.user.token || '' };
     }
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/core/subjective-api.js', e); }
   return { username: '', token: '' };
 }
 

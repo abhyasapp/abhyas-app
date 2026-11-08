@@ -23,11 +23,11 @@ function _persistExam() {
   try {
     if (EXAM) localStorage.setItem(LS_EXAM, JSON.stringify(EXAM));
     else localStorage.removeItem(LS_EXAM);
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-exam.js', e); }
 }
 function _clearExam() {
   EXAM = null;
-  try { localStorage.removeItem(LS_EXAM); } catch (e) {}
+  try { localStorage.removeItem(LS_EXAM); } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-exam.js', e); }
 }
 
 function _questionsByGroup(gKey){

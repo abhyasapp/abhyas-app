@@ -94,7 +94,7 @@ function renderMath(el) {
       ],
       throwOnError: false
     });
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/core/format.js', e); }
 }
 
 // Expose globally

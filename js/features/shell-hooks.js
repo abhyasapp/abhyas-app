@@ -35,7 +35,7 @@
   UI.onEnterAny(v => { 
     _updateBottomNav(v); 
     if (typeof BN !== 'undefined') BN.close(); 
-    setTimeout(() => { try { _refreshHints(); } catch (e) {} }, 50); 
+    setTimeout(() => { try { _refreshHints(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); } }, 50); 
   });
   
   UI.onEnter('online',   () => { if (typeof CH_GRID !== 'undefined') CH_GRID.render(); });
@@ -70,8 +70,8 @@
   UI.onEnter('data', () => { if (typeof RECOVER !== 'undefined') RECOVER.render(); });
   
   // Hourly hooks
-  UI.onEnter('hourly', () => setTimeout(() => { try { HOURLY.mount(); } catch (e) {} }, 30));
-  UI.onLeave('hourly', () => { try { HOURLY.unmount(); } catch (e) {} });
+  UI.onEnter('hourly', () => setTimeout(() => { try { HOURLY.mount(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); } }, 30));
+  UI.onLeave('hourly', () => { try { HOURLY.unmount(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); } });
 
   /* ── Touch swipe to open the sidebar ── */
   let _tx = 0, _ty = 0;
@@ -92,7 +92,7 @@
         if (e.key === '/') { e.preventDefault(); if (typeof QSEARCH !== 'undefined') QSEARCH.open(); return; }
         if (e.key === '?') { e.preventDefault(); if (typeof KEYSHEET !== 'undefined') KEYSHEET.open(); return; }
       }
-    } catch (err) {}
+    } catch (err) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', err); }
     if (e.key === 'Escape') {
       if (typeof BN !== 'undefined' && BN._activeKey) { BN.close(); return; }
       const mb = document.getElementById('mbg');
@@ -164,7 +164,7 @@
       el.insertBefore(btn, el.firstChild);
     });
   }
-  new MutationObserver(() => { try { _decorateExplanations(); } catch (e) {} })
+  new MutationObserver(() => { try { _decorateExplanations(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); } })
     .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
   /* ── Progress tabs ── */
@@ -200,12 +200,12 @@
         const orig = PROG.tab.bind(PROG);
         PROG.tab = function (name) {
           const r = orig(name);
-          try { setTimeout(() => show(name), 0); } catch (e) {}
+          try { setTimeout(() => show(name), 0); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); }
           return r;
         };
         PROG.tab.__wired = true;
       }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); }
     UI.onEnter('progress', () => {
       setTimeout(() => {
         const active = bar.querySelector('button.active');
@@ -236,7 +236,7 @@
   })();
 
   /* ── First paint — _refreshHints lives in home-ui.js ── */
-  setInterval(() => { try { _refreshHints(); } catch (e) {} }, 30000);
+  setInterval(() => { try { _refreshHints(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); } }, 30000);
   let _lastHintAt = 0;
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
@@ -245,5 +245,5 @@
       if (UI.cur === 'subj-mine' && typeof MY_SUBJ !== 'undefined' && MY_SUBJ._loaded) MY_SUBJ.load(true);
     }
   });
-  setTimeout(() => { try { _refreshHints(); } catch (e) {} }, 800);
+  setTimeout(() => { try { _refreshHints(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); } }, 800);
 })();

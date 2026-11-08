@@ -108,7 +108,7 @@
     /* "Save new chapters automatically on Wi-Fi". CACHE reads this key in
        autoSync(), so persisting it here is all the wiring the toggle needs. */
     autosync(el) {
-      try { _save('abhyas_autosync', !!(el && el.checked)); } catch (e) {}
+      try { _save('abhyas_autosync', !!(el && el.checked)); } catch (e) { window.warnCaught && window.warnCaught('js/core/actions.js', e); }
     },
     hideParent(el) {
       if (el && el.parentNode) el.parentNode.style.display = 'none';

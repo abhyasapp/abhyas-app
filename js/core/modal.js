@@ -71,7 +71,7 @@ const DIALOG = (() => {
     try {
       if (target) target.focus();
       else { container.setAttribute('tabindex', '-1'); container.focus(); }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/modal.js', e); }
   }
   function release(container) {
     const idx = container ? stack.findIndex(en => en.container === container) : stack.length - 1;
@@ -83,7 +83,7 @@ const DIALOG = (() => {
     }
     try {
       if (entry.restoreTo && entry.restoreTo.focus && document.contains(entry.restoreTo)) entry.restoreTo.focus();
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/modal.js', e); }
   }
   return { open, release, _stack: stack };
 })();
@@ -137,7 +137,7 @@ const ASK = {
       const done = v => {
         document.removeEventListener('keydown', onKey, true);
         wrap.remove();
-        try { if (prev && prev.focus) prev.focus(); } catch (e) {}
+        try { if (prev && prev.focus) prev.focus(); } catch (e) { window.warnCaught && window.warnCaught('js/core/modal.js', e); }
         resolve(v);
       };
       document.addEventListener('keydown', onKey, true);

@@ -41,7 +41,7 @@ const APP = {
         try{
           const v = await QDB.get(k);
           if(v && typeof v==='object' && !Array.isArray(v) && v.success===false) await QDB.del(k);
-        }catch{}
+        }catch (e) { window.warnCaught && window.warnCaught('js/features/boot.js', e); }
       }
 
       if(!S.profile.id){
@@ -60,7 +60,7 @@ const APP = {
           if (!all[id] || !all[id].at || all[id].at < cutoff) { delete all[id]; changed = true; }
         });
         if (changed) localStorage.setItem(WEEKLY.LS_PAPERS, JSON.stringify(all));
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/boot.js', e); }
 
       UI.go('home');
       CACHE.render();
@@ -70,6 +70,7 @@ const APP = {
       CACHE.autoSync();
       if(typeof QUIZ !== 'undefined' && QUIZ.checkResumableExam) QUIZ.checkResumableExam();
       if(typeof PUSH!=='undefined') PUSH.refreshButtonUI();
+      if(typeof PSYNC!=='undefined' && PSYNC.renderHealth) PSYNC.renderHealth();
 
     } catch (err) {
       console.error('[APP.init] Boot sequence failed:', err);
@@ -100,7 +101,7 @@ const BOOT_ERROR = {
             '</button>' +
           '</div>' +
         '</div>';
-    } catch (e) { }
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/boot.js', e); }
   },
   async clearCache(){
     try {
@@ -109,7 +110,7 @@ const BOOT_ERROR = {
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
       }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/boot.js', e); }
     location.reload();
   }
 };

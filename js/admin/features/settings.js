@@ -14,7 +14,7 @@ const LKS_ADMIN = {
         const L = levels.get(r.lv);
         if (!L.chapters.has(r.ch)) L.chapters.set(r.ch, ChapterData.chapterName(r.lv, r.ch) || r.ch);
       });
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/settings.js', e); }
     return levels;
   },
 
@@ -107,7 +107,7 @@ const SETTINGS = {
   setVal('set-announce', s.announcement);
   setVal('set-eta',      s.paymentEta);
   setVal('set-trial',    s.trialHours);
-  try { LKS_ADMIN.load(s.loksewaScheme); } catch(e){}
+  try { LKS_ADMIN.load(s.loksewaScheme); } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/settings.js', e); }
   const preview = $('set-qr-preview'), status = $('set-qr-status');
   if (!preview || !status) return;
   if (s.qrCodeUrl) {

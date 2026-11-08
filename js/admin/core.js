@@ -45,7 +45,7 @@ if (typeof normalizeLoksewaScheme !== 'function') {
     try {
       const o = (typeof raw === 'string') ? JSON.parse(raw || 'null') : raw;
       if (o && Array.isArray(o.groups)) return o;
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
     return { version: 1, isDefault: true, total: 75, groups: [] };
   };
 }
@@ -127,7 +127,7 @@ function setHTML(id, v) { const el = $(id); if (el) el.innerHTML   = (v == null 
 /* ── FSTATE + USER_SESSION + LS keys ──────────────────────────────────── */
 const FSTATE = {
   get(k, fb) { try { return sessionStorage.getItem('abhyas_f_' + k) ?? fb; } catch (e) { return fb; } },
-  set(k, v) { try { sessionStorage.setItem('abhyas_f_' + k, v); } catch (e) {} }
+  set(k, v) { try { sessionStorage.setItem('abhyas_f_' + k, v); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); } }
 };
 const LS_ADMIN = 'abhyas_admin';
 const LS_USER  = 'abhyas_session';
@@ -199,7 +199,7 @@ const FALLBACK_BANNER = {
   installListener() {
     if (window._fallbackListenerInstalled) return;
     window._fallbackListenerInstalled = true;
-    window.addEventListener('abhyas:fallback', () => { try { FALLBACK_BANNER.show(); } catch (e) {} });
+    window.addEventListener('abhyas:fallback', () => { try { FALLBACK_BANNER.show(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); } });
   }
 };
 window.FALLBACK_BANNER = FALLBACK_BANNER;
@@ -336,7 +336,7 @@ const ADMIN = {
   /* ── boot ── */
   init() {
     let theme = 'light';
-    try { theme = JSON.parse(localStorage.getItem('abhyas_theme') || '"light"'); } catch (e) {}
+    try { theme = JSON.parse(localStorage.getItem('abhyas_theme') || '"light"'); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
     document.documentElement.classList.toggle('dark', theme === 'dark');
     _paintThemeColor(theme === 'dark' ? THEME_COLORS.dark : THEME_COLORS.light);
 
@@ -348,10 +348,10 @@ const ADMIN = {
 
   _trySessionUnlock() {
     let saved = null;
-    try { saved = JSON.parse(localStorage.getItem(LS_ADMIN) || 'null'); } catch (e) {}
+    try { saved = JSON.parse(localStorage.getItem(LS_ADMIN) || 'null'); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
     if (!saved || !saved.token || !saved.user) return;
     if (saved.expires && Date.now() > saved.expires) {
-      try { localStorage.removeItem(LS_ADMIN); } catch (e) {}
+      try { localStorage.removeItem(LS_ADMIN); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
       return;
     }
     this.creds = saved;
@@ -362,7 +362,7 @@ const ADMIN = {
       console.warn('[ADMIN] session unlock failed:', err && err.message);
       this.creds = null;
       this._forcedPwChange = false;
-      try { localStorage.removeItem(LS_ADMIN); } catch (e) {}
+      try { localStorage.removeItem(LS_ADMIN); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
     });
   },
 
@@ -398,7 +398,7 @@ const ADMIN = {
         expires: Date.now() + (Number(r.expiresInMs) || 86400000),
         mustChangePassword: !!r.mustChangePassword
       };
-      try { localStorage.setItem(LS_ADMIN, JSON.stringify(creds)); } catch (e) {}
+      try { localStorage.setItem(LS_ADMIN, JSON.stringify(creds)); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
       this.creds = creds;
       this._forcedPwChange = !!r.mustChangePassword;
       passEl.value = '';
@@ -413,19 +413,19 @@ const ADMIN = {
   logout() { this._leaveAdminMode(); },
 
   _leaveAdminMode() {
-    try { localStorage.removeItem(LS_ADMIN); } catch (e) {}
+    try { localStorage.removeItem(LS_ADMIN); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
     this.creds = null;
     this._perms = null;
     this._forcedPwChange = false;
-    try { window.location.reload(); } catch (e) {}
+    try { window.location.reload(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
   },
 
   goToStudentApp() {
-    try { localStorage.removeItem(LS_ADMIN); } catch (e) {}
+    try { localStorage.removeItem(LS_ADMIN); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
     this.creds = null;
     this._perms = null;
     this._forcedPwChange = false;
-    try { window.location.href = './'; } catch (e) {}
+    try { window.location.href = './'; } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
   },
 
   /* ── transport ──────────────────────────────────────────────────────
@@ -555,8 +555,8 @@ const ADMIN = {
         try {
           const retry = await _attempt(fallbackUrl);
           if (retry && (retry.success || !_needsFallback(retry))) {
-            try { retry._fallbackUsed = useSupabase ? 'gas' : 'supabase'; } catch (e) {}
-            try { window.dispatchEvent(new CustomEvent('abhyas:fallback')); } catch (e) {}
+            try { retry._fallbackUsed = useSupabase ? 'gas' : 'supabase'; } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
+            try { window.dispatchEvent(new CustomEvent('abhyas:fallback')); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
             res = retry;
           }
         } catch (e) {
@@ -578,8 +578,8 @@ const ADMIN = {
       try {
         const res = await _attempt(fallbackUrl);
         if (res) {
-          try { res._fallbackUsed = useSupabase ? 'gas' : 'supabase'; } catch (e) {}
-          try { window.dispatchEvent(new CustomEvent('abhyas:fallback')); } catch (e) {}
+          try { res._fallbackUsed = useSupabase ? 'gas' : 'supabase'; } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
+          try { window.dispatchEvent(new CustomEvent('abhyas:fallback')); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
           const norm = _normalizeGetFile(res);
           if (norm && norm.sessionInvalid) {
             this._leaveAdminMode();
@@ -610,7 +610,7 @@ const ADMIN = {
           };
           return;
         }
-      } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
     }
     this._perms = null;
   },
@@ -680,7 +680,7 @@ const ADMIN = {
     this.markSynced();
     this._applyPermissions();
     if (typeof UI !== 'undefined' && UI.current) this._paintCurrentView(UI.current);
-    if (typeof BADGES !== 'undefined') { try { BADGES.update(); } catch (e) {} }
+    if (typeof BADGES !== 'undefined') { try { BADGES.update(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); } }
     if (fails.length) TOAST.show('Some data could not be loaded: ' + fails.join('; '), 'warning', 6000);
   },
 
@@ -948,7 +948,7 @@ const ADMIN = {
         /* The admin token was invalidated by the change — replace it AND
            drop the pending forced-change marker in one write. */
         this.creds = Object.assign({}, this.creds, { token: r.token, mustChangePassword: false });
-        try { localStorage.setItem(LS_ADMIN, JSON.stringify(this.creds)); } catch (e) {}
+        try { localStorage.setItem(LS_ADMIN, JSON.stringify(this.creds)); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
       }
       this._forcedPwChange = false;
       MODAL.close('pwd');

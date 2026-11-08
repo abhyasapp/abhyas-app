@@ -26,7 +26,7 @@ function _dueItems(){
         out.push({ icon:'ph-upload-simple', title:'Upload your answer', sub:'The window closes soon', meta:st.left, urgent:true, go:"UI.go('subj-qotd')" });
       }
     }
-  } catch(e){}
+  } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
 
   try {
     if (typeof WEEKLY !== 'undefined') {
@@ -50,7 +50,7 @@ function _dueItems(){
         }
       });
     }
-  } catch(e){}
+  } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
 
   try {
     if (typeof REV !== 'undefined' && REV.dueCount) {
@@ -62,7 +62,7 @@ function _dueItems(){
         meta:'Review', go:"REV.start('wr','flashcard',true)"
       });
     }
-  } catch(e){}
+  } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
 
   return out;
 }
@@ -157,7 +157,7 @@ window.HARDQ = {
         const o = JSON.parse(raw);
         if (o && o.map && Date.now() - o.at < 24*60*60*1000) { this._map = o.map; return; }
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
     
     if (!S.online || S.forcedOffline) return;
 
@@ -179,7 +179,7 @@ window.HARDQ = {
       .then(d => {
         if (d && d.success && d.map) {
           this._map = d.map;
-          try { localStorage.setItem('abhyas_hardq', JSON.stringify({ at: Date.now(), map: d.map })); } catch(e){}
+          try { localStorage.setItem('abhyas_hardq', JSON.stringify({ at: Date.now(), map: d.map })); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
         }
       })
       .catch(() => {});
@@ -188,32 +188,34 @@ window.HARDQ = {
 };
 
 function _renderHomeExtras(){
-  try { if (typeof RECOVERY !== 'undefined') RECOVERY.render(); } catch(e){}
-  try { if (typeof TODAY_PLAN !== 'undefined') TODAY_PLAN.render(); } catch(e){}
-  try { if (typeof TODAY_PLAN !== 'undefined') TODAY_PLAN._renderResume(); } catch(e){}
-  try { if (typeof READINESS !== 'undefined') READINESS.render(); } catch(e){}
-  try { if (typeof PACE !== 'undefined') PACE.render(); } catch(e){}
-  try { if (typeof BADGES_UI !== 'undefined') BADGES_UI.render(); } catch(e){}
-  try { if (typeof WEEKLY_BOARD !== 'undefined') WEEKLY_BOARD.render(); } catch(e){}
+  try { if (typeof RECOVERY !== 'undefined') RECOVERY.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof TODAY_PLAN !== 'undefined') TODAY_PLAN.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof TODAY_PLAN !== 'undefined') TODAY_PLAN._renderResume(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof READINESS !== 'undefined') READINESS.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof PACE !== 'undefined') PACE.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof BADGES_UI !== 'undefined') BADGES_UI.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof WEEKLY_BOARD !== 'undefined') WEEKLY_BOARD.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
 }
 
 function _refreshHints(){
-  try { document.documentElement.classList.remove('focus-mode'); } catch(e){}
-  try { if (typeof RESET_SNAPSHOT !== 'undefined') RESET_SNAPSHOT.renderCard(); } catch(e){}
-  try { if (typeof SIDEBAR   !== 'undefined') SIDEBAR.init(); } catch(e){}
-  try { SB_HINTS.refresh(); } catch(e){}
-  try { TRIAL_PILL.render(); } catch(e){}
-  try { ANNOUNCE.load(); } catch(e){}
-  try { _renderHomeExtras(); } catch(e){}
-  try { HARDQ.load(); } catch(e){}
-  try { if (typeof SYLLABUS_MOCK     !== 'undefined') SYLLABUS_MOCK.render(); } catch(e){}
-  try { if (typeof PRACTICE_RESUME   !== 'undefined') PRACTICE_RESUME.render(); } catch(e){}
-  try { if (typeof SPRINT_PAGE !== 'undefined' && SPRINT_PAGE.renderHomeStrip) SPRINT_PAGE.renderHomeStrip(); } catch(e){}
-  try { if (typeof DAILY10           !== 'undefined') DAILY10.render(); } catch(e){}
-  try { if (typeof DIGEST            !== 'undefined') DIGEST.render(); } catch(e){}
-  try { if (typeof CALENDAR          !== 'undefined') CALENDAR.render(); } catch(e){}
-  try { if (typeof FORECAST          !== 'undefined') FORECAST.render(); } catch(e){}
-  try { if (typeof SYLLABUS_PROGRESS !== 'undefined') SYLLABUS_PROGRESS.render(); } catch(e){}
+  try { document.documentElement.classList.remove('focus-mode'); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof RESET_SNAPSHOT !== 'undefined') RESET_SNAPSHOT.renderCard(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof SIDEBAR   !== 'undefined') SIDEBAR.init(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { SB_HINTS.refresh(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { TRIAL_PILL.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { ANNOUNCE.load(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { _renderHomeExtras(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { HARDQ.load(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof SYLLABUS_MOCK     !== 'undefined') SYLLABUS_MOCK.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof PRACTICE_RESUME   !== 'undefined') PRACTICE_RESUME.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof SPRINT_PAGE !== 'undefined' && SPRINT_PAGE.renderHomeStrip) SPRINT_PAGE.renderHomeStrip(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof DAILY10           !== 'undefined') DAILY10.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof DIGEST            !== 'undefined') DIGEST.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof CALENDAR          !== 'undefined') CALENDAR.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof FORECAST          !== 'undefined') FORECAST.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof MARKS_MAP          !== 'undefined') MARKS_MAP.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof EXAM_MODE          !== 'undefined') EXAM_MODE.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof SYLLABUS_PROGRESS !== 'undefined') SYLLABUS_PROGRESS.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
 }
 
 window.TRIAL_PILL = {
@@ -221,7 +223,7 @@ window.TRIAL_PILL = {
     const b = $('tb-trial'), t = $('tb-trial-txt');
     if (!b || !t) return;
     let a = null;
-    try { a = (S.user && S.user.access) || null; } catch(e){}
+    try { a = (S.user && S.user.access) || null; } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
     if (!a || a.level !== 'trial' || !a.trialExpiresAt) { b.hidden = true; return; }
     const ms = new Date(a.trialExpiresAt).getTime() - Date.now();
     b.hidden = false;

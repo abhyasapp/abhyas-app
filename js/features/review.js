@@ -11,10 +11,10 @@ const REV = {
       const o = JSON.parse(raw);
       if (!o || typeof o !== 'object') return;
       ['bk', 'fl', 'wr'].forEach(k => { if (typeof o[k] === 'string') this._filters[k] = o[k]; });
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/review.js', e); }
   },
   _saveFilters() {
-    try { sessionStorage.setItem(this._FILTERS_KEY, JSON.stringify(this._filters)); } catch (e) {}
+    try { sessionStorage.setItem(this._FILTERS_KEY, JSON.stringify(this._filters)); } catch (e) { window.warnCaught && window.warnCaught('js/features/review.js', e); }
   },
 
   filterList(kind, term) {
@@ -184,11 +184,14 @@ const REV = {
     if (isCorrect) {
       const item = S.wr.find(x => x && x.uid === question.uid);
       if (!item) return;
-      if (item._nextDue && item._nextDue > Date.now()) return;
-      const prev = item._streak || 0;
-      if (prev >= SR_INTERVALS.length) { REV.graduate(question.uid); return; }
-      item._streak = prev + 1;
-      item._nextDue = Date.now() + SR_INTERVALS[prev] * 24 * 60 * 60 * 1000;
+      /* Every correct answer counts toward mastery, even one given before
+         the scheduled review date. Five in a row graduates the question. */
+      const prev = Number(item._streak) || 0;
+      const next = prev + 1;
+      if (next >= WR_GRADUATE_AT) { REV.graduate(question.uid); return; }
+      item._streak = next;
+      const wait = SR_INTERVALS[prev] != null ? SR_INTERVALS[prev] : SR_INTERVALS[SR_INTERVALS.length - 1];
+      item._nextDue = Date.now() + wait * 24 * 60 * 60 * 1000;
       _save(LS.WR, S.wr);
       if (typeof HOME !== 'undefined') HOME.updateBadges?.();
     } else {

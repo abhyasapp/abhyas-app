@@ -41,7 +41,7 @@ const TUTORIAL = {
     modal.setAttribute('aria-label', 'Welcome to Abhyas');
     modal.addEventListener('keydown', e => { if (e.key === 'Escape') TUTORIAL._finish(); });
     document.body.appendChild(modal);
-    try { document.getElementById('tut-next').focus(); } catch (e) {}
+    try { document.getElementById('tut-next').focus(); } catch (e) { window.warnCaught && window.warnCaught('js/features/tutorial.js', e); }
     document.getElementById('tut-next').onclick = ()=>TUTORIAL._finish();
     document.getElementById('tut-skip').onclick = ()=>TUTORIAL._finish();
     TUTORIAL._render();

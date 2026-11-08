@@ -12,7 +12,7 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
   },
 
   begin(){
-    try { localStorage.setItem(this.KEY, this._iso(new Date())); } catch(e){}
+    try { localStorage.setItem(this.KEY, this._iso(new Date())); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
     toast('\ud83d\ude80 Day 1 of your 60-day sprint. Let\u2019s go!');
     this._refreshStrip();
   },
@@ -43,7 +43,7 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
   _ISO: /^\d{4}-\d{2}-\d{2}$/,
 
   _offDays(){ try { const v = JSON.parse(localStorage.getItem(this.OFF_KEY) || '[]'); return Array.isArray(v) ? v.filter(x => this._ISO.test(x)) : []; } catch(e){ return []; } },
-  _saveOff(list){ try { localStorage.setItem(this.OFF_KEY, JSON.stringify(list.slice(-80))); } catch(e){} },
+  _saveOff(list){ try { localStorage.setItem(this.OFF_KEY, JSON.stringify(list.slice(-80))); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); } },
   _exam(){ try { const v = localStorage.getItem(this.EXAM_KEY) || ''; return this._ISO.test(v) ? v : ''; } catch(e){ return ''; } },
 
   _secPerQ(){
@@ -67,7 +67,7 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
           state: m.state 
         });
       });
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
     this._chC = { t, v: out };
     return out;
   },
@@ -78,9 +78,9 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
       const refs = sprintRefs(ChapterData.allFileRefs());
       total = refs.length;
       covered = refs.filter(r => { const c = (S.cov || {})[r.fid]; return c && c.a > 0; }).length;
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
     let due = 0;
-    try { due = REV.dueWrong().length; } catch(e){}
+    try { due = REV.dueWrong().length; } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
     const known = this._chapters().filter(c => c.total > 0);
     const totalQ = known.reduce((n, c) => n + c.total, 0);
     const attemptedQ = Math.min(totalQ, known.reduce((n, c) => n + c.attempted, 0));
@@ -97,15 +97,15 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
   render(){ return; },
 
   _refreshStrip(){
-    try { if (window.SPRINT_PAGE && SPRINT_PAGE.renderHomeStrip) SPRINT_PAGE.renderHomeStrip(); } catch(e){}
-    try { if (window.SPRINT_PAGE && SPRINT_PAGE.renderPage)      SPRINT_PAGE.renderPage(); }      catch(e){}
+    try { if (window.SPRINT_PAGE && SPRINT_PAGE.renderHomeStrip) SPRINT_PAGE.renderHomeStrip(); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
+    try { if (window.SPRINT_PAGE && SPRINT_PAGE.renderPage)      SPRINT_PAGE.renderPage(); }      catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
   },
 
   startItem(i){
     const it = (this._items || [])[i];
     if (!it) return;
-    if (it.kind === 'review') { try { if (REV.start) { REV.start('wr', 'flashcard', true); return; } } catch(e){} toast('Nothing to review right now.'); return; }
-    if (it.kind === 'mock') { try { if (SYLLABUS_MOCK && SYLLABUS_MOCK.start) { SYLLABUS_MOCK.start(); return; } } catch(e){} toast('Mock papers are not available yet.'); return; }
+    if (it.kind === 'review') { try { if (REV.start) { REV.start('wr', 'flashcard', true); return; } } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); } toast('Nothing to review right now.'); return; }
+    if (it.kind === 'mock') { try { if (SYLLABUS_MOCK && SYLLABUS_MOCK.start) { SYLLABUS_MOCK.start(); return; } } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); } toast('Mock papers are not available yet.'); return; }
     if (it.lv && it.ch && typeof CH_GRID !== 'undefined') CH_GRID.startChapter(it.lv, it.ch, 'flashcard');
   },
 
@@ -129,12 +129,12 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
   saveExam(){
     const v = (document.getElementById('sp-exam') || {}).value || '';
     if (!this._ISO.test(v) || v <= this._iso(new Date())) { toast('Pick a date after today.'); return; }
-    try { localStorage.setItem(this.EXAM_KEY, v); } catch(e){}
+    try { localStorage.setItem(this.EXAM_KEY, v); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
     closeMod(); toast('Exam date saved.');
     this._refreshStrip();
   },
   clearExam(){
-    try { localStorage.removeItem(this.EXAM_KEY); } catch(e){}
+    try { localStorage.removeItem(this.EXAM_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
     closeMod();
     this._refreshStrip();
   },
@@ -148,7 +148,7 @@ Object.assign(window.SPRINT = window.SPRINT || {}, {
       if (first !== -1) { this.startItem(first); return; }
     }
     if (plan.state === 'active' && plan.mock) {
-      try { if (typeof SYLLABUS_MOCK !== 'undefined' && SYLLABUS_MOCK.start) { SYLLABUS_MOCK.start(); return; } } catch(e){}
+      try { if (typeof SYLLABUS_MOCK !== 'undefined' && SYLLABUS_MOCK.start) { SYLLABUS_MOCK.start(); return; } } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
     }
     TODAY_PLAN.start();
   }
@@ -296,7 +296,7 @@ window.TODAY_PLAN = {
         try {
           const raw = await QUIZ._fetch(ref.fid, ref.key);
           all.push(...normQ(raw, ref.fid));
-        } catch(e){}
+        } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
         if (all.length >= 15) break;
       }
       if (!all.length) { toast('Could not load a quick set \u2014 try again.'); return; }
@@ -323,7 +323,7 @@ window.DAILY10 = {
   },
   _doneKey(){ return 'abhyas_daily10_done'; },
   isDone(){ try { return localStorage.getItem(this._doneKey()) === this._dateKey(); } catch(e){ return false; } },
-  markDone(){ try { localStorage.setItem(this._doneKey(), this._dateKey()); } catch(e){} },
+  markDone(){ try { localStorage.setItem(this._doneKey(), this._dateKey()); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); } },
   async build(){
     const fids = this._openedFids();
     if (!fids.length) return [];
@@ -342,7 +342,7 @@ window.DAILY10 = {
           if (hist && hist.seen > 0 && hist.correct === hist.seen) continue;
           all.push(q);
         }
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
       if (all.length >= 200) break;
     }
     for (let i = all.length - 1; i > 0; i--){ const j = Math.floor(rng() * (i + 1)); const t = all[i]; all[i] = all[j]; all[j] = t; }
@@ -351,7 +351,7 @@ window.DAILY10 = {
   async start(){
     QUIZ._showLoader('Building today\u2019s 10\u2026');
     let picked = [];
-    try { picked = await this.build(); } catch(e){}
+    try { picked = await this.build(); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
     QUIZ._hideLoader();
     if (!picked.length){ toast('Open a chapter once and the daily set begins tomorrow.', 5000); return; }
     QUIZ.startWith(picked, 'flashcard', '\u2600\ufe0f Daily 10 \u2014 ' + this._dateKey(),

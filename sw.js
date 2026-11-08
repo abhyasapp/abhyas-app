@@ -132,7 +132,10 @@ const SHELL = [
   './css/app.css',
   './js/features/settings-ui.js',
   './js/core/qna.js',
-  './js/features/qna.js'
+  './js/features/qna.js',
+  './js/features/exam-mode.js',
+  './js/features/marks-map.js',
+  './js/features/qstats.js'
 ];
 
 function offlinePage() {

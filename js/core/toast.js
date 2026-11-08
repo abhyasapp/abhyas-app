@@ -43,7 +43,7 @@
         'background:none;border:1px solid rgba(255,255,255,.35);color:#fff;' +
         'padding:.25rem .55rem;border-radius:6px;font-size:.78rem;cursor:pointer';
       btn.onclick = function () {
-        try { undo(); } catch (e) {}
+        try { undo(); } catch (e) { window.warnCaught && window.warnCaught('js/core/toast.js', e); }
         t.remove();
       };
       t.appendChild(btn);

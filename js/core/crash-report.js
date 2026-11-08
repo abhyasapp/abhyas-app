@@ -28,7 +28,7 @@
           ua: (navigator.userAgent || '').slice(0, 80)
         })
       }).catch(() => {});
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/crash-report.js', e); }
   }
 
   window.addEventListener('error', e => report(e.message, e.filename, e.lineno));

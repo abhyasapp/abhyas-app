@@ -12,7 +12,7 @@ const SUBJ_QUEUE = {
     catch (e) { return []; }
   },
   write(list) {
-    try { localStorage.setItem(this.KEY, JSON.stringify(list || [])); } catch (e) {}
+    try { localStorage.setItem(this.KEY, JSON.stringify(list || [])); } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
   },
   add(item) {
     const list = this.read().filter(x => !(
@@ -35,7 +35,7 @@ const SUBJ_QUEUE = {
   async process() {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     let user = null;
-    try { user = (typeof S !== 'undefined' && S && S.user) ? S.user : null; } catch (e) {}
+    try { user = (typeof S !== 'undefined' && S && S.user) ? S.user : null; } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
     if (!user || !user.token) return;
     const list = this.read();
     if (!list.length) return;
@@ -56,8 +56,8 @@ const SUBJ_QUEUE = {
     }
     this.write(remaining);
     if (sentAny && typeof toast === 'function') toast('✅ Queued answer sent.', 4500);
-    try { if (typeof SUBJ !== 'undefined') { SUBJ._renderQotd(); SUBJ._renderExam(); } } catch (e) {}
-    try { if (typeof window.SB_HINTS !== 'undefined') window.SB_HINTS.refresh(); } catch (e) {}
+    try { if (typeof SUBJ !== 'undefined') { SUBJ._renderQotd(); SUBJ._renderExam(); } } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
+    try { if (typeof window.SB_HINTS !== 'undefined') window.SB_HINTS.refresh(); } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
   },
 
   _markSubmitted(item) {
@@ -65,15 +65,15 @@ const SUBJ_QUEUE = {
       try {
         const raw = JSON.parse(localStorage.getItem(LS_QOTD) || 'null');
         if (raw) { raw.submitted = true; raw.submittedAt = Date.now(); raw.queued = false; localStorage.setItem(LS_QOTD, JSON.stringify(raw)); }
-      } catch (e) {}
-      try { if (typeof QOTD !== 'undefined' && QOTD) { QOTD.submitted = true; QOTD.submittedAt = Date.now(); QOTD.queued = false; } } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
+      try { if (typeof QOTD !== 'undefined' && QOTD) { QOTD.submitted = true; QOTD.submittedAt = Date.now(); QOTD.queued = false; } } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
     }
     if (item.kind === 'exam') {
       try {
         const raw = JSON.parse(localStorage.getItem(LS_EXAM) || 'null');
         if (raw) { raw.submitted = true; raw.submittedAt = Date.now(); raw.queued = false; localStorage.setItem(LS_EXAM, JSON.stringify(raw)); }
-      } catch (e) {}
-      try { if (typeof EXAM !== 'undefined' && EXAM) { EXAM.submitted = true; EXAM.submittedAt = Date.now(); EXAM.queued = false; } } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
+      try { if (typeof EXAM !== 'undefined' && EXAM) { EXAM.submitted = true; EXAM.submittedAt = Date.now(); EXAM.queued = false; } } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
     }
   },
 
@@ -124,5 +124,5 @@ const SUBJ_QUEUE = {
 
 window.addEventListener('online', () => SUBJ_QUEUE.scheduleProcess());
 setTimeout(() => SUBJ_QUEUE.scheduleProcess(), 3000);
-setInterval(() => { try { SUBJ_QUEUE.process(); } catch (e) {} }, 60000);
+setInterval(() => { try { SUBJ_QUEUE.process(); } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); } }, 60000);
 window.SUBJ_QUEUE = SUBJ_QUEUE;

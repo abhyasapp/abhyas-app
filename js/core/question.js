@@ -19,7 +19,7 @@ window.isDualSearchExtensionInstalled = false;
 // Listen for the safe event dispatched by content.js
 document.addEventListener('DualSearchExtensionReady', () => {
     window.isDualSearchExtensionInstalled = true;
-    console.log("✅ Dual Search Extension Connected!");
+    if (window.ABHYAS_DEBUG) console.log('Dual Search Extension connected');
 });
 
 // Startup-race safety net. If the extension announced itself BEFORE this script ran, the event above

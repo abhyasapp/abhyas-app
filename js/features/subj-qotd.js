@@ -37,11 +37,11 @@ function _restoreQotd() {
 }
 
 function _persistQotd() {
-  try { localStorage.setItem(LS_QOTD, JSON.stringify(QOTD)); } catch (e) {}
+  try { localStorage.setItem(LS_QOTD, JSON.stringify(QOTD)); } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-qotd.js', e); }
 }
 function _clearQotd() {
   QOTD = { date: '', questionId: '', marks: 0, startedAt: 0, solveEndsAt: 0, uploadEndsAt: 0, submitted: false, queued: false };
-  try { localStorage.removeItem(LS_QOTD); } catch (e) {}
+  try { localStorage.removeItem(LS_QOTD); } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-qotd.js', e); }
 }
 
 function _solveSecFor(marks) {

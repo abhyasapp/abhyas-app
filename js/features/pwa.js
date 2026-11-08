@@ -39,14 +39,14 @@ const PWA = {
       <button id="pwa-install-x" aria-label="Dismiss install prompt" style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;background:none;border:none;color:var(--t3);font-size:.9rem;cursor:pointer;padding:.2rem"><i class="ph ph-x"></i></button>
     `;
     document.body.appendChild(bar);
-    requestAnimationFrame(() => { try { FLOATSPACE.sync('pwa-banner', bar); } catch (e) {} });
+    requestAnimationFrame(() => { try { FLOATSPACE.sync('pwa-banner', bar); } catch (e) { window.warnCaught && window.warnCaught('js/features/pwa.js', e); } });
     document.getElementById('pwa-install-go').onclick = () => { PWA.install(); PWA._hideInstallBanner(); };
     document.getElementById('pwa-install-x').onclick = () => PWA._hideInstallBanner();
   },
   _hideInstallBanner() {
     const bar = document.getElementById('pwa-install-banner');
     if (bar) bar.remove();
-    try { FLOATSPACE.sync('pwa-banner', null); } catch (e) {}
+    try { FLOATSPACE.sync('pwa-banner', null); } catch (e) { window.warnCaught && window.warnCaught('js/features/pwa.js', e); }
   },
   install() {
     if (S.dpi) {

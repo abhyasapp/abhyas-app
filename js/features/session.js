@@ -44,18 +44,18 @@ window.SESSION = {
     for (const q of misc) { if (out.length >= miscCap) break; if (push(q)) breakdown.misconceptions++; }
 
     if (phase === 'learn') {
-      const fresh = await this._fresh(this.COUNT - out.length);
+      const fresh = await this._fresh(this.COUNT - out.length, phase);
       for (const q of fresh) { if (push(q)) breakdown.fresh++; }
     } else if (phase === 'drill') {
-      const weak = await this._weak(this.COUNT - out.length);
+      const weak = await this._weak(this.COUNT - out.length, phase);
       for (const q of weak) { if (push(q)) breakdown.weak++; }
     } else {
-      const mixed = await this._randomFill(this.COUNT - out.length);
+      const mixed = await this._randomFill(this.COUNT - out.length, phase);
       for (const q of mixed) { if (push(q)) breakdown.weak++; }
     }
 
     if (out.length < this.COUNT) {
-      const fill = await this._randomFill(this.COUNT - out.length);
+      const fill = await this._randomFill(this.COUNT - out.length, phase);
       for (const q of fill) { if (push(q)) breakdown.fill++; }
     }
 
@@ -64,7 +64,7 @@ window.SESSION = {
     return { qs: ordered, breakdown };
   },
 
-  async _fresh(limit) {
+  async _fresh(limit, phase) {
     if (limit <= 0) return [];
     const cov = S.cov || {};
     const fcount = S.fcount || {};
@@ -89,16 +89,17 @@ window.SESSION = {
           return !c || !c.p || c.p[idx] === '0';
         });
         const pool = shuf(unseen.length ? unseen : qs);
-        for (const q of pool) { picked.push(q); if (picked.length >= limit) break; }
-      } catch (e) {}
+        const tuned = (typeof QSTATS !== 'undefined') ? QSTATS.order(pool, phase) : pool;
+        for (const q of tuned) { picked.push(q); if (picked.length >= limit) break; }
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
     }
     return picked;
   },
 
-  async _weak(limit) {
+  async _weak(limit, phase) {
     if (limit <= 0) return [];
     let entries = [];
-    try { entries = (typeof CHAPSTATS !== 'undefined') ? CHAPSTATS.entries() : []; } catch (e) {}
+    try { entries = (typeof CHAPSTATS !== 'undefined') ? CHAPSTATS.entries() : []; } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
     const weak = entries
       .filter(e => e.attempted >= 5 && e.accuracy < MASTERY_THRESHOLD * 100)
       .sort((a, b) => a.accuracy - b.accuracy)
@@ -111,14 +112,15 @@ window.SESSION = {
         if (picked.length >= limit) break;
         try {
           const raw = await QUIZ._fetch(ref.fid, ref.key);
-          for (const q of shuf(normQ(raw, ref.fid))) { picked.push(q); if (picked.length >= limit) break; }
-        } catch (e) {}
+          const tuned = (typeof QSTATS !== 'undefined') ? QSTATS.order(shuf(normQ(raw, ref.fid)), phase) : shuf(normQ(raw, ref.fid));
+        for (const q of tuned) { picked.push(q); if (picked.length >= limit) break; }
+        } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
       }
     }
     return picked;
   },
 
-  async _randomFill(limit) {
+  async _randomFill(limit, phase) {
     if (limit <= 0) return [];
     const refs = (typeof ChapterData !== 'undefined') ? ChapterData.allFileRefs() : [];
     const picked = [];
@@ -126,8 +128,9 @@ window.SESSION = {
       if (picked.length >= limit) break;
       try {
         const raw = await QUIZ._fetch(ref.fid, ref.key);
-        for (const q of shuf(normQ(raw, ref.fid))) { picked.push(q); if (picked.length >= limit) break; }
-      } catch (e) {}
+        const tuned = (typeof QSTATS !== 'undefined') ? QSTATS.order(shuf(normQ(raw, ref.fid)), phase) : shuf(normQ(raw, ref.fid));
+        for (const q of tuned) { picked.push(q); if (picked.length >= limit) break; }
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
     }
     return picked;
   },
@@ -227,7 +230,7 @@ window.PRACTICE_RESUME = {
   SIZE_CEILING: 500 * 1024,
 
   get() { try { const r = localStorage.getItem(this.KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } },
-  clear() { try { localStorage.removeItem(this.KEY); } catch (e) {} },
+  clear() { try { localStorage.removeItem(this.KEY); } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); } },
 
   snapshot() {
     try {
@@ -251,7 +254,7 @@ window.PRACTICE_RESUME = {
       }
       if (json.length > this.SIZE_CEILING) return;
       localStorage.setItem(this.KEY, json);
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
   },
 
   valid() {
@@ -299,7 +302,7 @@ window.PRACTICE_RESUME = {
     document.getElementById('ex-wrap').style.display = 'none';
     document.getElementById('fc-wrap').style.display = '';
     document.getElementById('res-wrap').style.display = 'none';
-    try { QUIZ._renderFlashcard(); QUIZ._startTimer(); } catch (e) {}
+    try { QUIZ._renderFlashcard(); QUIZ._startTimer(); } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
     window.scrollTo(0, 0);
     this.clear();
     this.render();

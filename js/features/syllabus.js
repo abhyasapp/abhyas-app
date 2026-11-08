@@ -42,7 +42,7 @@ window.SYLLABUS_PROGRESS = {
 
 window.LKS = {
   /* The admin's mark scheme (kept from the last time the app was online), or the built-in default (25 GK + the 50 Level 7 marks by topic). */
-  scheme(){ let raw = ''; try { raw = localStorage.getItem('abhyas_lscheme') || ''; } catch(e){} return normalizeLoksewaScheme(raw); },
+  scheme(){ let raw = ''; try { raw = localStorage.getItem('abhyas_lscheme') || ''; } catch (e) { window.warnCaught && window.warnCaught('js/features/syllabus.js', e); } return normalizeLoksewaScheme(raw); },
   minutes(){ return Math.max(10, Math.round(this.scheme().total * 0.8)); }     /* 75 marks = 60 minutes */
 };
 
@@ -65,7 +65,7 @@ window.SYLLABUS_MOCK = {
       try {
         const raw = await QUIZ._fetch(ref.fid, ref.key);
         normQ(raw, ref.fid).forEach(q => pool.push({ q, lv: ref.lv, ch: ref.ch }));
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/syllabus.js', e); }
     }
     return pool;
   },
@@ -80,7 +80,7 @@ window.SYLLABUS_MOCK = {
   async start(){
     QUIZ._showLoader('Building today\u2019s ' + LKS.scheme().total + '-mark paper\u2026');
     let built = { papers: [], shortfalls: [], total: 75 };
-    try { built = await this.build(); } catch(e){}
+    try { built = await this.build(); } catch (e) { window.warnCaught && window.warnCaught('js/features/syllabus.js', e); }
     QUIZ._hideLoader();
     if (built.papers.length < 10){ toast('Not enough chapters cached yet. Open a few chapters in Chapters first.', 6000); return; }
     if (built.shortfalls.length){

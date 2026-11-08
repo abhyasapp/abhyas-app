@@ -20,6 +20,8 @@ const HOME = {
 
       HOME.updateStats();
       HOME.updateBadges();
+      if (typeof MARKS_MAP !== 'undefined') MARKS_MAP.render();
+      if (typeof EXAM_MODE !== 'undefined') EXAM_MODE.render();
       if (typeof STREAK !== 'undefined') STREAK.renderBar();
       HOME.renderRecent();
       HOME.tickClock();

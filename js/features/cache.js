@@ -285,7 +285,7 @@ const CACHE = {
       if(!next) return;
       if((await QDB.keys()).includes(next.key)) return;
       await QUIZ._fetch(next.fid, next.key, 1, 'bg');
-    }catch(e){}
+    }catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
   },
 
   _running:false, _paused:false, _stop:false,
@@ -344,7 +344,7 @@ const CACHE = {
     CACHE._badge(`Saving for offline · 0/${batch.length}`);
     let done = 0;
     for(const ref of batch){
-      try{ await QUIZ._fetch(ref.fid, ref.key, 1, 'bg'); }catch{ }
+      try{ await QUIZ._fetch(ref.fid, ref.key, 1, 'bg'); }catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
       done++;
       CACHE._badge(`Saving for offline · ${done}/${batch.length}`);
     }
@@ -374,16 +374,16 @@ const CACHE = {
   },
 
   _postponeRefresh(weak) {
-    try { _save(this.PENDING_KEY, Date.now()); } catch (e) {}
+    try { _save(this.PENDING_KEY, Date.now()); } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
     try {
       toast(weak
         ? '📖 Chapters changed — your downloaded sets will refresh on Wi-Fi or a better connection'
         : '📖 Chapters changed — reconnect to refresh your downloaded sets', 8000);
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
     if (!this._onlineHookBound) {
       this._onlineHookBound = true;
       window.addEventListener('online', () => {
-        setTimeout(() => { try { CACHE.refreshFromUpdate('online-retry'); } catch (e) {} }, 3000);
+        setTimeout(() => { try { CACHE.refreshFromUpdate('online-retry'); } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); } }, 3000);
       });
     }
   },
@@ -415,7 +415,7 @@ const CACHE = {
 
       /* 2. Reset the 24 h per-file revalidation stamps so the next time
             a changed chapter is OPENED online it rechecks immediately */
-      try { localStorage.removeItem('abhyas_qts'); } catch (e) {}
+      try { localStorage.removeItem('abhyas_qts'); } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
 
       /* 3. New files since the change + 4. recheck downloaded ones. */
       const toAdd = refs.filter(r => !have.has(r.key) && (autosyncOn || picked.has(r.lv)));
@@ -464,15 +464,15 @@ const CACHE = {
       if (added) bits.push(added + ' new question ' + (added === 1 ? 'set' : 'sets') + ' added to your downloads');
       if (updated) bits.push(updated + (updated === 1 ? ' set was' : ' sets were') + ' updated for offline use');
       if (orphans) bits.push(orphans + ' removed ' + (orphans === 1 ? 'download' : 'downloads') + ' cleaned up');
-      try { if (bits.length) toast('🔄 ' + bits.join(' · '), 7000); } catch (e) {}
+      try { if (bits.length) toast('🔄 ' + bits.join(' · '), 7000); } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
       try {
         if (!bits.length && reason === 'pending') {
           toast('✅ Your downloaded sets already match the latest chapter data', 6000);
         }
-      } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
     } finally {
       this._refreshing = false;
-      try { localStorage.removeItem(this.PENDING_KEY); } catch (e) {}
+      try { localStorage.removeItem(this.PENDING_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
     }
   },
 
@@ -510,7 +510,7 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
      for an unchanged source. */
   try {
     if (_load(CACHE.PENDING_KEY, 0)) {
-      setTimeout(function () { try { CACHE.refreshFromUpdate('pending'); } catch (e) {} }, 12000);
+      setTimeout(function () { try { CACHE.refreshFromUpdate('pending'); } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); } }, 12000);
     }
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
 }

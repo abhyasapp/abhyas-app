@@ -232,7 +232,20 @@
     'All covered — raise accuracy to 85%': 'सबै समेटियो — शुद्धता ८५% पुर्‍याउनुहोस्',
     'Accuracy goal': 'शुद्धता लक्ष्य',
     'No accuracy data yet': 'अहिलेसम्म शुद्धताको तथ्याङ्क छैन',
-    'Accuracy is {a}%. Bring every chapter to {g}% to finish.': 'शुद्धता {a}% छ। सिध्याउन हरेक अध्याय {g}% पुर्‍याउनुहोस्।'
+    'Accuracy is {a}%. Bring every chapter to {g}% to finish.': 'शुद्धता {a}% छ। सिध्याउन हरेक अध्याय {g}% पुर्‍याउनुहोस्।',
+    'Reset chapter progress': 'अध्यायको प्रगति रिसेट गर्नुहोस्',
+    'Reset chapter progress?': 'अध्यायको प्रगति रिसेट गर्ने?',
+    'Reset is not available right now.': 'रिसेट अहिले उपलब्ध छैन।',
+    'Reset': 'रिसेट',
+    'Clear all practice progress for {chapter}? This removes its sessions, accuracy, coverage and missed questions. Bookmarks, flags and notes are kept.': '{chapter} को सबै अभ्यास प्रगति मेट्ने? यसले यसका सत्र, शुद्धता, कभरेज र छुटेका प्रश्नहरू हटाउँछ। बुकमार्क, झन्डा र नोटहरू सुरक्षित रहन्छन्।',
+    'Nothing to reset in this chapter.': 'यो अध्यायमा रिसेट गर्न केही छैन।',
+    'Chapter progress reset': 'अध्यायको प्रगति रिसेट भयो',
+    'Sessions: {sessions} · Answered: {answered} · Missed: {missed}.': 'सत्र: {sessions} · उत्तर दिइएका: {answered} · छुटेका: {missed}।',
+    'Reset this set': 'यो सेट रिसेट गर्नुहोस्',
+    'Reset set progress?': 'सेटको प्रगति रिसेट गर्ने?',
+    'Clear progress for {set}? This removes its coverage, missed questions and the answers it recorded inside chapter sessions. Bookmarks, flags and notes are kept.': 'सेट {set}को प्रगति मेट्ने? यसले यसको कभरेज, छुटेका प्रश्न र अध्याय सत्रभित्र यसले रेकर्ड गरेका उत्तरहरू हटाउँछ। बुकमार्क, फ्ल्याग र नोटहरू रहिरहन्छन्।',
+    'Nothing to reset in this set.': 'यो सेटमा रिसेट गर्न केही छैन।',
+    'Set progress reset': 'सेटको प्रगति रिसेट भयो'
   };
 
   const DICTS = { en: null, ne: NE };
@@ -241,7 +254,7 @@
     try {
       const v = localStorage.getItem(LANG_KEY);
       if (v === 'en' || v === 'ne') return v;
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/i18n.js', e); }
     return null;
   }
 
@@ -251,12 +264,12 @@
     try {
       const nav = String(navigator.language || '');
       if (/^ne\b/i.test(nav)) return 'ne';
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/i18n.js', e); }
     return 'en';
   }
 
   function applyDocumentLang(lang) {
-    try { document.documentElement.setAttribute('lang', lang === 'ne' ? 'ne-NP' : 'en-NP'); } catch (e) {}
+    try { document.documentElement.setAttribute('lang', lang === 'ne' ? 'ne-NP' : 'en-NP'); } catch (e) { window.warnCaught && window.warnCaught('js/core/i18n.js', e); }
   }
 
   const I18N = {
@@ -305,15 +318,15 @@
     setLang(lang, opts) {
       const next = lang === 'ne' ? 'ne' : 'en';
       this.lang = next;
-      try { localStorage.setItem(LANG_KEY, next); } catch (e) {}
+      try { localStorage.setItem(LANG_KEY, next); } catch (e) { window.warnCaught && window.warnCaught('js/core/i18n.js', e); }
       applyDocumentLang(next);
       this.applyStatic(document);
       /* Navigation is built from English data on purpose — re-render it so
          the sidebar, page headers and phone sheet follow the switch. */
-      try { if (window.NAV) { NAV.renderSidebar(); NAV.renderHeads(); } } catch (e) {}
+      try { if (window.NAV) { NAV.renderSidebar(); NAV.renderHeads(); } } catch (e) { window.warnCaught && window.warnCaught('js/core/i18n.js', e); }
       try {
         document.dispatchEvent(new CustomEvent('abhyas:lang', { detail: { lang: next } }));
-      } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/core/i18n.js', e); }
       if (!(opts && opts.silent) && typeof toast === 'function') {
         toast(next === 'ne' ? 'भाषा नेपालीमा बदलियो' : 'Language set to English');
       }

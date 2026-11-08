@@ -92,7 +92,7 @@ window.PACE = {
     const el = $('hs-time');
     if (!el || !el.parentElement) return;
     let pace = null;
-    try { pace = PACE._compute(); } catch(e){}
+    try { pace = PACE._compute(); } catch (e) { window.warnCaught && window.warnCaught('js/features/insights.js', e); }
     let line = el.parentElement.querySelector('.pace-line');
     if (!line) {
       line = document.createElement('span');
@@ -136,7 +136,7 @@ window.PACE = {
           targetSec = Math.min(20 * 3600, Math.max(3 * 3600, (120 * 3600) / Math.max(7, days) * 7));
         }
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/insights.js', e); }
     return { actual: actualSec, target: targetSec, onTrack: actualSec >= targetSec * 0.85 };
   }
 };
@@ -146,7 +146,7 @@ window.READINESS = {
     const card = $('readiness-card');
     if (!card) return;
     let p = null;
-    try { p = (typeof PROG !== 'undefined' && PROG.predict) ? PROG.predict() : null; } catch(e){}
+    try { p = (typeof PROG !== 'undefined' && PROG.predict) ? PROG.predict() : null; } catch (e) { window.warnCaught && window.warnCaught('js/features/insights.js', e); }
     if (!p || typeof p.predicted !== 'number' || isNaN(p.predicted)) { card.hidden = true; return; }
     card.hidden = false;
     const v = Math.max(0, Math.min(100, p.predicted));
@@ -194,7 +194,7 @@ window.BADGES_UI = {
           S.prog.badges[d.id] = new Date().toISOString().slice(0,10);
           changed = true;
         }
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/insights.js', e); }
     });
     if (changed) _save(LS.PROG, S.prog);
     const earned = this.DEFS.filter(d => S.prog.badges[d.id]).length;
@@ -299,7 +299,7 @@ window.SERVER_PROG = {
     listEl.innerHTML = '<div class="sk-block"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>';
 
     let online = true;
-    try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); } catch(e){}
+    try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); } catch (e) { window.warnCaught && window.warnCaught('js/features/insights.js', e); }
     if (!online) {
       listEl.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-wifi-slash"></i></div>' +
         '<p>You are offline</p><p>This screen reads from your account, so it needs a connection.</p></div>';
@@ -308,7 +308,7 @@ window.SERVER_PROG = {
     }
 
     let backendUrl = '';
-    try { backendUrl = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || (typeof APPS !== 'undefined' ? APPS : ''); } catch(e){}
+    try { backendUrl = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || (typeof APPS !== 'undefined' ? APPS : ''); } catch (e) { window.warnCaught && window.warnCaught('js/features/insights.js', e); }
     if (!backendUrl) {
       listEl.innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>The backend address is not configured.</span></div>';
       this._loading = false;
@@ -638,7 +638,7 @@ window.HARDEST20 = {
   async start(){
     QUIZ._showLoader('Finding your hardest questions\u2026');
     let picked = [];
-    try { picked = await this.build(); } catch(e){}
+    try { picked = await this.build(); } catch (e) { window.warnCaught && window.warnCaught('js/features/insights.js', e); }
     QUIZ._hideLoader();
     if (!picked.length){ toast('Practice a few chapters first \u2014 then this drills the ones you keep missing.', 5000); return; }
     QUIZ.startWith(picked, 'flashcard', '\ud83c\udfaf Your hardest ' + picked.length, { sessionKind: 'drill' });

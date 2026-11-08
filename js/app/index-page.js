@@ -125,17 +125,17 @@
     } catch (e) { return null; }
   }
   function _writeSession(s) {
-    try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) {}
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     _session = s;
   }
   function _clearSession() {
-    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     _session = null;
   }
 
   function _computeAccess(res, user) {
     if (typeof computeAccessLevel === 'function') {
-      try { return computeAccessLevel(res, user); } catch (e) {}
+      try { return computeAccessLevel(res, user); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     }
     return {
       level: res.permanentAccess || (user && user.status === 'active') ? 'permanent'
@@ -363,7 +363,7 @@
 
       var session = _buildSession(res, (res.user && res.user.username) || '');
       _writeSession(session);
-      try { localStorage.setItem('abhyas_last_user', session.username); } catch (e) {}
+      try { localStorage.setItem('abhyas_last_user', session.username); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
       await _loadPublicInfo();
       _routeByAccess();
     } catch (err) {
@@ -416,14 +416,14 @@
       var res = await _post('getPublicInfo', {});
       if (res && res.success) {
         _publicInfo = res;
-        try { localStorage.setItem('abhyas_public_info', JSON.stringify(res)); } catch (e) {}
+        try { localStorage.setItem('abhyas_public_info', JSON.stringify(res)); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
         return res;
       }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     try {
       var cached = localStorage.getItem('abhyas_public_info');
       if (cached) _publicInfo = JSON.parse(cached);
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     return _publicInfo;
   }
 
@@ -443,14 +443,14 @@
       var res = await _post('login', { username: username, password: password });
       if (!res || !res.success) throw new Error((res && res.error) || 'Sign-in failed.');
       if (res.isAdmin && res.adminToken && !res.token) {
-        try { localStorage.setItem('abhyas_admin_token', res.adminToken); } catch (e) {}
+        try { localStorage.setItem('abhyas_admin_token', res.adminToken); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
         window.location.href = 'admin.html';
         return;
       }
       if (!res.token) throw new Error('The server did not return a session token.');
       var session = _buildSession(res, username);
       _writeSession(session);
-      try { localStorage.setItem('abhyas_last_user', session.username); } catch (e) {}
+      try { localStorage.setItem('abhyas_last_user', session.username); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
       await _loadPublicInfo();
       _routeByAccess();
     } catch (err) {
@@ -485,7 +485,7 @@
       if (!res.token) throw new Error('The server did not return a session token.');
       var session = _buildSession(res, uname);
       _writeSession(session);
-      try { localStorage.setItem('abhyas_last_user', session.username); } catch (e) {}
+      try { localStorage.setItem('abhyas_last_user', session.username); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
       await _loadPublicInfo();
       _routeByAccess();
     } catch (err) {
@@ -588,7 +588,7 @@
           var updated = _buildSession(check, _session.username);
           _writeSession(updated);
         }
-      } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
       _setMode('status');
       if (typeof toast === 'function') toast('Payment sent. An admin will review it soon.', 5000);
     } catch (err) {
@@ -712,12 +712,12 @@
     if (!banner) return;
     try {
       if (localStorage.getItem(COOKIE_KEY) === '1') return;
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     banner.hidden = false;
     document.body.classList.add('cookie-open');
   }
   function _cookieAccept() {
-    try { localStorage.setItem(COOKIE_KEY, '1'); } catch (e) {}
+    try { localStorage.setItem(COOKIE_KEY, '1'); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     var banner = _get('cookie-banner');
     if (banner) banner.hidden = true;
     document.body.classList.remove('cookie-open');
@@ -851,7 +851,7 @@
     logout: function () {
       _stopTrialTimer();
       _clearSession();
-      try { localStorage.removeItem('abhyas_last_user'); } catch (e) {}
+      try { localStorage.removeItem('abhyas_last_user'); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
       _setMode('login');
       if (typeof toast === 'function') toast('Signed out.');
     },

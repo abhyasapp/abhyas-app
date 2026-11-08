@@ -28,7 +28,7 @@
       expires: Date.now() + (Number(res && res.expiresInMs) || 86400000),
       mustChangePassword: !!(res && res.mustChangePassword)
     };
-    try { localStorage.setItem(LS_ADMIN, JSON.stringify(creds)); } catch (e) {}
+    try { localStorage.setItem(LS_ADMIN, JSON.stringify(creds)); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-admin-router.js', e); }
     return creds;
   }
 
@@ -177,7 +177,7 @@
   // a button that promotes the current session into the admin console.
   window.SWITCH_TO_ADMIN = async function () {
     var session = null;
-    try { session = JSON.parse(localStorage.getItem('abhyas_session') || 'null'); } catch (e) {}
+    try { session = JSON.parse(localStorage.getItem('abhyas_session') || 'null'); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-admin-router.js', e); }
     if (!session || !session.username || !session.token) {
       return { success: false, error: 'You need to be signed in first.' };
     }

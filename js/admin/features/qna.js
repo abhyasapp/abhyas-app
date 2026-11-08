@@ -253,7 +253,7 @@ const QNA_ADMIN = {
 
   closeSplit(){
     this._thumbToken++;
-    try { if (this._pdf) this._pdf.destroy(); } catch (e){}
+    try { if (this._pdf) this._pdf.destroy(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/qna.js', e); }
     this._pdf = null; this._src = null; this._thumbs = {};
     MODAL.close('sheet');
   },
@@ -285,7 +285,7 @@ const QNA_ADMIN = {
       return;
     }
     try {
-      try { pdfjsLib.GlobalWorkerOptions.workerSrc = './tools/vendor/pdfjs/pdf.worker.min.js'; } catch (e){}
+      try { pdfjsLib.GlobalWorkerOptions.workerSrc = './tools/vendor/pdfjs/pdf.worker.min.js'; } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/qna.js', e); }
       this._src = { bytes };
       this._pdf = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
       this._pages = this._pdf.numPages;

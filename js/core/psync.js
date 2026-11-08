@@ -3,9 +3,38 @@
 const PSYNC = {
   _timer: null,
   _state: 'idle',
+  LAST_KEY: 'abhyas_last_sync',
   _setStatus(msg){
     const el = document.getElementById('psync-status');
     if(el) el.textContent = msg;
+  },
+  _markSynced(){
+    const at = Date.now();
+    let who;
+    try { who = (S.user && S.user.username) || ''; } catch (e) { who = ''; }
+    try { localStorage.setItem(this.LAST_KEY, JSON.stringify({ u: who, at: at })); } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
+    this._setStatus('Last backed up: ' + new Date(at).toLocaleString());
+    this._setState('synced');
+  },
+  lastSync(){
+    try {
+      const o = JSON.parse(localStorage.getItem(this.LAST_KEY) || 'null');
+      if(!o || !o.at) return 0;
+      let who;
+      try { who = (S.user && S.user.username) || ''; } catch (e) { who = ''; }
+      if(o.u && who && o.u !== who) return 0;
+      return Number(o.at) || 0;
+    } catch (e) { return 0; }
+  },
+  /* Put the persisted backup time back on the Data page after a reload. */
+  renderHealth(){
+    const el = document.getElementById('psync-status');
+    if(!el) return;
+    const at = this.lastSync();
+    if(!at){ el.textContent = 'Not backed up yet on this device.'; return; }
+    const mins = Math.floor((Date.now() - at) / 60000);
+    const when = mins < 1 ? 'just now' : mins < 60 ? mins + ' min ago' : Math.round(mins / 60) + (Math.round(mins / 60) === 1 ? ' hour ago' : ' hours ago');
+    el.textContent = 'Last backed up ' + when + ' \u00b7 ' + new Date(at).toLocaleString();
   },
   _setState(state){
     this._state = state;
@@ -42,7 +71,7 @@ const PSYNC = {
       if(navigator.sendBeacon) {
         navigator.sendBeacon(url, new Blob([body], {type:'text/plain'}));
       }
-    }catch(e){ }
+    }catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
   },
   flushOnHide(){
     if(!this._timer) return;
@@ -58,7 +87,7 @@ const PSYNC = {
     try { const raw = localStorage.getItem('abhyas_qnotes'); qnotes = raw ? JSON.parse(raw) : {}; } catch(e){ qnotes = {}; }
     if (!qnotes || typeof qnotes !== 'object' || Array.isArray(qnotes)) qnotes = {};
     let sprint = '';
-    try { sprint = localStorage.getItem('abhyas_sprint_start') || ''; } catch(e){}
+    try { sprint = localStorage.getItem('abhyas_sprint_start') || ''; } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
     return {
       prog: S.prog || {total:0,correct:0,sessions:[]}, chapStats: S.chapStats || {}, cov: S.cov || {},
       bk: S.bk || [], fl: S.fl || [], wr: S.wr || [], stk: S.stk || {days:[],last:''}, qnotes, sprint,
@@ -90,9 +119,9 @@ const PSYNC = {
       if(list[0] && list[0].user === user && JSON.stringify(list[0].data) === json) return true;
       list.unshift({ at: Date.now(), reason: String(reason||'sync'), user, counts: c, data: full });
       for(let keep = Math.min(list.length, 3); keep >= 1; keep--){
-        try { localStorage.setItem(this._SNAP_KEY, JSON.stringify(list.slice(0, keep))); return true; } catch(e){ }
+        try { localStorage.setItem(this._SNAP_KEY, JSON.stringify(list.slice(0, keep))); return true; } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
     return false;
   },
   listSnapshots(){
@@ -113,9 +142,9 @@ const PSYNC = {
       if(typeof QNOTE !== 'undefined') QNOTE._cache = m.qnotes;
       if(m.sprint) localStorage.setItem('abhyas_sprint_start', m.sprint);
       if(m.sprintLog && typeof SPRINT_LOG !== 'undefined') SPRINT_LOG.mergeIn(m.sprintLog);
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
     if(typeof PROGRESS_RESET !== 'undefined') PROGRESS_RESET.save(m.resets || {});
-    try { if(typeof WRONGBY !== 'undefined') WRONGBY._missCache = null; if(typeof QHIST !== 'undefined') QHIST._cache = null; } catch(e){}
+    try { if(typeof WRONGBY !== 'undefined') WRONGBY._missCache = null; if(typeof QHIST !== 'undefined') QHIST._cache = null; } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
     if(typeof HOME!=='undefined') HOME.render();
     if(typeof PROG!=='undefined') PROG.render();
     if(typeof HOME!=='undefined' && HOME.updateBadges) HOME.updateBadges();
@@ -149,13 +178,13 @@ const PSYNC = {
 
   _REV_KEY: 'abhyas_progress_rev',
   _rev(){ try { return localStorage.getItem(this._REV_KEY) || ''; } catch(e){ return ''; } },
-  _setRev(v){ try { if(v) localStorage.setItem(this._REV_KEY, String(v)); } catch(e){} },
+  _setRev(v){ try { if(v) localStorage.setItem(this._REV_KEY, String(v)); } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); } },
 
   /* opts.noLog: leave the sprint log out. It is nice-to-have; core progress must never be blocked by its size. */
   _syncPayloadForServer(opts){
     const p = S.prog || {};
     let sprint = '';
-    try { sprint = localStorage.getItem('abhyas_sprint_start') || ''; } catch(e){}
+    try { sprint = localStorage.getItem('abhyas_sprint_start') || ''; } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
     
     const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
     const recentSessions = (Array.isArray(p.sessions) ? p.sessions : [])
@@ -206,7 +235,7 @@ const PSYNC = {
       const res = await r.json();
       if(res && res.success){
         this._setRev(res.updatedAt);
-        this._setStatus('Last backed up: ' + new Date().toLocaleString()); this._setState('synced');
+        this._markSynced();
       } else if(res && res.conflict && !_isRetry){
         const out = await this.mergeIn(res.data, 'before-sync');
         if(!out.ok){ this._setStatus('Sync paused: ' + out.error); this._setState('error'); return; }

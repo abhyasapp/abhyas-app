@@ -111,8 +111,8 @@ feature with it — so this is the check that catches it.
 
 ## Roadmap (suggested)
 
-1. Tests for progress sync (`js/core/psync.js`), scoring and the quiz engine.
-2. Replace the ~300 empty `catch {}` blocks with a tiny `warn()` helper (`no-empty` now flags empty non-catch blocks; empty catches are still allowed).
+1. Tests for scoring and the quiz engine (`js/features/quiz-engine.js`). Progress sync is covered by `tests/psync.test.js`.
+2. ~~Replace the ~300 empty `catch {}` blocks with a tiny `warn()` helper~~ (done: they call `window.warnCaught` from `js/core/config.js`, silent unless `localStorage.abhyas_debug = '1'`; `no-empty` now flags empty non-catch blocks).
 3. ~~Remove `document.write` shims in `js/app/`~~ (done in 1.48.0).
 4. Move inline CSS/JS out of `user.html` / `admin.html`; then drop `'unsafe-inline'` from the CSP.
 5. Replace the `new Function` dispatcher with `addEventListener`-based delegation; then drop `'unsafe-eval'`.

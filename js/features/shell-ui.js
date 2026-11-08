@@ -23,7 +23,7 @@ window.BN = {
             '<i class="ph ph-arrow-square-out bn-sheet-arrow"></i>' +
           '</button>';
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
 
     const row = it => {
       const go = it.special === 'tutorial'
@@ -65,12 +65,12 @@ window.APP_SWITCH = {
 
   async refresh(){
     let user = null;
-    try { user = (typeof S !== 'undefined' && S.user) ? S.user : null; } catch(e){}
+    try { user = (typeof S !== 'undefined' && S.user) ? S.user : null; } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     if (!user) { _setAdminVisible(false); return; }
     if (user.adminCapable) { this._capable = true; _setAdminVisible(true); }
 
     let online = false, token = '';
-    try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); token = user.token || ''; } catch(e){}
+    try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); token = user.token || ''; } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     if (!online || !token) return;
 
     /* checkAdminCapable is Supabase per handover §3. Route explicitly. */
@@ -81,16 +81,16 @@ window.APP_SWITCH = {
       }, 15000);
       const data = await r.json();
       if (data && data.success && data.adminCapable) { this._capable = true; _setAdminVisible(true); }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
   },
 
   async toAdmin(){
     let user = null;
-    try { user = (typeof S !== 'undefined' && S.user) ? S.user : null; } catch(e){}
+    try { user = (typeof S !== 'undefined' && S.user) ? S.user : null; } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     if (!user || !user.token) { toast('Please log in again.'); return; }
 
     let online = true;
-    try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); } catch(e){}
+    try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     if (!online) { toast('You need a connection to open the admin console.'); return; }
 
     const btn = $('tb-admin-btn');
@@ -109,7 +109,7 @@ window.APP_SWITCH = {
         if (btn) { btn.disabled = false; btn.innerHTML = orig; }
         if (data && data.sessionInvalid) {
           toast('Your session expired — log in again.', 4500);
-          try { localStorage.removeItem('abhyas_session'); localStorage.removeItem('abhyas_admin'); } catch(e){}
+          try { localStorage.removeItem('abhyas_session'); localStorage.removeItem('abhyas_admin'); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
           setTimeout(() => { window.location.href = 'index.html'; }, 1500);
           return;
         }
@@ -126,7 +126,7 @@ window.APP_SWITCH = {
         token: data.adminToken,
         expires: Date.now() + (data.expiresInMs || 86400000)
       }));
-      try { if (typeof PSYNC !== 'undefined' && PSYNC._timer) PSYNC._beaconSync(); } catch(e){}
+      try { if (typeof PSYNC !== 'undefined' && PSYNC._timer) PSYNC._beaconSync(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
       toast('Opening the admin console…');
       setTimeout(() => { window.location.href = 'admin.html'; }, 250);
     } catch(e){
@@ -169,10 +169,10 @@ window.SIDEBAR = {
     const chev  = document.getElementById('sb-more-chev');
     if (items) items.style.display = this._expanded ? '' : 'none';
     if (chev)  chev.className = 'ph ' + (this._expanded ? 'ph-caret-up' : 'ph-caret-down');
-    try { localStorage.setItem('abhyas_sb_expanded', this._expanded ? '1' : '0'); } catch(e){}
+    try { localStorage.setItem('abhyas_sb_expanded', this._expanded ? '1' : '0'); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
   },
   restore(){
-    try { if (localStorage.getItem('abhyas_sb_expanded') === '1'){ this._expanded = true; this._applyState(); } } catch(e){}
+    try { if (localStorage.getItem('abhyas_sb_expanded') === '1'){ this._expanded = true; this._applyState(); } } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
   }
 };
 
@@ -183,7 +183,7 @@ window.ANNOUNCE = {
     if (Date.now() - this._last < 5 * 60 * 1000) { this.render(); return; }
     
     let online = true;
-    try { online = !!(S.online && !S.forcedOffline); } catch(e){}
+    try { online = !!(S.online && !S.forcedOffline); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     if (!online) { this.render(); return; }
     
     this._last = Date.now();
@@ -199,8 +199,8 @@ window.ANNOUNCE = {
       const res = await r.json();
       if (res && res.success) {
         this._text = String(res.announcement || '').trim();
-        try { localStorage.setItem('abhyas_announce', this._text); } catch(e){}
-        try { localStorage.setItem('abhyas_lscheme', String(res.loksewaScheme || '')); } catch(e){}
+        try { localStorage.setItem('abhyas_announce', this._text); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
+        try { localStorage.setItem('abhyas_lscheme', String(res.loksewaScheme || '')); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
         const cv = String(res.contentVersion || '');
         if (cv) {
           try {
@@ -208,10 +208,10 @@ window.ANNOUNCE = {
               localStorage.removeItem('abhyas_qts');
               localStorage.setItem('abhyas_cv', cv);
             }
-          } catch(e){}
+          } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
         }
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     this.render();
   },
   _key(t){ let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; return String(h); },
@@ -219,16 +219,16 @@ window.ANNOUNCE = {
     const bar = $('announce-bar'), tx = $('announce-text');
     if (!bar || !tx) return;
     let t = this._text;
-    if (!t) { try { t = localStorage.getItem('abhyas_announce') || ''; } catch(e){} }
+    if (!t) { try { t = localStorage.getItem('abhyas_announce') || ''; } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); } }
     let hidden = '';
-    try { hidden = localStorage.getItem('abhyas_announce_hidden') || ''; } catch(e){}
+    try { hidden = localStorage.getItem('abhyas_announce_hidden') || ''; } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     if (!t || hidden === this._key(t)) { bar.hidden = true; return; }
     tx.textContent = t;
     bar.hidden = false;
   },
   dismiss(){
     let t = this._text || '';
-    try { t = t || localStorage.getItem('abhyas_announce') || ''; localStorage.setItem('abhyas_announce_hidden', this._key(t)); } catch(e){}
+    try { t = t || localStorage.getItem('abhyas_announce') || ''; localStorage.setItem('abhyas_announce_hidden', this._key(t)); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     this.render();
   }
 };
@@ -245,13 +245,13 @@ window.FONT = {
   apply(v){ document.documentElement.style.fontSize = v === 100 ? '' : v + '%'; },
   set(v){
     if (this.STEPS.indexOf(v) === -1) return;
-    try { localStorage.setItem('abhyas_fs', JSON.stringify(v)); } catch(e){}
+    try { localStorage.setItem('abhyas_fs', JSON.stringify(v)); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     this.apply(v);
   },
   cycle(){
     const i = (this.STEPS.indexOf(this.get()) + 1) % this.STEPS.length;
     const v = this.STEPS[i];
-    try { localStorage.setItem('abhyas_fs', JSON.stringify(v)); } catch(e){}
+    try { localStorage.setItem('abhyas_fs', JSON.stringify(v)); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     this.apply(v);
     toast('Text size: ' + this.NAMES[i]);
   }
@@ -262,7 +262,7 @@ window.FOCUSMODE = {
   on(){ try { return localStorage.getItem(this.KEY) === '1'; } catch(e){ return false; } },
   toggle(){
     const next = !this.on();
-    try { localStorage.setItem(this.KEY, next ? '1' : '0'); } catch(e){}
+    try { localStorage.setItem(this.KEY, next ? '1' : '0'); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
     this.apply();
     toast(next ? 'Focus mode on \u2014 streaks and badges hidden' : 'Focus mode off', 3000);
   },
@@ -325,9 +325,9 @@ window.HOMEFOCUS = (function () {
     mode: _get,
     setMode(mode) {
       mode = mode === 'detailed' ? 'detailed' : 'simple';
-      try { localStorage.setItem(KEY, mode); } catch (e) {}
+      try { localStorage.setItem(KEY, mode); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
       if (typeof HOME_LAYOUT !== 'undefined' && typeof HOME_LAYOUT.applyPreset === 'function') {
-        try { HOME_LAYOUT.applyPreset(mode); } catch (e) {}
+        try { HOME_LAYOUT.applyPreset(mode); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
       }
       _paint(mode);
     },

@@ -264,7 +264,7 @@ window.VERIFY = {
     el.hidden = !(this._unverified() && !this._hidden());
   },
   dismiss(){
-    try { localStorage.setItem(this.KEY, String(Date.now() + 7 * 24 * 3600 * 1000)); } catch(e){}
+    try { localStorage.setItem(this.KEY, String(Date.now() + 7 * 24 * 3600 * 1000)); } catch (e) { window.warnCaught && window.warnCaught('js/features/submissions.js', e); }
     this.render();
   },
   _mark(){
@@ -272,14 +272,14 @@ window.VERIFY = {
       if (typeof S !== 'undefined' && S.user) S.user.emailVerified = true;
       const raw = JSON.parse(localStorage.getItem('abhyas_session') || 'null');
       if (raw) { raw.emailVerified = true; localStorage.setItem('abhyas_session', JSON.stringify(raw)); }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/submissions.js', e); }
   },
   async resend(){
     /* resendVerification is one of the four SMTP actions that stays on GAS
        (per config.js DRIVE_ACTIONS). Route it explicitly. */
     let user = null, url = '';
-    try { user = (typeof S !== 'undefined' && S.user) ? S.user : null; } catch(e){}
-    try { url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || ''; } catch(e){}
+    try { user = (typeof S !== 'undefined' && S.user) ? S.user : null; } catch (e) { window.warnCaught && window.warnCaught('js/features/submissions.js', e); }
+    try { url = (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || ''; } catch (e) { window.warnCaught && window.warnCaught('js/features/submissions.js', e); }
     if (!user || !user.token || !url) return toast('Please sign in again.');
     const btn = $('verify-resend');
     if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }

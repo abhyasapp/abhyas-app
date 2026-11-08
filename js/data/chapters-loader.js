@@ -40,7 +40,7 @@ function readCache() {
     if (o.fails >= MAX_FAILS
         && o.savedAt
         && Date.now() - o.savedAt > TTL_MS) {
-      try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+      try { localStorage.removeItem(CACHE_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/data/chapters-loader.js', e); }
       return null;
     }
     return o;
@@ -63,10 +63,10 @@ function bumpFails() {
     var o = JSON.parse(raw);
     o.fails = (o.fails || 0) + 1;
     localStorage.setItem(CACHE_KEY, JSON.stringify(o));
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/data/chapters-loader.js', e); }
 }
 function clearCache() {
-  try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+  try { localStorage.removeItem(CACHE_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/data/chapters-loader.js', e); }
 }
 
 function runSource(source) {
@@ -182,9 +182,9 @@ function fetchFresh(reason) {
         if (typeof window.toast === 'function') {
           window.toast('Chapters updated — reload to see the change', 8000);
         }
-      } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/data/chapters-loader.js', e); }
     })
-    .catch(function () {})
+    .catch (function () {})
     .finally(function () {
       if (to) clearTimeout(to);
       _inFlight = false;

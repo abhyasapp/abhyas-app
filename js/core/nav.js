@@ -133,11 +133,11 @@
     try {
       const raw = localStorage.getItem(COLLAPSE_KEY);
       if (raw) { const o = JSON.parse(raw); if (o && typeof o === 'object') return o; }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/nav.js', e); }
     return { tools: true };
   }
   function saveCollapsed(o) {
-    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(o)); } catch (e) {}
+    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(o)); } catch (e) { window.warnCaught && window.warnCaught('js/core/nav.js', e); }
   }
 
   /* ─────────────────────── Render the sidebar ──────────────────────── */

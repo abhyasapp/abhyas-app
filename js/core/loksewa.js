@@ -6,6 +6,46 @@ function isLoksewaFormat(scope) {
   return !!(scope && (scope.weeklyId || scope.loksewaMock || scope.hourlySprint));
 }
 
+/* The usual Loksewa pass mark. */
+const LOKSEWA_CUTOFF = 0.4;
+
+/* Marks for one paper: +1 correct, \u22120.2 wrong, 0 skipped. */
+function loksewaScore(correct, wrong, total) {
+  const outOf = Number(total) || 0;
+  const score = (Number(correct) || 0) - (Number(wrong) || 0) * LOKSEWA_NEGATIVE;
+  return {
+    score,
+    pct: outOf ? Math.round((score / outOf) * 1000) / 10 : 0,
+    cutOff: outOf * LOKSEWA_CUTOFF,
+    passed: score >= outOf * LOKSEWA_CUTOFF
+  };
+}
+
+/* Pure scoring for a finished paper \u2014 no DOM, no storage. `answers[i]` is the
+   chosen option index, or null/undefined when the question was left blank.
+   `pct` is the figure the results ring, the session history and the weekly record
+   use: the negatively marked percentage for a Loksewa paper (never below zero),
+   otherwise plain accuracy. `rawPct` is always correct/total. */
+function scorePaper(answers, questions, scope) {
+  const qs = Array.isArray(questions) ? questions : [];
+  const ans = Array.isArray(answers) ? answers : [];
+  let correct = 0, wrong = 0, skipped = 0;
+  qs.forEach((q, i) => {
+    const a = ans[i];
+    if (a === null || a === undefined) skipped++;
+    else if (q && isOk(a, q.correct)) correct++;
+    else wrong++;
+  });
+  const total = qs.length;
+  const rawPct = total ? Math.round((correct / total) * 100) : 0;
+  const loksewa = (total && isLoksewaFormat(scope)) ? loksewaScore(correct, wrong, total) : null;
+  return {
+    total, correct, wrong, skipped, rawPct,
+    pct: loksewa ? Math.max(0, loksewa.pct) : rawPct,
+    loksewa
+  };
+}
+
 const LEVEL7_TOPIC_MARKS = [
   { name: 'Engineering Survey',       marks: 7, rank: 6, match: /survey/ },
   { name: 'Construction Materials',   marks: 6, rank: 3, match: /construction material|building material/ },
@@ -61,13 +101,13 @@ function defaultLoksewaScheme() {
         if (r.lv !== 'level7' || seen[r.ch]) return;
         seen[r.ch] = 1;
         let name = '';
-        try { name = ChapterData.chapterName(r.lv, r.ch) || ''; } catch (e) {}
+        try { name = ChapterData.chapterName(r.lv, r.ch) || ''; } catch (e) { window.warnCaught && window.warnCaught('js/core/loksewa.js', e); }
         chs.push({ id: r.ch, name: name || r.chName || r.ch });
       });
       const t = loksewaTopicScheme(chs);
       if (t) return t;
     }
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/core/loksewa.js', e); }
   return {
     version: 1, isDefault: true, total: 75, groups: [
       { key: 'g0', name: 'General Knowledge', marks: 25, level: 'gk', chapters: [] },

@@ -61,7 +61,7 @@ function _notifyBuilder() {
     if (window.SUBJ_BUILDER && typeof window.SUBJ_BUILDER._updateCooldownUI === 'function') {
       window.SUBJ_BUILDER._updateCooldownUI();
     }
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-builder.js', e); }
 }
 
 function _markCustomExamUsed() {

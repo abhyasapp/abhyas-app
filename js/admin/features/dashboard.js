@@ -70,7 +70,7 @@ const CHAPTERS = {
           this._map.set(ref.fid, { level, chapter, label: level + ' — ' + chapter });
           this._levels.add(level);
         });
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/dashboard.js', e); }
     }
   },
   labelFor(fileId){

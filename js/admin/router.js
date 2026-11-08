@@ -226,7 +226,7 @@ setInterval(async () => {
     try { await ADMIN._refreshOne(s); } catch (e) { /* silent */ }
   }
   ADMIN.markSynced();
-  try { if (typeof ADMIN._paintCurrentView === 'function') ADMIN._paintCurrentView(UI.current); } catch (e) {}
+  try { if (typeof ADMIN._paintCurrentView === 'function') ADMIN._paintCurrentView(UI.current); } catch (e) { window.warnCaught && window.warnCaught('js/admin/router.js', e); }
 }, 60000);
 
 setInterval(() => ADMIN.paintSync(), 30000);
@@ -241,14 +241,14 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ADMI
       const lbl = $('rail-switch-label');
       if (lbl) lbl.textContent = 'Switch to student app';
     }
-  } catch(e){}
+  } catch (e) { window.warnCaught && window.warnCaught('js/admin/router.js', e); }
 })();
 
 (function paintVersion(){
   try {
     const el = $('rail-version');
     if (el) el.textContent = 'Abhyas V1' + (typeof APP_VERSION !== 'undefined' ? ' · v' + APP_VERSION : '');
-  } catch(e){}
+  } catch (e) { window.warnCaught && window.warnCaught('js/admin/router.js', e); }
 })();
 
 (function offlinePill(){

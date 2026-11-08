@@ -446,7 +446,7 @@ async function open(opts) {
     /* pdf.js transfers the buffer to its worker, so hand it a copy and keep
        the original bytes (also wrapped in S.blobUrl) for download and save. */
     S.doc = await lib.getDocument({ data: bytes.slice(), isEvalSupported: false }).promise;
-    if (gen !== GEN) { try { S.doc.destroy(); } catch (e) {} return; }
+    if (gen !== GEN) { try { S.doc.destroy(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); } return; }
     const n = S.doc.numPages;
     const pageObjs = await Promise.all(Array.from({ length: n }, (_, i) => S.doc.getPage(i + 1)));
     if (gen !== GEN) return;
@@ -474,7 +474,7 @@ async function open(opts) {
   setBusy(false);
 
   let saved = null;
-  try { saved = localStorage.getItem(FIT_KEY); } catch (e) {}
+  try { saved = localStorage.getItem(FIT_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
   S.mode = (opts.fit === 'width' || (!opts.fit && saved === 'width')) ? 'width' : 'page';
   if (S.ann) {
     /* Marking wants the page as wide as it will go. */
@@ -489,7 +489,7 @@ async function open(opts) {
 
 function newState(gen, bytes, filename, ann) {
   let blobUrl = '';
-  try { blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); } catch (e) {}
+  try { blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
   return {
     gen, doc: null, pages: [], mode: 'page', zoom: 1, current: 0, pumping: false,
     blobUrl, filename, bytes,
@@ -533,8 +533,8 @@ function teardown() {
   if (S) {
     if (S.saveTimer) clearTimeout(S.saveTimer);
     S.pages.forEach(releasePage);
-    try { S.doc && S.doc.destroy(); } catch (e) {}
-    if (S.blobUrl) { try { URL.revokeObjectURL(S.blobUrl); } catch (e) {} }
+    try { S.doc && S.doc.destroy(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
+    if (S.blobUrl) { try { URL.revokeObjectURL(S.blobUrl); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); } }
   }
   S = null;
   if (els.pages) els.pages.innerHTML = '';
@@ -552,14 +552,14 @@ function confirmDiscard() {
 function close() {
   if (!root || !root.classList.contains('on')) return;
   if (!confirmDiscard()) return;
-  if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen(); } catch (e) {} }
+  if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); } }
   teardown();
   root.classList.remove('on', 'annotate', 'finding', 'drawing');
   /* The admin console's overlays also run full-screen; only hand the
      scroll lock back when none of them are showing. */
   if (!document.querySelector('.overlay.show')) document.body.style.overflow = '';
   const f = prevFocus; prevFocus = null;
-  if (f && f.focus) { try { f.focus({ preventScroll: true }); } catch (e) {} }
+  if (f && f.focus) { try { f.focus({ preventScroll: true }); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); } }
 }
 
 /* ── layout ────────────────────────────────────────────────────────── */
@@ -629,7 +629,7 @@ function updateZoomLabel() {
 function setMode(mode) {
   if (!S || !S.pages.length) return;
   S.mode = mode;
-  try { localStorage.setItem(FIT_KEY, mode); } catch (e) {}
+  try { localStorage.setItem(FIT_KEY, mode); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
   layout(true); update();
 }
 
@@ -719,7 +719,7 @@ async function renderPage(s, p) {
 
 function releasePage(p) {
   p.stamp++;
-  if (p.task) { try { p.task.cancel(); } catch (e) {} p.task = null; }
+  if (p.task) { try { p.task.cancel(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); } p.task = null; }
   p.rendering = false;
   p.rendered = false;
   if (p.canvas) { p.canvas.width = 0; p.canvas.height = 0; } // frees the bitmap
@@ -780,7 +780,7 @@ function bindInk(canvas, pageNum) {
     e.preventDefault();
     if (S.tool === 'text') { placeText(e, canvas, pageNum); return; }
     drawing = true;
-    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', _); }
     current = { tool: S.tool, color: S.color, width: S.width, points: [pos(e, canvas)] };
     (S.ink[pageNum] || (S.ink[pageNum] = [])).push(current);
     S.redo[pageNum] = [];
@@ -1149,8 +1149,8 @@ function openRaw() {
 }
 
 function toggleFull() {
-  if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
-  else if (root.requestFullscreen) { try { root.requestFullscreen(); } catch (e) {} }
+  if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); } }
+  else if (root.requestFullscreen) { try { root.requestFullscreen(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); } }
 }
 
 /* ═══════════════════════ EXPOSE ═════════════════════════════════════ */

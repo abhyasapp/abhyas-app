@@ -31,8 +31,8 @@
   const _doStart = QUIZ._doStart.bind(QUIZ);
   QUIZ._doStart = function () {
     if (typeof FAST_GUESS !== 'undefined') FAST_GUESS.reset();
-    try { if (typeof RECOVERY !== 'undefined') RECOVERY.markActive(); } catch (e) {}
-    try { if (typeof READALOUD !== 'undefined') READALOUD.stop(); } catch (e) {}
+    try { if (typeof RECOVERY !== 'undefined') RECOVERY.markActive(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
+    try { if (typeof READALOUD !== 'undefined') READALOUD.stop(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
     if (S && S.quiz) S.quiz.conf = {};
     return _doStart.apply(QUIZ, arguments);
   };
@@ -44,7 +44,7 @@
       if (typeof FAST_GUESS !== 'undefined') FAST_GUESS.markAnswered(S.quiz.idx);
     }
     const r = _fcAnswer(i);
-    try { if (typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); } catch (e) {}
+    try { if (typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
     return r;
   };
 
@@ -58,7 +58,7 @@
         DAILY10.render();
       }
       if (typeof PRACTICE_RESUME !== 'undefined') { PRACTICE_RESUME.clear(); PRACTICE_RESUME.render(); }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
     try {
       const stats = document.getElementById('res-stats');
       const marked = (S.quiz && S.quiz.marked) ? S.quiz.marked : new Set();
@@ -73,7 +73,7 @@
         });
         if (added) {
           _save(LS.BK, S.bk);
-          try { if (typeof HOME !== 'undefined' && HOME.updateBadges) HOME.updateBadges(); } catch (e) {}
+          try { if (typeof HOME !== 'undefined' && HOME.updateBadges) HOME.updateBadges(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
         }
       }
       if (stats && !stats.parentElement.querySelector('.marked-line') && marked.size > 0) {
@@ -98,7 +98,7 @@
           pairs.forEach(p => box.appendChild(p.c));
         }
       }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
   };
 
   /* ── 4. _renderFlashcard: clean chip, extras, count, icons ── */
@@ -107,8 +107,8 @@
     _rf();
     _cleanChip('fc-chip');
     if (typeof FAST_GUESS !== 'undefined') FAST_GUESS.markShown(S.quiz.idx);
-    try { if (typeof CONF !== 'undefined') CONF.render(); } catch (e) {}
-    try { if (typeof READALOUD !== 'undefined') READALOUD.render(); } catch (e) {}
+    try { if (typeof CONF !== 'undefined') CONF.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
+    try { if (typeof READALOUD !== 'undefined') READALOUD.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
     if (!S.quiz.qs) return;
     const i = S.quiz.idx, n = S.quiz.qs.length, last = i === n - 1;
     _ctr('fc-ctr', i + 1, n);
@@ -133,7 +133,7 @@
     if (now - _navAt < 200) return;
     _navAt = now;
     _fcNav(dir);
-    try { if (typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); } catch (e) {}
+    try { if (typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
   };
 
   /* ── 6. _updateFcCounts: progress bar ── */
@@ -186,7 +186,7 @@
         if (!S.quiz.changed[qi]) S.quiz.changed[qi] = { from: prev, to: oi, wasRight, nowRight };
         else { S.quiz.changed[qi].to = oi; S.quiz.changed[qi].nowRight = nowRight; }
       }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
     _ea(qi, oi);
     const ans = S.quiz.ans.filter(a => a !== null).length, tot = S.quiz.qs.length;
     _ctr('ex-ctr', ans, tot);
@@ -269,7 +269,7 @@
         const pct = total ? Math.round((correct / total) * 100) : 0;
         HOURLY._recordObjResult(correct, total, pct);
       }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
   };
 
   /* ── 16. Update the Progress due badge ── */
@@ -294,7 +294,7 @@
       if (chip) chip.textContent = (u && (u.name || u.username)) || 'Student';
       setTimeout(() => {
         if (typeof APP_SWITCH !== 'undefined') APP_SWITCH.refresh();
-        else { try { _setAdminVisible(!!(S.user && S.user.adminCapable)); } catch (e) {} }
+        else { try { _setAdminVisible(!!(S.user && S.user.adminCapable)); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); } }
         _refreshHints();
         if (typeof MY_SUBJ !== 'undefined') MY_SUBJ.load(true);
         if (typeof SIDEBAR_SEARCH !== 'undefined') SIDEBAR_SEARCH.init();
@@ -303,7 +303,7 @@
       setTimeout(() => {
         try {
           if (typeof SUBJ !== 'undefined' && typeof SUBJ.init === 'function' && !SUBJ.ready()) SUBJ.init();
-        } catch (e) {}
+        } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
       }, 1800);
     };
   }

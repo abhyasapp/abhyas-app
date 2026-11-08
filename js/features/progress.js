@@ -41,8 +41,8 @@ const PROG = {
     PROG._compact();
     _save(LS.PROG, S.prog);
 
-    try { if (typeof WRONGBY !== 'undefined') WRONGBY._missCache = null; } catch(e){}
-    try { if (typeof QHIST !== 'undefined') QHIST._cache = null; } catch(e){}
+    try { if (typeof WRONGBY !== 'undefined') WRONGBY._missCache = null; } catch (e) { window.warnCaught && window.warnCaught('js/features/progress.js', e); }
+    try { if (typeof QHIST !== 'undefined') QHIST._cache = null; } catch (e) { window.warnCaught && window.warnCaught('js/features/progress.js', e); }
 
     if (typeof HOME !== 'undefined') HOME.render();
   },
@@ -118,7 +118,7 @@ const PROG = {
     const chapEl = document.getElementById('chap-acc');
     if(chapEl){
       let entries = [];
-      try { entries = CHAPSTATS.entries(); } catch(e){}
+      try { entries = CHAPSTATS.entries(); } catch (e) { window.warnCaught && window.warnCaught('js/features/progress.js', e); }
       
       if(!entries.length){
         const byChap = {};
@@ -147,16 +147,38 @@ const PROG = {
             <div style="margin-top:.5rem;font-size:.7rem;color:var(--t3)">Tip: Use <i class="ph ph-x-circle"></i> Wrong Bank to drill these topics</div>
           </div>` : '';
         
+        /* A chapter can be reset from here too, not only from its sheet.
+           The rows are keyed "chapter" or "chapter — book" depending on how
+           the session started, so index both. */
+        let resetLabel = 'Reset chapter progress';
+        try { if(typeof I18N !== 'undefined') resetLabel = I18N.t(resetLabel); } catch (e) { window.warnCaught && window.warnCaught('js/features/progress.js', e); }
+        const refByChapter = {};
+        try {
+          if(typeof ChapterData !== 'undefined'){
+            (ChapterData.allFileRefs() || []).forEach(r => {
+              const name = ChapterData.chapterName(r.lv, r.ch);
+              if(name && !refByChapter[name]) refByChapter[name] = r;
+              const label = name + ' — ' + r.book;
+              if(label && !refByChapter[label]) refByChapter[label] = r;
+            });
+          }
+        } catch (e) { window.warnCaught && window.warnCaught('js/features/progress.js', e); }
+        const canReset = (typeof CH_GRID !== 'undefined');
+
         requestAnimationFrame(() => {
           chapEl.innerHTML = weakHtml + entries.map(e=>{
             const p = e.accuracy;
             const barColor = p>=70?'var(--grn)':p>=50?'var(--amb)':'var(--ros)';
+            const ref = refByChapter[e.chapter];
+            const reset = (canReset && ref)
+              ? `<button class="btn btn-sm btn-quiet" type="button" title="${esc(resetLabel)}" aria-label="${esc(resetLabel + ': ' + e.chapter)}" data-on-click="CH_GRID.resetChapter('${escAttrJs(ref.lv)}','${escAttrJs(ref.ch)}')"><i class="ph ph-trash"></i></button>`
+              : '';
             return `<div class="pb-w">
               <div class="pb-l">
                 <span style="font-size:.78rem">${esc(e.chapter)}</span>
                 <div style="display:flex;align-items:center;gap:.35rem">
                   <span style="font-size:.68rem;color:var(--t3)">${e.sessions} session${e.sessions!==1?'s':''} · ${e.correct}/${e.attempted}</span>
-                  <span class="ctag t${p>=70?'g':p>=50?'a':'r'}" style="font-size:.65rem">${p}%</span>
+                  <span class="ctag t${p>=70?'g':p>=50?'a':'r'}" style="font-size:.65rem">${p}%</span>${reset}
                 </div>
               </div>
               <div class="pb"><div class="pb-f" style="width:${p}%;background:${barColor};transition:width 0.5s ease-out"></div></div>

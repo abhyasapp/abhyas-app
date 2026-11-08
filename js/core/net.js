@@ -163,7 +163,7 @@ function _resolveRouting(url, opts) {
         bodyObj = {};
         for (const [k, v] of urlObj.searchParams.entries()) bodyObj[k] = v;
       }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/net.js', e); }
   }
 
   let primaryUrl = url;
@@ -293,12 +293,12 @@ async function netFetch(url, opts, timeoutMs) {
         throw new Error('Unknown action on both backends.');
       }
 
-      try { fbRes._fallbackUsed = routing.rewroteToSupabase ? 'gas' : 'supabase'; } catch (e) {}
+      try { fbRes._fallbackUsed = routing.rewroteToSupabase ? 'gas' : 'supabase'; } catch (e) { window.warnCaught && window.warnCaught('js/core/net.js', e); }
       try {
         window.dispatchEvent(new CustomEvent('abhyas:fallback', {
           detail: { action: routing.action || '', primary: routing.primaryUrl, fallback: routing.fallbackUrl }
         }));
-      } catch (e) {}
+      } catch (e) { window.warnCaught && window.warnCaught('js/core/net.js', e); }
       console.warn('[net] fallback used for', routing.action || 'request');
       return fbRes;
     } catch (fbErr) {
@@ -315,7 +315,7 @@ async function netFetchJson(url, opts, timeoutMs) {
   const res = await netFetch(url, opts, timeoutMs);
   const json = await res.json();
   if (res._fallbackUsed) {
-    try { json._fallbackUsed = res._fallbackUsed; } catch (e) {}
+    try { json._fallbackUsed = res._fallbackUsed; } catch (e) { window.warnCaught && window.warnCaught('js/core/net.js', e); }
   }
   return json;
 }
@@ -358,7 +358,7 @@ const NETCHECK = {
     NETCHECK._timer = setInterval(() => NETCHECK.ping(), 30000);
     /* Kick off the first ping immediately so the first 30s doesn't
        needlessly serve from a stale `S.online = navigator.onLine`. */
-    setTimeout(() => { try { NETCHECK.ping(); } catch (e) {} }, 200);
+    setTimeout(() => { try { NETCHECK.ping(); } catch (e) { window.warnCaught && window.warnCaught('js/core/net.js', e); } }, 200);
   },
   reset() { this._failCount = 0; _CIRCUIT.reset(); }
 };

@@ -117,7 +117,7 @@ function _rqLoad() {
   } catch (e) { return []; }
 }
 function _rqSave(list) {
-  try { localStorage.setItem(REPORT_QUEUE_KEY, JSON.stringify(list)); } catch (e) {}
+  try { localStorage.setItem(REPORT_QUEUE_KEY, JSON.stringify(list)); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
 }
 
 function _queue(rep, reason, note) {
@@ -186,7 +186,7 @@ const _CORR_FIRST_WIN = 30 * 24 * 60 * 60 * 1000;
 let _corrRunning = false;
 
 function _corrNum(k) { try { return Number(localStorage.getItem(k)) || 0; } catch (e) { return 0; } }
-function _corrSet(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+function _corrSet(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }
 
 async function _keysFor(fid) {
   const keys = new Set();
@@ -194,7 +194,7 @@ async function _keysFor(fid) {
     ChapterData.allFileRefs().forEach(r => {
       if (r.fid === fid && r.key) keys.add(r.key);
     });
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
   try {
     (WEEKLY.sets || []).forEach(s => {
       if (s.fileId === fid) {
@@ -202,12 +202,12 @@ async function _keysFor(fid) {
         keys.add('weekly_' + s.id + '_retake');
       }
     });
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
   try {
     (await QDB.keys()).forEach(k => {
       if (String(k).indexOf(fid) !== -1) keys.add(k);
     });
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
   return [...keys];
 }
 
@@ -242,7 +242,7 @@ async function _applyCorrections(fid) {
     if (!hasSaved && !hasPaper) {
       const stamps = _load('abhyas_qts', {});
       for (const k of keys) {
-        try { await QDB.del(k); } catch (e2) {}
+        try { await QDB.del(k); } catch (e2) { window.warnCaught && window.warnCaught('js/report/userreport.js', e2); }
         delete stamps[k];
       }
       _save('abhyas_qts', stamps);
@@ -257,7 +257,7 @@ async function _applyCorrections(fid) {
      already holds the fresh copy. */
   const stamps = _load('abhyas_qts', {});
   for (const k of keys) {
-    if (k !== primaryKey) { try { await QDB.del(k); } catch (e2) {} }
+    if (k !== primaryKey) { try { await QDB.del(k); } catch (e2) { window.warnCaught && window.warnCaught('js/report/userreport.js', e2); } }
     delete stamps[k];
   }
   _save('abhyas_qts', stamps);
@@ -289,7 +289,7 @@ async function _applyCorrections(fid) {
         }
       });
       if (changed) localStorage.setItem(WEEKLY.LS_PAPERS, JSON.stringify(all));
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
   }
 
   if (out.updated || out.moved || out.merged || out.withdrawn) {
@@ -299,9 +299,9 @@ async function _applyCorrections(fid) {
           REV.renderList(v === 'wrong' ? 'wr' : v === 'bookmarks' ? 'bk' : 'fl');
         }
       });
-    } catch (e) {}
-    try { HOME.updateBadges(); } catch (e) {}
-    try { PSYNC.scheduleSync(); } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+    try { HOME.updateBadges(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+    try { PSYNC.scheduleSync(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
   }
   return out;
 }
@@ -420,27 +420,27 @@ const _QUESTION_VIEWS = [
 ];
 if (typeof UI !== 'undefined' && UI.onEnter) {
   _QUESTION_VIEWS.forEach(v => {
-    UI.onEnter(v, () => { try { _checkCorrections(); } catch (e) {} });
+    UI.onEnter(v, () => { try { _checkCorrections(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } });
   });
 }
 
 /* 2. Periodic timer. Fires every 3 minutes while the tab is visible. */
 setInterval(() => {
   if (document.visibilityState !== 'hidden') {
-    try { _checkCorrections(); } catch (e) {}
+    try { _checkCorrections(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
   }
 }, 3 * 60 * 1000);
 
 /* 3. Tab becomes visible again. */
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    try { _checkCorrections(); } catch (e) {}
+    try { _checkCorrections(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
   }
 });
 
 /* 4. Back online. */
 window.addEventListener('online', () => {
-  setTimeout(() => { try { _checkCorrections(true); } catch (e) {} }, 2500);
+  setTimeout(() => { try { _checkCorrections(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 2500);
 });
 
 /* 5. As soon as the session is restored, so the first paint is on fresh
@@ -450,16 +450,16 @@ if (typeof AUTH !== 'undefined' && AUTH._enter && !AUTH._enter._reportWrapped) {
   const _origEnter = AUTH._enter.bind(AUTH);
   AUTH._enter = function (u) {
     const r = _origEnter(u);
-    setTimeout(() => { try { _checkCorrections(true); } catch (e) {} }, 800);
+    setTimeout(() => { try { _checkCorrections(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 800);
     return r;
   };
   AUTH._enter._reportWrapped = true;
 }
 
 /* 6. First boot, after everything else has settled. */
-setTimeout(() => { try { _checkCorrections(true); } catch (e) {} }, 6000);
+setTimeout(() => { try { _checkCorrections(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 6000);
 
 /* 7. Flush any queued offline reports shortly after boot. */
-setTimeout(() => { try { _flush(); } catch (e) {} }, 8000);
+setTimeout(() => { try { _flush(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 8000);
 
 })();

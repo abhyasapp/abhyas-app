@@ -298,7 +298,7 @@ const PDF_ANNOTATE = {
         }
       }
     } finally {
-      try { src.destroy(); } catch(e){}
+      try { src.destroy(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/subjective-pdf.js', e); }
     }
 
     const mb = (lastBytes ? (lastBytes.length / 1048576).toFixed(1) : '8+');

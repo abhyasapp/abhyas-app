@@ -10,7 +10,7 @@ window.STUDYDOCS = {
   _user(){ try { return (typeof S !== 'undefined' && S.user) ? S.user : null; } catch(e){ return null; } },
   _online(){ try { return !!(S.online && !S.forcedOffline); } catch(e){ return navigator.onLine; } },
   _read(key, dflt){ try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? dflt : v; } catch(e){ return dflt; } },
-  _write(key, v){ try { localStorage.setItem(key, JSON.stringify(v)); } catch(e){} },
+  _write(key, v){ try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); } },
 
   _urlFor(action, params){
     try {
@@ -19,7 +19,7 @@ window.STUDYDOCS = {
           ? (ABHYAS_CONFIG.GAS_URL || '')
           : (ABHYAS_CONFIG.SUPABASE_URL || '');
       }
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); }
     return (typeof ABHYAS_CONFIG !== 'undefined' && ABHYAS_CONFIG.GAS_URL) || '';
   },
 
@@ -95,7 +95,7 @@ window.STUDYDOCS = {
           return { base64: this._base64FromBytes(bytes), filename };
         }
         if (/^["[{]/.test(value)) {
-          try { payload = JSON.parse(value); continue; } catch(e){}
+          try { payload = JSON.parse(value); continue; } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); }
         }
       }
       break;
@@ -217,7 +217,7 @@ window.STUDYDOCS = {
   async ensureLoaded(){
     if (this.loaded && (Date.now() - this._at) < this.STALE_MS) return this.docs;
     if (!this._user() || !this._online()) { const saved = this._read(this.LIST_KEY, null); if (saved && !this.loaded) { this.docs = saved; this.loaded = true; } return this.docs; }
-    try { await this._fetchList(); } catch(e){}
+    try { await this._fetchList(); } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); }
     return this.docs;
   },
 
@@ -297,7 +297,7 @@ window.STUDYDOCS = {
       idx.sort((a, b) => b.at - a.at);
       this._write(this.CACHE_KEY, idx);
       this.render();
-    } catch(e){}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); }
   },
 
   _purgeStale(){ /* intentionally does not delete anything */ },
@@ -371,7 +371,7 @@ window.STUDYDOCS = {
   },
 
   _purgeCache(id){
-    try { QDB.del('studydoc:' + id); } catch(e){}
+    try { QDB.del('studydoc:' + id); } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); }
     this._write(this.CACHE_KEY, this._cacheIndex().filter(x => x.id !== id));
   },
 };

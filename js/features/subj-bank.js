@@ -35,7 +35,7 @@ function _getCustomExamLast() {
   } catch (e) { return 0; }
 }
 function _setCustomExamLast(ts) {
-  try { localStorage.setItem(_customExamKey(), String(ts)); } catch (e) {}
+  try { localStorage.setItem(_customExamKey(), String(ts)); } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-bank.js', e); }
 }
 function _customExamCooldownRemainingMs() {
   const last = _getCustomExamLast();

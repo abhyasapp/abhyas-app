@@ -201,7 +201,7 @@ const QUIZ = {
         .then(ok => { if(ok){ const m = _load(TS_KEY, {}); m[cacheKey] = Date.now(); _save(TS_KEY, m); } })
         .catch(() => {})
         .finally(() => { delete QUIZ._reval[cacheKey]; });
-    }catch(e){}
+    }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
   },
   async _revalidateQuiet(fileId, cacheKey){
     if(!S.online || S.forcedOffline) return false;
@@ -248,7 +248,7 @@ const QUIZ = {
       QUIZ._hideLoader();
       if(!qsArr.length){ toast('❌ No valid questions found in this file. Check the file format.'); return; }
       QUIZ.startWith(qsArr, mode, chapterName, scope);
-      setTimeout(()=>{ try{ CACHE.prefetchNext(fileId); }catch(e){} }, 4000);
+      setTimeout(()=>{ try{ CACHE.prefetchNext(fileId); }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } }, 4000);
     } catch(err){
       clearTimeout(msgTimer); clearTimeout(msgTimer2);
       QUIZ._hideLoader();
@@ -600,7 +600,7 @@ const QUIZ = {
     };
     const fullSnap = { ...header, qs: S.quiz.qs };
     let fullJson = null;
-    try{ fullJson = JSON.stringify(fullSnap); }catch(e){}
+    try{ fullJson = JSON.stringify(fullSnap); }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
     if(fullJson && fullJson.length < QUIZ._SNAPSHOT_SIZE_CEILING){
       _save(LS.EXAM_SNAP, fullSnap);
       return;
@@ -817,7 +817,7 @@ const QUIZ = {
             if (qn && qn.parentElement) qn.parentElement.appendChild(badge);
           }
         }
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
 
       renderMath(document.getElementById('fc-wrap'));
 
@@ -826,11 +826,11 @@ const QUIZ = {
           if (answered) QNOTE.render('fc-note', q.uid);
           else { const b = document.getElementById('fc-note'); if (b) b.innerHTML = ''; }
         }
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
 
       try {
         if (typeof QHIST !== 'undefined') QHIST.render('fc-hist', q.uid);
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
 
       try {
         const wrap = document.getElementById('fc-similar');
@@ -848,7 +848,7 @@ const QUIZ = {
             wrap.innerHTML = '';
           }
         }
-      } catch(e){}
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
     } catch(err){
       console.error('[QUIZ._renderFlashcard] question at idx', S.quiz.idx, 'failed to render:', err, q);
       toast('⚠️ Skipped a malformed question', 2000);
@@ -1067,19 +1067,13 @@ const QUIZ = {
     document.getElementById('fc-wrap').style.display='none';
     document.getElementById('ex-wrap').style.display='none';
     document.getElementById('res-wrap').style.display='';
-    const total = S.quiz.qs.length;
-    let correct=0;
-    S.quiz.qs.forEach((q,i)=>{ if(isOk(S.quiz.ans[i], q.correct)) correct++; });
-    const wrong = S.quiz.ans.filter((a,i)=> a!==null && !isOk(a,S.quiz.qs[i].correct)).length;
-    const skipped = S.quiz.ans.filter(a=>a===null).length;
-
-    const rawPct = total ? Math.round((correct/total)*100) : 0;
     const isWeekly = !!(S.quiz.scope && S.quiz.scope.weeklyId);
     const isLoksewa = isLoksewaFormat(S.quiz.scope);
-    const marked = (isLoksewa && total)
-      ? Math.round(((correct - wrong * 0.2) / total) * 1000) / 10
-      : null;
-    const pct = (marked !== null) ? Math.max(0, marked) : rawPct;
+    /* Counting and negative marking live in scorePaper (js/core/loksewa.js),
+       which is unit-tested without a DOM. Blank answers are skipped, not wrong. */
+    const sc = scorePaper(S.quiz.ans, S.quiz.qs, S.quiz.scope);
+    const total = sc.total, correct = sc.correct, wrong = sc.wrong, skipped = sc.skipped;
+    const pct = sc.pct;
 
     document.getElementById('res-ring').style.setProperty('--p', pct+'%');
     document.getElementById('res-pct').textContent = pct+'%';
@@ -1095,9 +1089,10 @@ const QUIZ = {
       document.getElementById('res-grade').after(negEl);
     }
     if (isLoksewa){
-      const score = correct - wrong * LOKSEWA_NEGATIVE;
-      const pctLok = total ? Math.round((score / total) * 1000) / 10 : 0;
-      const verdict = score >= total * 0.4
+      const lk = sc.loksewa || loksewaScore(correct, wrong, total);
+      const score = lk.score;
+      const pctLok = lk.pct;
+      const verdict = lk.passed
         ? '<span style="color:var(--success);font-weight:700">above the usual 40% cut-off</span>'
         : '<span style="color:var(--danger);font-weight:700">below the usual 40% cut-off</span>';
       negEl.innerHTML =
@@ -1130,7 +1125,7 @@ const QUIZ = {
               const ref = ChapterData.allFileRefs().find(r => r.fid === fid);
               if (ref) label = ChapterData.chapterName(ref.lv, ref.ch) || 'Other';
             }
-          } catch(e){}
+          } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
           const g = groups[label] || (groups[label] = { label, correct: 0, wrong: 0, skipped: 0, total: 0 });
           const a = S.quiz.ans[i];
           g.total++;
@@ -1170,7 +1165,7 @@ const QUIZ = {
             const fid = (typeof fidFromUid === 'function') ? fidFromUid(String(q.uid || '')) : '';
             const ref = ChapterData.allFileRefs().find(r => r.fid === fid);
             if (ref) { lv = ref.lv; ch = ref.ch; }
-          } catch(e){}
+          } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
           const a = S.quiz.ans[i];
           return { lv, ch, state: (a === null || a === undefined) ? 'skipped' : (isOk(a, q.correct) ? 'correct' : 'wrong') };
         });
@@ -1267,7 +1262,7 @@ const QUIZ = {
         const stats = document.getElementById('res-stats');
         if (stats) stats.parentNode.insertBefore(p, stats.nextSibling);
       }
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
 
     requestAnimationFrame(() => {
       document.getElementById('res-review').innerHTML = S.quiz.qs.map((q,i)=>{
@@ -1291,7 +1286,7 @@ const QUIZ = {
          (add / edit / delete, cloud-synced per question) — the natural moment
          to write one is right after seeing why an answer was wrong. */
       if (typeof QNOTE !== 'undefined') {
-        S.quiz.qs.forEach((q, i) => { try { QNOTE.render('res-note-' + i, q.uid); } catch (e) {} });
+        S.quiz.qs.forEach((q, i) => { try { QNOTE.render('res-note-' + i, q.uid); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } });
       }
       renderMath(document.getElementById('res-review'));
     });
@@ -1300,6 +1295,7 @@ const QUIZ = {
     const qres = S.quiz.qs
       .map((q,i)=> S.quiz.ans[i]===null ? null : {uid:q.uid, ok:isOk(S.quiz.ans[i], q.correct)})
       .filter(Boolean);
+    if(typeof QSTATS !== 'undefined') QSTATS.recordSession(qres);
     const scope = S.quiz.scope || {};
     /* Persisted so the sprint page (and anything else that reads history)
        never has to guess from the chapter label. Callers that know what

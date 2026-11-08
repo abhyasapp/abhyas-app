@@ -7,6 +7,7 @@ const APPS = APP_CONFIG.APPS_URL;
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const BK_TAGS = ['Need Check','Interesting','Debating','Confusing','Formulae'];
 const SR_INTERVALS = [1, 3, 7, 14];
+const WR_GRADUATE_AT = 5;   // consecutive correct answers that master a missed question
 const WEEKLY_EXAM_WINDOW_HOURS = 12;
 const APP_NAME = 'Abhyas V1';
 
@@ -34,7 +35,7 @@ const PSYNC_KEYS = new Set([LS.BK, LS.FL, LS.WR, LS.PROG, LS.STK, LS.CHAPSTATS, 
   try {
     debug = localStorage.getItem('abhyas_debug') === '1'
          || (typeof window.ABHYAS_DEBUG === 'boolean' && window.ABHYAS_DEBUG === true);
-  } catch (e) {}
+  } catch (e) { window.warnCaught && window.warnCaught('js/core/constants.js', e); }
   window.ABHYAS_DEBUG = debug;
   if (debug) return;
   const _warn = console.warn.bind(console);

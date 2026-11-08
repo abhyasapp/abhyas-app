@@ -119,7 +119,7 @@ window.PUSH = {
       this._token = null;
       if (typeof toast === 'function') toast('Notifications disabled.');
       this.refreshButtonUI();
-    } catch (e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/push.js', e); }
   },
 
   async _saveToken(token) {
@@ -130,7 +130,7 @@ window.PUSH = {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'savepushtoken', username: S.user.username, token: S.user.token, fcmToken: token })
       });
-    } catch(e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/push.js', e); }
   },
 
   async silentRefresh() {
@@ -142,7 +142,7 @@ window.PUSH = {
         this._token = token;
         await this._saveToken(token);
       }
-    } catch(e) {}
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/push.js', e); }
   },
 
   refreshButtonUI() {
