@@ -64,6 +64,20 @@ describe('study planning and adaptive tools', () => {
     expect(slot.querySelector('[data-on-click="MARKS_MAP.openAll()"]')).toBeTruthy();
   });
 
+  it('sorts the existing card by weakest first without adding another card', async () => {
+    await p.ev(`
+      S.chapStats['Surveying'] = { attempted: 10, correct: 10, sessions: 2, lastAt: 2000 };
+      S.chapStats['Soil Mechanics'] = { attempted: 10, correct: 0, sessions: 2, lastAt: 1000 };
+      MARKS_MAP._cache.at = 0;
+      MARKS_MAP.setSort('weakest');
+    `);
+    const names = await p.ev(`Array.from(document.querySelectorAll('#marks-map-slot [data-on-click^="MARKS_MAP.start"]')).map(b => b.getAttribute('aria-label'))`);
+    expect(names[0]).toContain('Soil Mechanics');
+    expect(await p.ev(`document.querySelectorAll('#marks-map-slot .card').length`)).toBe(1);
+    expect(await p.ev(`document.querySelector('#marks-map-slot [aria-label="Sort chapters"]') !== null`)).toBe(true);
+    await p.ev(`MARKS_MAP.setSort('gap')`);
+  });
+
   it('opens the full map and filters it by scheme group', async () => {
     await p.ev('MARKS_MAP.openAll()');
     const body = p.w.document.getElementById('mbody');

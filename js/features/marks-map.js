@@ -8,6 +8,7 @@
 const MARKS_MAP = {
   CACHE_MS: 5000,
   _cache: { at: 0, rows: [] },
+  _sort: 'gap',
 
   _name(ref){
     try { return ChapterData.chapterName(ref.lv, ref.ch) || ref.ch; } catch (e) { return ref.ch; }
@@ -101,7 +102,27 @@ const MARKS_MAP = {
     return out;
   },
 
-  best(){ return this.rows()[0] || null; },
+  _sortRows(rows){
+    const out = (rows || []).slice();
+    if(this._sort === 'weakest'){
+      out.sort((a, b) => {
+        const aSeen = a.attempted > 0, bSeen = b.attempted > 0;
+        if(aSeen !== bSeen) return aSeen ? -1 : 1;
+        if(aSeen && a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+        return b.marks - a.marks || a.name.localeCompare(b.name);
+      });
+    } else {
+      out.sort((a, b) => b.score - a.score || b.marks - a.marks || a.name.localeCompare(b.name));
+    }
+    return out;
+  },
+
+  setSort(mode){
+    this._sort = mode === 'weakest' ? 'weakest' : 'gap';
+    this.render();
+  },
+
+  best(){ return this._sortRows(this.rows().filter(r => r.marks > 0))[0] || null; },
 
   _groups(rows){
     const seen = new Set();
@@ -132,7 +153,7 @@ const MARKS_MAP = {
      level list. */
   openAll(group){
     if(typeof openMod !== 'function') return;
-    const all = this.rows().filter(r => r.marks > 0);
+    const all = this._sortRows(this.rows().filter(r => r.marks > 0));
     if(!all.length){ if(typeof toast === 'function') toast('No chapter marks available yet.'); return; }
     const groups = this._groups(all);
     const selected = (group && groups.indexOf(group) !== -1) ? group : 'all';
@@ -155,9 +176,13 @@ const MARKS_MAP = {
   render(){
     const box = document.getElementById('marks-map-slot');
     if(!box) return;
-    const rows = this.rows().filter(r => r.marks > 0);
-    if(!rows.length){ box.innerHTML = ''; return; }
+    const all = this.rows().filter(r => r.marks > 0);
+    if(!all.length){ box.innerHTML = ''; return; }
+    const rows = this._sortRows(all);
     const top = rows.slice(0, 3);
+    const totalMarks = Math.round(all.reduce((n, r) => n + r.marks, 0) * 10) / 10;
+    const sortChip = (id, label) =>
+      '<button class="btn btn-sm ' + (this._sort === id ? 'btn-solid' : 'btn-quiet') + '" type="button" aria-pressed="' + (this._sort === id) + '" data-on-click="MARKS_MAP.setSort(\'' + id + '\')">' + label + '</button>';
     const rowsHtml = top.map((r, i) =>
       '<div style="display:flex;align-items:center;gap:var(--sp-2);padding:.5rem 0;border-top:1px solid var(--sep-soft)">' +
         '<span class="mono" style="font-size:.7rem;color:var(--ink-3);width:1.1rem">' + (i + 1) + '</span>' +
@@ -165,17 +190,23 @@ const MARKS_MAP = {
           '<span style="display:block;font-size:.8rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.name) + '</span>' +
           '<span class="t-cap" style="display:block">' + esc(r.group) + ' \u00b7 ' + (r.attempted ? Math.round(r.accuracy * 100) + '% accuracy' : 'not started') + '</span>' +
         '</span>' +
-        '<span class="ctag ta" style="white-space:nowrap">' + r.marks + ' marks</span>' +
+        '<span style="text-align:right;white-space:nowrap">' +
+          '<span class="ctag ta">' + r.marks + ' marks</span>' +
+          '<span class="t-cap" style="display:block">' + (r.attempted ? (r.wrong ? r.wrong + ' missed' : 'no missed') : 'not started') + '</span>' +
+        '</span>' +
         '<button class="btn btn-sm btn-quiet" type="button" aria-label="Study ' + esc(r.name) + '" data-on-click="MARKS_MAP.start(\'' + escAttrJs(r.lv) + '\',\'' + escAttrJs(r.ch) + '\')">Study</button>' +
       '</div>').join('');
 
     box.innerHTML =
       '<section class="card" style="border-color:var(--accent-line)">' +
-        '<div class="card-hd"><h3><i class="ph ph-target"></i> Highest return next</h3><span class="ctag">Marks map</span></div>' +
-        '<p class="t-foot" style="margin-bottom:var(--sp-2);line-height:1.5">Exam weight \u00d7 the gap in your accuracy. Start with the chapter that can gain you the most marks.</p>' +
+        '<div class="card-hd"><h3><i class="ph ph-target"></i> Highest return next</h3>' +
+          '<button class="btn btn-sm btn-quiet" type="button" data-on-click="MARKS_MAP.openAll()" aria-label="View all chapters in the marks map"><i class="ph ph-squares-four"></i> All ' + all.length + '</button></div>' +
+        '<p class="t-foot" style="margin-bottom:var(--sp-2);line-height:1.5">' + totalMarks + ' marks across ' + all.length + ' chapters. Exam weight \u00d7 the gap in your accuracy.</p>' +
+        '<div class="bg" role="group" aria-label="Sort chapters" style="gap:var(--sp-1);margin-bottom:var(--sp-2)">' +
+          sortChip('gap', 'Best gap') + sortChip('weakest', 'Weakest first') +
+        '</div>' +
         rowsHtml +
-        '<button class="btn btn-solid btn-blk" style="margin-top:var(--sp-3)" data-on-click="MARKS_MAP.start()"><i class="ph ph-play-circle"></i> Start with ' + esc(top[0].name) + '</button>' +
-        '<button class="btn btn-quiet btn-blk" style="margin-top:var(--sp-2)" data-on-click="MARKS_MAP.openAll()"><i class="ph ph-squares-four"></i> View all ' + rows.length + ' chapters</button>' +
+        '<button class="btn btn-solid btn-blk" style="margin-top:var(--sp-3)" data-on-click="MARKS_MAP.start(\'' + escAttrJs(top[0].lv) + '\',\'' + escAttrJs(top[0].ch) + '\')"><i class="ph ph-play-circle"></i> Start with ' + esc(top[0].name) + '</button>' +
       '</section>';
   },
 
