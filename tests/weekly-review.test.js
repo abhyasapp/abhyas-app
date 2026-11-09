@@ -35,6 +35,7 @@ describe('weekly attempt review', () => {
     `);
 
     expect(p.w.document.getElementById('bd-sheet').textContent).toContain('Review 2 missed answers');
+    expect(p.w.document.getElementById('bd-sheet').textContent).toContain('Practice 2 missed');
 
     await p.ev(`MODAL.close('sheet'); WEEKLY.reviewMissedById('w1');`);
     expect(await p.ev('S.quiz.qs.length')).toBe(2);
@@ -43,5 +44,19 @@ describe('weekly attempt review', () => {
     expect(await p.ev('S.quiz.reviewOnly')).toBe(true);
     expect(await p.ev('S.quiz.scope.weeklyReviewMissed')).toBe(true);
     expect(await p.ev('S.quiz.ch')).toContain('Missed');
+
+    await p.ev(`WEEKLY.practiceMissedById('w1')`);
+    expect(await p.ev('S.quiz.qs.length')).toBe(2);
+    expect(await p.ev(`S.quiz.qs.map(q => q.uid).join(',')`)).toBe('w_2,w_3');
+    expect(await p.ev(`JSON.stringify(S.quiz.ans)`)).toBe('[null,null]');
+    expect(await p.ev('S.quiz.reviewOnly')).toBe(false);
+    expect(await p.ev('S.quiz.scope.weeklyId === undefined')).toBe(true);
+    expect(await p.ev('S.quiz.scope.weeklyPracticeMissed')).toBe(true);
+    expect(await p.ev('S.quiz.ch')).toContain('Practice missed');
+
+    await p.ev(`S.quiz = { scope: { weeklyId: 'w1' } }; QUIZ.practiceWeeklyMissed()`);
+    expect(await p.ev('S.quiz.qs.length')).toBe(2);
+    expect(await p.ev('S.quiz.ch')).toContain('Practice missed');
+    expect(p.w.document.getElementById('res-missed')).not.toBeNull();
   });
 });

@@ -1002,6 +1002,12 @@ const QUIZ = {
       btn.classList.toggle('active', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+    if(filter === 'marked' && visible){
+      const first = box.querySelector('.qcard:not([hidden])');
+      if(first && typeof first.scrollIntoView === 'function'){
+        requestAnimationFrame(() => first.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      }
+    }
     const empty = document.getElementById('res-filter-empty');
     if(empty){
       empty.hidden = visible > 0;
@@ -1316,6 +1322,13 @@ const QUIZ = {
     const skipped = S.quiz.qs.filter((q, i) => S.quiz.ans[i] === null || S.quiz.ans[i] === undefined);
     if(!skipped.length){ toast('You answered every question in this set.'); return; }
     QUIZ.startWith(skipped, 'flashcard', S.quiz.ch + ' (Skipped)');
+  },
+
+  practiceWeeklyMissed(){
+    const scope = S.quiz && S.quiz.scope;
+    if(!scope || !scope.weeklyId){ toast('This is not a weekly result.'); return; }
+    if(typeof WEEKLY === 'undefined' || !WEEKLY.practiceMissedById){ toast('Weekly practice is unavailable.'); return; }
+    WEEKLY.practiceMissedById(scope.weeklyId);
   },
 
   retryMarked(){
@@ -1693,6 +1706,13 @@ const QUIZ = {
         skippedBtn.hidden = skippedCount === 0 || !!(S.quiz.scope && S.quiz.scope.weeklyId);
         const skippedN = document.getElementById('res-skipped-n');
         if(skippedN) skippedN.textContent = String(skippedCount);
+      }
+      const missedBtn = document.getElementById('res-missed');
+      if(missedBtn){
+        const missedCount = wrong + skipped;
+        missedBtn.hidden = !isWeekly || missedCount === 0;
+        const missedN = document.getElementById('res-missed-n');
+        if(missedN) missedN.textContent = String(missedCount);
       }
       const markedCount = (S.quiz.marked instanceof Set) ? S.quiz.marked.size : 0;
       const markedBtn = document.getElementById('res-marked');

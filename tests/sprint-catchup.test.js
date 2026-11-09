@@ -54,7 +54,8 @@ describe('sprint catch-up session', () => {
 
     expect(await p.ev('S.quiz.qs.length')).toBe(plan.todayRemaining);
     expect(await p.ev('S.quiz.ch')).toBe('Sprint catch-up');
-    expect(await p.ev(`S.quiz.scope.sprint`)).toBe('new');
+    expect(await p.ev(`S.quiz.scope.sprint`)).toBe('catchup');
+    expect(await p.ev(`S.quiz.scope.catchupChapters`)).toBe(plan.todaySlices.length);
     expect(await p.ev(`new Set(S.quiz.qs.map(q => q.uid.replace(/_\\d+$/, ''))).size`)).toBe(plan.todaySlices.length);
   });
 });

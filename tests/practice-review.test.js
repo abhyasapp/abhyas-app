@@ -90,8 +90,10 @@ describe('results review controls', () => {
     expect(p.w.document.getElementById('res-marked').textContent).toContain('Practice marked (2)');
     expect(p.w.document.getElementById('res-filters').textContent).toContain('Marked 2');
 
-    await p.ev(`QUIZ.filterReview('marked')`);
+    await p.ev(`window.__resScrolls = 0; Element.prototype.scrollIntoView = function(){ window.__resScrolls++; }; HTMLElement.prototype.scrollIntoView = function(){ window.__resScrolls++; }; QUIZ.filterReview('marked')`);
+    await new Promise(r => setTimeout(r, 120));
     expect(await p.ev(`[...document.querySelectorAll('#res-review .qcard')].filter(c => !c.hidden).length`)).toBe(2);
+    expect(await p.ev('window.__resScrolls')).toBeGreaterThan(0);
     expect(await p.ev(`[...document.querySelectorAll('#res-review .qcard:not([hidden])')].every(c => c.dataset.marked === '1')`)).toBe(true);
 
     await p.ev(`document.getElementById('res-marked').click()`);

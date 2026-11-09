@@ -62,6 +62,20 @@ const WEEKLY = {
     } catch (e) { return null; }
   },
 
+  _missedPaper(s) {
+    const paper = s && this._loadPaper(s.id);
+    if (!paper || !Array.isArray(paper.qs) || !paper.qs.length) return null;
+    const ans = (paper.ans && paper.ans.length === paper.qs.length)
+      ? paper.ans.slice()
+      : new Array(paper.qs.length).fill(null);
+    const keep = [];
+    paper.qs.forEach((q, i) => {
+      const a = ans[i];
+      if (a === null || a === undefined || !isOk(a, q.correct)) keep.push(i);
+    });
+    return { qs: keep.map(i => paper.qs[i]), ans: keep.map(i => ans[i]) };
+  },
+
   loksewaScore(attempt) {
     if (!attempt) return null;
     const total = Number(attempt.total) || 0;
@@ -342,13 +356,8 @@ const WEEKLY = {
     const stamp = last.at ? new Date(last.at).toLocaleString() : '';
     const lkOff = this.loksewaScore(attempt);
     const officialPct = lkOff ? lkOff.pct : (Number(attempt && attempt.pct) || 0);
-    const paper = this._loadPaper(s.id);
-    const missedCount = (paper && Array.isArray(paper.ans))
-      ? paper.qs.reduce((n, q, i) => {
-          const a = paper.ans[i];
-          return n + ((a === null || a === undefined || !isOk(a, q.correct)) ? 1 : 0);
-        }, 0)
-      : 0;
+    const missed = this._missedPaper(s);
+    const missedCount = missed ? missed.qs.length : 0;
 
     MODAL.sheet('Weekly test — ' + s.title,
       '<div class="qotd-head" style="margin-bottom:var(--sp-4)">' +
@@ -381,6 +390,9 @@ const WEEKLY = {
       (missedCount
         ? '<button class="btn btn-quiet btn-blk mt2" data-on-click="MODAL.close(\'sheet\');WEEKLY.reviewMissedById(\'' + escAttrJs(s.id) + '\')">' +
             '<i class="ph ph-target"></i> Review ' + missedCount + ' missed answer' + (missedCount === 1 ? '' : 's') +
+          '</button>' +
+          '<button class="btn btn-solid btn-blk mt2" data-on-click="MODAL.close(\'sheet\');WEEKLY.practiceMissedById(\'' + escAttrJs(s.id) + '\')">' +
+            '<i class="ph ph-repeat"></i> Practice ' + missedCount + ' missed' +
           '</button>'
         : ''),
       { wide:false }
@@ -410,6 +422,17 @@ const WEEKLY = {
     if (s) WEEKLY._startReview(s, (WEEKLY.attempts && WEEKLY.attempts[id]) || null, true);
   },
 
+  practiceMissedById(id) {
+    const s = (WEEKLY.sets || []).find(x => x.id === id);
+    if (!s) return;
+    const missed = this._missedPaper(s);
+    if (!missed) { toast('The saved paper is not on this device — use Retest instead.', 5000); return; }
+    if (!missed.qs.length) { toast('Nothing missed in this attempt — a clean paper.'); return; }
+    QUIZ._doStart(missed.qs, 'flashcard', s.title + ' — Practice missed', false, {
+      weeklyTitle: s.title, weeklyPracticeMissed: true
+    });
+  },
+
   async _startReview(s, attempt, missedOnly = false) {
     if (!s) { toast('Weekly set not found.', 5000); return; }
 
@@ -424,13 +447,10 @@ const WEEKLY = {
         ? paper.ans.slice()
         : new Array(qs.length).fill(null);
       if (missedOnly) {
-        const keep = qs.map((q, i) => {
-          const a = ans[i];
-          return (a === null || a === undefined || !isOk(a, q.correct)) ? i : -1;
-        }).filter(i => i >= 0);
-        if (!keep.length) { toast('Nothing missed in this attempt — a clean paper.'); return; }
-        qs = keep.map(i => paper.qs[i]);
-        ans = keep.map(i => paper.ans[i]);
+        const missed = this._missedPaper(s);
+        if (!missed || !missed.qs.length) { toast('Nothing missed in this attempt — a clean paper.'); return; }
+        qs = missed.qs;
+        ans = missed.ans;
       }
       QUIZ._doStart(qs, 'flashcard', s.title + (missedOnly ? ' — Missed' : ''), false, {
         weeklyId: s.id, weeklyTitle: s.title,

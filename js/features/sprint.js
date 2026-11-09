@@ -590,7 +590,7 @@
       }
       QUIZ._hideLoader();
       if (!picked.length) { toast(T('Could not load today’s chapters. Try again.'), 4500); return; }
-      QUIZ._doStart(picked, 'flashcard', T('Sprint catch-up'), false, { sprint: 'new' });
+      QUIZ._doStart(picked, 'flashcard', T('Sprint catch-up'), false, { sprint: 'catchup', catchupChapters: plan.todaySlices.length });
     },
 
     startReview() {
