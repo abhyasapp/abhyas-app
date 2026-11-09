@@ -868,7 +868,7 @@
             <div id="fc-hist"></div>
             <div id="fc-note"></div>
             <div id="fc-similar"></div>
-            <div class="kbd-hint"><kbd>A</kbd>–<kbd>D</kbd> or <kbd>1</kbd>–<kbd>5</kbd> to answer · <kbd>←</kbd><kbd>→</kbd> to move · <kbd>Esc</kbd> to quit</div>
+            <div class="kbd-hint"><kbd>A</kbd>–<kbd>D</kbd> or <kbd>1</kbd>–<kbd>5</kbd> to answer · <kbd>Enter</kbd> for next · <kbd>←</kbd><kbd>→</kbd> to move · <kbd>Esc</kbd> to quit</div>
           </div>
           <div class="fc-nav" id="fc-nav">
             <button class="btn btn-quiet" id="fc-prev" data-on-click="QUIZ.fcNav(-1)" aria-label="Previous question"><i class="ph ph-arrow-left"></i> <span class="fc-nav-lbl">Back</span></button>
@@ -916,6 +916,7 @@
             <div class="g4" id="res-stats" style="margin:var(--sp-4) 0"></div>
             <div class="bg" style="justify-content:center;margin-bottom:var(--sp-4)">
               <button class="btn btn-p btn-lg" data-on-click="QUIZ.retryWrong()"><i class="ph ph-repeat"></i> Retry what I missed</button>
+              <button class="btn btn-quiet btn-lg" id="res-again" data-on-click="QUIZ.practiceAgain()"><i class="ph ph-arrows-clockwise"></i> Practice again</button>
               <button class="btn btn-quiet btn-lg" data-on-click="UI.go('home')"><i class="ph ph-house"></i> Home</button>
             </div>
             <h3 class="t-t3 mb3">Every question</h3>

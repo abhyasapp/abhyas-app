@@ -115,7 +115,7 @@ const AUTH = {
     const norm = v => String(v || '').trim().toLowerCase();
     if (lastUser && norm(lastUser) !== norm(username)) {
       try { const keepUser = S.user; S.user = { username: lastUser }; PSYNC._snapshot('before-account-switch'); S.user = keepUser; } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
-      [LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.TT, LS.COV].forEach(k => {
+      [LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.TT, LS.COV, 'abhyas_practice_snap'].forEach(k => {
         try { localStorage.removeItem(k); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
       });
       S.prog = { total: 0, correct: 0, sessions: [], bestRun: 0 };

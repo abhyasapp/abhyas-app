@@ -245,7 +245,13 @@ window.PRACTICE_RESUME = {
         username: S.user.username, ch: S.quiz.ch || 'Practice',
         qs: S.quiz.qs, ans: S.quiz.ans.slice ? S.quiz.ans.slice() : [],
         idx: S.quiz.idx || 0, scope: S.quiz.scope || null,
-        startedAt: S.quiz.startedAt || Date.now(), savedAt: Date.now()
+        startedAt: S.quiz.startedAt || Date.now(), savedAt: Date.now(),
+        run: Number(S.quiz.run) || 0,
+        bestRun: Number(S.quiz.bestRun) || 0,
+        bestRunBefore: Number(S.quiz.bestRunBefore) || 0,
+        elapsed: Number(S.quiz.elapsed) || 0,
+        shown: Array.from(S.quiz.shown || []),
+        conf: (S.quiz.conf && typeof S.quiz.conf === 'object' && !Array.isArray(S.quiz.conf)) ? S.quiz.conf : {}
       };
       let json = JSON.stringify(snap);
       if (json.length > this.SIZE_CEILING) {
@@ -260,6 +266,7 @@ window.PRACTICE_RESUME = {
   valid() {
     const s = this.get();
     if (!s || !s.username || !Array.isArray(s.qs) || !s.qs.length) return null;
+    if (!Array.isArray(s.ans)) return null;
     if (!S.user || S.user.username !== s.username) return null;
     if (Date.now() - (s.savedAt || 0) > this.MAX_AGE_MS) return null;
     if ((s.ans || []).filter(a => a !== null && a !== undefined).length === 0) return null;
@@ -274,12 +281,17 @@ window.PRACTICE_RESUME = {
     const answered = (s.ans || []).filter(a => a !== null && a !== undefined).length;
     const mins = Math.max(1, Math.round((Date.now() - (s.savedAt || 0)) / 60000));
     const when = mins < 60 ? mins + ' min ago' : Math.round(mins / 60) + ' h ago';
+    const at = Math.max(0, Math.min(Number(s.idx) || 0, s.qs.length - 1)) + 1;
+    const pct = Math.round((answered / s.qs.length) * 100);
+    const run = Number(s.run) || 0;
     box.innerHTML =
       '<section class="card" style="border-color:var(--accent-line);background:var(--accent-soft)">' +
         '<div class="card-hd"><h3><i class="ph ph-arrow-clockwise"></i> Unfinished practice</h3></div>' +
-        '<p class="t-foot" style="margin-bottom:var(--sp-3);line-height:1.55;color:var(--ink-2)">' +
-          'You were ' + answered + ' of ' + s.qs.length + ' through <b>' + esc(s.ch || 'a practice session') + '</b>, last touched ' + when + '.' +
+        '<p class="t-foot" style="margin-bottom:var(--sp-2);line-height:1.55;color:var(--ink-2)">' +
+          'You were on <b>Q' + at + ' of ' + s.qs.length + '</b> — ' + answered + ' answered in <b>' + esc(s.ch || 'a practice session') + '</b>, last touched ' + when + '.' +
+          (run >= 2 ? ' <span style="color:var(--warning);font-weight:700">🔥 ' + run + ' in a row</span>' : '') +
         '</p>' +
+        '<div class="qprog" style="margin-bottom:var(--sp-3)" aria-hidden="true"><div class="qpf" style="width:' + pct + '%"></div></div>' +
         '<div class="bg"><button class="btn btn-solid grow" data-on-click="PRACTICE_RESUME.start()"><i class="ph ph-play"></i> Continue</button>' +
           '<button class="btn btn-quiet" data-on-click="PRACTICE_RESUME.discard()">Discard</button></div>' +
       '</section>';
@@ -290,19 +302,32 @@ window.PRACTICE_RESUME = {
     if (!s) { toast('That session is no longer available.'); this.render(); return; }
     while (s.ans.length < s.qs.length) s.ans.push(null);
     if (s.ans.length > s.qs.length) s.ans = s.ans.slice(0, s.qs.length);
+    const elapsed = Math.max(0, Math.floor(Number(s.elapsed) || 0));
+    const shown = Array.isArray(s.shown) ? s.shown : [];
+    const conf = (s.conf && typeof s.conf === 'object' && !Array.isArray(s.conf)) ? Object.assign({}, s.conf) : {};
     S.quiz = {
       qs: s.qs.slice(), ans: s.ans.slice(), mode: 'flashcard',
       idx: Math.max(0, Math.min(s.idx | 0, s.qs.length - 1)),
-      timer: null, elapsed: 0, left: 0, active: true, ch: s.ch || 'Practice',
-      skipped: new Set(), shown: new Set(), scope: s.scope || null,
-      startedAt: s.startedAt || Date.now(), reviewOnly: false
+      timer: null, elapsed, left: 0, active: true, ch: s.ch || 'Practice',
+      skipped: new Set(), shown: new Set(shown), scope: s.scope || null,
+      /* The away gap is not study time: keep the elapsed clock, not wall time. */
+      startedAt: Date.now() - elapsed * 1000, reviewOnly: false,
+      run: Number(s.run) || 0,
+      bestRun: Number(s.bestRun) || 0,
+      bestRunBefore: Number(s.bestRunBefore) || 0,
+      conf
     };
     document.getElementById('quiz-wrap').style.display = '';
     document.querySelectorAll('.view').forEach(e => e.classList.remove('on'));
     document.getElementById('ex-wrap').style.display = 'none';
     document.getElementById('fc-wrap').style.display = '';
     document.getElementById('res-wrap').style.display = 'none';
-    try { QUIZ._renderFlashcard(); QUIZ._startTimer(); } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
+    try {
+      QUIZ._renderFlashcard();
+      QUIZ._startTimer();
+      const t = document.getElementById('fc-tmr');
+      if (t) t.textContent = fmt(elapsed);
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
     window.scrollTo(0, 0);
     this.clear();
     this.render();
@@ -311,3 +336,14 @@ window.PRACTICE_RESUME = {
 
   discard() { this.clear(); this.render(); toast('Practice session discarded'); }
 };
+
+/* Page-hide and tab-switch are the two exits we cannot intercept. Save there
+   too, so the last visited question is not lost between answers. */
+function _snapshotPracticeOnExit() {
+  try { if (typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); }
+  catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
+}
+window.addEventListener('pagehide', _snapshotPracticeOnExit);
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden') _snapshotPracticeOnExit();
+});

@@ -325,6 +325,7 @@ const PROGRESS_RESET = {
     if(scope === 'all'){
       S.prog = Object.assign({}, S.prog, { total:0, correct:0, sessions:[], bestRun:0, gen:T });
       S.chapStats = {}; S.cov = {}; S.wr = []; S.stk = {days:[], last:''}; S.fcount = {};
+      try { localStorage.removeItem('abhyas_practice_snap'); } catch (e) { window.warnCaught && window.warnCaught('js/features/progress-reset.js', e); }
       try { localStorage.setItem('abhyas_sprint_start', this._day()); } catch (e) { window.warnCaught && window.warnCaught('js/features/progress-reset.js', e); }
       try { localStorage.removeItem('abhyas_sprint_off'); } catch (e) { window.warnCaught && window.warnCaught('js/features/progress-reset.js', e); }
       try { if(typeof SPRINT_LOG !== 'undefined') SPRINT_LOG.clear(); } catch (e) { window.warnCaught && window.warnCaught('js/features/progress-reset.js', e); }

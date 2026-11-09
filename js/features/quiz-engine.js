@@ -697,17 +697,22 @@ const QUIZ = {
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:10000;padding:1.5rem;backdrop-filter:blur(4px)';
     const isExam = S.quiz.mode === 'exam';
     const isReview = !!S.quiz.reviewOnly;
-    const answered = S.quiz.ans.filter(a=>a!==null).length;
+    const answered = S.quiz.ans.filter(a=>a!==null && a!==undefined).length;
     const total = S.quiz.qs.length;
     const isWeekly = !!(S.quiz.scope && S.quiz.scope.weeklyId);
+    const isDaily10 = !!(S.quiz.scope && S.quiz.scope.daily10);
+    const canResume = !isExam && !isReview && !isWeekly && !isDaily10 && answered > 0;
     const heading = isReview
       ? 'Exit review?'
-      : (isWeekly && isExam ? 'Leave this weekly exam?' : 'Leave this quiz?');
+      : (isWeekly && isExam ? 'Leave this weekly exam?' : canResume ? 'Leave and resume later?' : 'Leave this quiz?');
     const body = isReview
       ? `You're viewing your recorded results for ${esc(S.quiz.ch)}.`
       : isWeekly && isExam
         ? `You only get ONE attempt at this weekly set. Leaving now abandons your one shot — the exam window keeps running and you won't be able to start over. ${answered} of ${total} answered so far.`
-        : (isExam ? answered+' of '+total+' answered' : 'Question '+(S.quiz.idx+1)+' of '+total);
+        : (isExam ? answered+' of '+total+' answered'
+          : canResume
+            ? `You're on question ${S.quiz.idx+1} of ${total}. Your ${answered} answered question${answered === 1 ? '' : 's'} will be saved on this device — continue from Home whenever you're ready.`
+            : `You're on question ${S.quiz.idx+1} of ${total}. Nothing is saved if you leave now.`);
     modal.innerHTML = `
       <div style="background:var(--c2);border:1px solid var(--bd);border-radius:var(--r3);padding:1.5rem;max-width:340px;width:100%;box-shadow:var(--sh3)" role="dialog" aria-modal="true">
         <div style="font-size:1.3rem;margin-bottom:.4rem"><i class="ph ph-warning"></i></div>
@@ -715,7 +720,8 @@ const QUIZ = {
         <div style="font-size:.76rem;color:var(--t3);margin-bottom:1.1rem">${body}</div>
         <div style="display:flex;flex-direction:column;gap:.45rem">
           ${isExam && !isReview ? '<button id="qem-finish" style="padding:.62rem;background:var(--ok-bg);border:1px solid var(--ok-bd);border-radius:var(--r2);color:var(--grn);font-weight:700;font-size:.83rem;cursor:pointer;font-family:var(--ff);text-align:left"><i class="ph ph-check-circle"></i> Submit & See Results — grade what I have answered so far</button>' : ''}
-          <button id="qem-quit" style="padding:.62rem;background:var(--bad-bg);border:1px solid var(--bad-bd);border-radius:var(--r2);color:var(--ros);font-weight:700;font-size:.83rem;cursor:pointer;font-family:var(--ff);text-align:left"><i class="ph ph-door"></i> ${isReview ? 'Exit review' : 'Quit — discard this session'}</button>
+          ${canResume ? '<button id="qem-leave" style="padding:.62rem;background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:var(--r2);color:var(--accent);font-weight:700;font-size:.83rem;cursor:pointer;font-family:var(--ff);text-align:left"><i class="ph ph-arrow-clockwise"></i> Leave & resume later</button>' : ''}
+          <button id="qem-quit" style="padding:.62rem;background:var(--bad-bg);border:1px solid var(--bad-bd);border-radius:var(--r2);color:var(--ros);font-weight:700;font-size:.83rem;cursor:pointer;font-family:var(--ff);text-align:left"><i class="ph ph-door"></i> ${isReview ? 'Exit review' : canResume ? 'Discard this session' : 'Quit — discard this session'}</button>
           <button id="qem-cancel" style="padding:.62rem;background:var(--b0);border:1px solid var(--b1);border-radius:var(--r2);color:var(--t2);font-weight:600;font-size:.83rem;cursor:pointer;font-family:var(--ff);text-align:left">↩ Cancel — keep studying</button>
         </div>
       </div>`;
@@ -726,12 +732,28 @@ const QUIZ = {
     if(isExam && !isReview){
       document.getElementById('qem-finish').onclick = ()=>{ close(); QUIZ.submitExam(); };
     }
+    if(canResume){
+      document.getElementById('qem-leave').onclick = ()=>{
+        try { if(typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); }
+        catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
+        close();
+        QUIZ._stopTimer();
+        S.quiz.active = false;
+        document.getElementById('quiz-wrap').style.display = 'none';
+        try { if(typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.render(); }
+        catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
+        if(afterQuit) afterQuit();
+      };
+    }
     document.getElementById('qem-quit').onclick = ()=>{
       close();
       QUIZ._stopTimer();
       if(isExam && !isReview) QUIZ._clearExamSnapshot();
+      if(canResume){ try { if(typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.clear(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } }
       S.quiz.active = false;
       document.getElementById('quiz-wrap').style.display = 'none';
+      try { if(typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.render(); }
+      catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
       if(afterQuit) afterQuit();
     };
     document.getElementById('qem-cancel').onclick = close;
@@ -1097,12 +1119,24 @@ const QUIZ = {
     QUIZ.startWith(wrongIdx.map(x=>x.q), 'flashcard', S.quiz.ch + ' (Retry)');
   },
 
+  practiceAgain(){
+    if(!S.quiz || !Array.isArray(S.quiz.qs) || !S.quiz.qs.length) return;
+    if(S.quiz.reviewOnly){ toast('This is a recorded review.'); return; }
+    if(S.quiz.scope && S.quiz.scope.weeklyId){ toast('🔒 Weekly sets are one attempt only'); return; }
+    const qs = S.quiz.qs.slice();
+    const scope = S.quiz.scope ? Object.assign({}, S.quiz.scope) : null;
+    if(scope){ delete scope.weeklyRetake; delete scope.weeklyAttempt; }
+    QUIZ._doStart(qs, 'flashcard', S.quiz.ch || 'Practice', true, scope);
+  },
+
   _showResults(){
     document.getElementById('fc-wrap').style.display='none';
     document.getElementById('ex-wrap').style.display='none';
     document.getElementById('res-wrap').style.display='';
     const isWeekly = !!(S.quiz.scope && S.quiz.scope.weeklyId);
     const isLoksewa = isLoksewaFormat(S.quiz.scope);
+    const againBtn = document.getElementById('res-again');
+    if(againBtn) againBtn.hidden = isWeekly || !!S.quiz.reviewOnly;
     /* Counting and negative marking live in scorePaper (js/core/loksewa.js),
        which is unit-tested without a DOM. Blank answers are skipped, not wrong. */
     const sc = scorePaper(S.quiz.ans, S.quiz.qs, S.quiz.scope);
@@ -1472,10 +1506,16 @@ document.addEventListener('keydown', e=>{
     else if(k==='n'){ if(cur < n-1) QUIZ._exGo(cur+1); }
     else if(k==='p'){ if(cur > 0) QUIZ._exGo(cur-1); }
     return;
-  }
-  if(S.quiz.mode!=='exam'){
+  }    if(S.quiz.mode!=='exam'){
     if(e.key==='ArrowRight') QUIZ.fcNav(1);
     if(e.key==='ArrowLeft') QUIZ.fcNav(-1);
+    if(e.key==='Enter'){
+      const answered = S.quiz.ans[S.quiz.idx] !== null && S.quiz.ans[S.quiz.idx] !== undefined;
+      const onOption = !!(e.target && e.target.closest && e.target.closest('#fc-opts'));
+      if(!answered && onOption) return; // let the focused option handle its own Enter
+      if(answered){ e.preventDefault(); QUIZ.fcNav(1); }
+      return;
+    }
     if(['1','2','3','4','5'].includes(e.key)){
       const i=Number(e.key)-1;
       if(S.quiz.qs[S.quiz.idx]?.options[i]!==undefined) QUIZ.fcAnswer(i);

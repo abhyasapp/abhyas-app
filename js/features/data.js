@@ -112,7 +112,7 @@ const DATA = {
     if(!(await ASK.confirm({title:'Reset this device?', body:'This deletes ALL progress, bookmarks, flags, wrong answers and study plan on this device. Your cloud backup is not touched.', ok:'Continue', danger:true}))) return;
     if(!(await ASK.confirm({title:'Are you absolutely sure?', body:'This cannot be undone.', ok:'Yes, reset', danger:true}))) return;
     RESET_SNAPSHOT.save('reset');
-    [LS.PROG,LS.BK,LS.FL,LS.WR,LS.TT,LS.STK,LS.CHAPSTATS,LS.EXAM_SNAP,LS.TT_NOTIFIED,LS.FCOUNT,LS.COV].forEach(k=>localStorage.removeItem(k));
+    [LS.PROG,LS.BK,LS.FL,LS.WR,LS.TT,LS.STK,LS.CHAPSTATS,LS.EXAM_SNAP,LS.TT_NOTIFIED,LS.FCOUNT,LS.COV,'abhyas_practice_snap'].forEach(k=>localStorage.removeItem(k));
     toast('All data reset');
     location.reload();
   },
@@ -134,7 +134,7 @@ const DATA = {
     clearTimeout(PSYNC._timer); PSYNC._timer = null;
     S.prog = {total:0,correct:0,sessions:[],bestRun:0}; S.bk = []; S.fl = []; S.wr = [];
     S.stk = {days:[],last:''}; S.chapStats = {}; S.fcount = {}; S.cov = {};
-    [LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.FCOUNT, LS.EXAM_SNAP, LS.COV].forEach(k=>localStorage.removeItem(k));
+    [LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.FCOUNT, LS.EXAM_SNAP, LS.COV, 'abhyas_practice_snap'].forEach(k=>localStorage.removeItem(k));
     toast('Progress reset everywhere. Reloading…');
     setTimeout(()=>location.reload(), 900);
   },
