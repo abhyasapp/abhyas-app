@@ -181,6 +181,20 @@ describe('the student screen (user.html)', () => {
     expect(p.ev('document.querySelector("#qna-body").textContent')).toContain('Nothing matches');
   });
 
+  it('opens the written-answer library searched to the practice chapter', async () => {
+    const out = await p.ev(`(() => {
+      S.quiz = { qs: [{ q: 'A soil question' }], idx: 0, scope: { lv: 'level7', ch: 'geotech', sub: 'Soil Mechanics' } };
+      const orig = UI.go; let went = null;
+      UI.go = v => { went = v; };
+      QNA.fromResult(0);
+      UI.go = orig;
+      return { went, q: QNA.q, input: document.querySelector('#qna-q').value };
+    })()`);
+    expect(out.went).toBe('qna');
+    expect(out.q).toBe('Soil Mechanics');
+    expect(out.input).toBe('Soil Mechanics');
+  });
+
   it('opens a question through the study-PDF reader (offline cache included)', () => {
     expect(p.ev('typeof QNA.open')).toBe('function');
     /* The reader itself is exercised elsewhere; here the point is that the

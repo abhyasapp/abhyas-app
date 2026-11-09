@@ -187,6 +187,37 @@ window.QNA = {
     '</div>';
   },
 
+  _queryFor(q, scope){
+    const sc = scope || {};
+    let term = String(sc.sub || '').trim();
+    if (!term) {
+      try {
+        if (sc.lv && sc.ch && typeof ChapterData !== 'undefined') term = ChapterData.chapterName(sc.lv, sc.ch) || '';
+      } catch (e) { term = ''; }
+    }
+    return term;
+  },
+
+  openQuery(term){
+    term = String(term || '').trim();
+    this.q = term; this.group = '';
+    const inp = $('qna-q'); if (inp) inp.value = term;
+    if (typeof UI !== 'undefined' && UI.go) UI.go('qna');
+    else this.render();
+  },
+
+  fromCurrent(){
+    const q = (typeof S !== 'undefined' && S.quiz && S.quiz.qs) ? S.quiz.qs[S.quiz.idx] : null;
+    if (!q) return;
+    this.openQuery(this._queryFor(q, S.quiz.scope));
+  },
+
+  fromResult(i){
+    const q = (typeof S !== 'undefined' && S.quiz && S.quiz.qs) ? S.quiz.qs[i] : null;
+    if (!q) return;
+    this.openQuery(this._queryFor(q, S.quiz.scope));
+  },
+
   open(id){
     const store = this._store();
     if (!store) { toast('The PDF reader is not available. Reload the page.'); return; }

@@ -821,6 +821,7 @@ const QUIZ = {
       document.getElementById('fc-acts').innerHTML = `
         ${reviewControls}
         <button class="ib" data-on-click="USER_REPORT.current()" title="Report an issue with this question" aria-label="Report an issue with this question"><i class="ph ph-warning-circle"></i></button>
+        <button class="ib" data-on-click="QNA.fromCurrent()" title="Open notes and Q&A for this chapter" aria-label="Open notes and Q&A for this chapter"><i class="ph ph-text-columns"></i></button>
         ${qSearchHtml(q)}
         ${S.quiz.reviewOnly ? '' : `<select class="sel-c" style="font-size:.68rem;padding:.2rem .35rem;width:auto" data-on-change="QUIZ._tagCurrent(this.value)">
           <option value="">🏷 Tag…</option>
@@ -1678,7 +1679,7 @@ const QUIZ = {
         const conf = (S.quiz.conf && S.quiz.conf[i]) || '';
         const isMarked = S.quiz.marked instanceof Set && S.quiz.marked.has(i);
         return `<div class="qcard" data-qi="${i}" data-state="${skipped ? 'skipped' : correctPick ? 'correct' : 'wrong'}" data-conf="${conf}" data-marked="${isMarked ? '1' : '0'}" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
-          <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${status}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}${qSearchHtml(q)}</div>
+          <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${status}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}<button class="ib" data-on-click="QNA.fromResult(${i})" title="Open notes and Q&A for this chapter" aria-label="Open notes and Q&A for this chapter"><i class="ph ph-text-columns"></i></button>${qSearchHtml(q)}</div>
           <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
           ${qImgHtml(q)}
           ${q.options.map((opt,oi)=>{
