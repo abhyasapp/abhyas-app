@@ -953,11 +953,13 @@ const QUIZ = {
   _renderReviewFilters(){
     const box = document.getElementById('res-filters');
     if(!box || !S.quiz || !Array.isArray(S.quiz.qs)) return;
-    const counts = { all: 0, wrong: 0, skipped: 0, confident: 0 };
+    const counts = { all: 0, wrong: 0, skipped: 0, confident: 0, marked: 0 };
     const conf = S.quiz.conf || {};
+    const marked = S.quiz.marked instanceof Set ? S.quiz.marked : new Set();
     S.quiz.qs.forEach((q, i) => {
       const a = S.quiz.ans[i];
       counts.all++;
+      if(marked.has(i)) counts.marked++;
       if(a === null || a === undefined) counts.skipped++;
       else if(!isOk(a, q.correct)){
         counts.wrong++;
@@ -969,6 +971,7 @@ const QUIZ = {
       ['wrong', 'Wrong', counts.wrong],
       ['skipped', 'Skipped', counts.skipped]
     ];
+    if(counts.marked) items.push(['marked', 'Marked', counts.marked]);
     if(counts.confident) items.push(['confident', 'Confident misses', counts.confident]);
     const current = QUIZ._reviewFilter || 'all';
     box.innerHTML = items.map(([key, label, n]) =>
@@ -989,7 +992,8 @@ const QUIZ = {
       const a = S.quiz.ans[i];
       const state = (a === null || a === undefined) ? 'skipped' : (isOk(a, S.quiz.qs[i].correct) ? 'correct' : 'wrong');
       const conf = S.quiz.conf && S.quiz.conf[i];
-      const show = filter === 'all' || filter === state || (filter === 'confident' && state === 'wrong' && conf === 'sure');
+      const marked = S.quiz.marked instanceof Set && S.quiz.marked.has(i);
+      const show = filter === 'all' || filter === state || (filter === 'marked' && marked) || (filter === 'confident' && state === 'wrong' && conf === 'sure');
       card.hidden = !show;
       if(show) visible++;
     });
@@ -1003,11 +1007,13 @@ const QUIZ = {
       empty.hidden = visible > 0;
       empty.textContent = filter === 'confident'
         ? 'No confident misses in this set — your “sure” answers held up.'
-        : filter === 'wrong'
-          ? 'No wrong answers in this set.'
-          : filter === 'skipped'
-            ? 'You answered every question.'
-            : 'No questions to show.';
+        : filter === 'marked'
+          ? 'No questions were marked for review in this set.'
+          : filter === 'wrong'
+            ? 'No wrong answers in this set.'
+            : filter === 'skipped'
+              ? 'You answered every question.'
+              : 'No questions to show.';
     }
   },
   /* A compact, evidence-based read on whether the learner's confidence
@@ -1312,6 +1318,15 @@ const QUIZ = {
     QUIZ.startWith(skipped, 'flashcard', S.quiz.ch + ' (Skipped)');
   },
 
+  retryMarked(){
+    if(!S.quiz || !Array.isArray(S.quiz.qs)) return;
+    if(S.quiz.scope && S.quiz.scope.weeklyId){ toast('🔒 Weekly sets are one attempt only'); return; }
+    const marked = (S.quiz.marked instanceof Set) ? S.quiz.marked : new Set();
+    const qs = Array.from(marked).sort((a, b) => a - b).map(i => S.quiz.qs[i]).filter(Boolean);
+    if(!qs.length){ toast('No questions were marked for review in this set.'); return; }
+    QUIZ.startWith(qs, 'flashcard', S.quiz.ch + ' (Marked)');
+  },
+
   practiceAgain(){
     if(!S.quiz || !Array.isArray(S.quiz.qs) || !S.quiz.qs.length) return;
     if(S.quiz.reviewOnly){ toast('This is a recorded review.'); return; }
@@ -1410,6 +1425,7 @@ const QUIZ = {
       : 0;
     const recapBits = [];
     if(elapsedSec > 0) recapBits.push({ icon: 'ph-clock', text: fmt(elapsedSec) });
+    if(elapsedSec > 0 && total > 0) recapBits.push({ icon: 'ph-gauge', text: '~' + Math.round(elapsedSec / total) + 's per question' });
     if(longestRun >= 2) recapBits.push({
       icon: 'ph-fire',
       text: newRunBest ? 'New best run: ' + longestRun : 'Best run: ' + longestRun,
@@ -1647,7 +1663,8 @@ const QUIZ = {
         const skipped = a === null || a === undefined;
         const status = correctPick ? 'Correct' : skipped ? 'Skipped' : 'Wrong';
         const conf = (S.quiz.conf && S.quiz.conf[i]) || '';
-        return `<div class="qcard" data-qi="${i}" data-state="${skipped ? 'skipped' : correctPick ? 'correct' : 'wrong'}" data-conf="${conf}" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
+        const isMarked = S.quiz.marked instanceof Set && S.quiz.marked.has(i);
+        return `<div class="qcard" data-qi="${i}" data-state="${skipped ? 'skipped' : correctPick ? 'correct' : 'wrong'}" data-conf="${conf}" data-marked="${isMarked ? '1' : '0'}" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
           <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${status}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}${qSearchHtml(q)}</div>
           <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
           ${qImgHtml(q)}
@@ -1676,6 +1693,13 @@ const QUIZ = {
         skippedBtn.hidden = skippedCount === 0 || !!(S.quiz.scope && S.quiz.scope.weeklyId);
         const skippedN = document.getElementById('res-skipped-n');
         if(skippedN) skippedN.textContent = String(skippedCount);
+      }
+      const markedCount = (S.quiz.marked instanceof Set) ? S.quiz.marked.size : 0;
+      const markedBtn = document.getElementById('res-marked');
+      if(markedBtn){
+        markedBtn.hidden = markedCount === 0 || !!(S.quiz.scope && S.quiz.scope.weeklyId);
+        const markedN = document.getElementById('res-marked-n');
+        if(markedN) markedN.textContent = String(markedCount);
       }
     });
 

@@ -322,6 +322,11 @@
       rows.push(_row('ph-seal-check', '', T('Syllabus complete'), T('Every Level 7 and GK question has been seen. Time to sharpen.'), '', '', true));
     }
 
+    if ((plan.status === 'behind' || plan.status === 'compressed') && plan.todayRemaining > 0 && plan.todaySlices.length > 1) {
+      rows.push(_row('ph-arrow-up-right', 'drill', T('Catch up today'),
+        plan.todayRemaining + ' new across ' + plan.todaySlices.length + ' chapters', T('Catch up'), 'data-sprint="catchup"'));
+    }
+
     if (t.reviews.target > 0) {
       rows.push(_row('ph-arrows-clockwise', 'review', 'Review due',
         t.due + ' question' + (t.due === 1 ? '' : 's') + ' \u00b7 spaced repetition', 'Review', 'data-sprint="review"', t.reviews.done >= t.reviews.target));
@@ -562,6 +567,32 @@
       QUIZ._doStart(picked, 'flashcard', name, false, { lv: ref.lv, ch: ref.ch, book: ref.book, sub: ref.subtopic, fid: ref.fid, sprint: 'new' });
     },
 
+    async startCatchUp() {
+      const plan = _plan();
+      const slices = Array.isArray(plan.todaySlices) ? plan.todaySlices : [];
+      if (!slices.length || !plan.todayRemaining) { toast(T('Nothing new left to catch up on today.')); return; }
+      QUIZ._showLoader(T('Building your catch-up block…'));
+      const picked = [];
+      for (const slice of slices) {
+        const ref = RUN._ref(slice.fid);
+        if (!ref) continue;
+        const need = Math.min(Math.max(0, Number(slice.count) || 0), plan.todayRemaining - picked.length);
+        if (!need) continue;
+        try {
+          const qs = await RUN._load(ref);
+          let taken = 0;
+          for (const q of qs) {
+            if (taken >= need || picked.length >= plan.todayRemaining) break;
+            if (!RUN._seenQ(q)) { picked.push(q); taken++; }
+          }
+        } catch (e) { /* skip this chapter and keep the rest */ }
+        if (picked.length >= plan.todayRemaining) break;
+      }
+      QUIZ._hideLoader();
+      if (!picked.length) { toast(T('Could not load today’s chapters. Try again.'), 4500); return; }
+      QUIZ._doStart(picked, 'flashcard', T('Sprint catch-up'), false, { sprint: 'new' });
+    },
+
     startReview() {
       let arr;
       try { arr = REV.dueWrong(); } catch (e) { arr = []; }
@@ -684,6 +715,7 @@
     if (!el) return;
     const act = el.getAttribute('data-sprint');
     if (act === 'new') RUN.startNew(el.getAttribute('data-fid'), Number(el.getAttribute('data-count')) || 0);
+    else if (act === 'catchup') RUN.startCatchUp();
     else if (act === 'review') RUN.startReview();
     else if (act === 'drill') RUN.startDrill();
     else if (act === 'mock') RUN.startMock(50);

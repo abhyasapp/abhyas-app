@@ -342,6 +342,13 @@ const WEEKLY = {
     const stamp = last.at ? new Date(last.at).toLocaleString() : '';
     const lkOff = this.loksewaScore(attempt);
     const officialPct = lkOff ? lkOff.pct : (Number(attempt && attempt.pct) || 0);
+    const paper = this._loadPaper(s.id);
+    const missedCount = (paper && Array.isArray(paper.ans))
+      ? paper.qs.reduce((n, q, i) => {
+          const a = paper.ans[i];
+          return n + ((a === null || a === undefined || !isOk(a, q.correct)) ? 1 : 0);
+        }, 0)
+      : 0;
 
     MODAL.sheet('Weekly test — ' + s.title,
       '<div class="qotd-head" style="margin-bottom:var(--sp-4)">' +
@@ -370,7 +377,12 @@ const WEEKLY = {
         '<button class="btn btn-solid" style="flex:1" data-on-click="MODAL.close(\'sheet\');WEEKLY._startRetake(\'' + escAttrJs(s.id) + '\')">' +
           '<i class="ph ph-repeat"></i> Retest' +
         '</button>' +
-      '</div>',
+      '</div>' +
+      (missedCount
+        ? '<button class="btn btn-quiet btn-blk mt2" data-on-click="MODAL.close(\'sheet\');WEEKLY.reviewMissedById(\'' + escAttrJs(s.id) + '\')">' +
+            '<i class="ph ph-target"></i> Review ' + missedCount + ' missed answer' + (missedCount === 1 ? '' : 's') +
+          '</button>'
+        : ''),
       { wide:false }
     );
   },
@@ -393,18 +405,36 @@ const WEEKLY = {
     if (s) WEEKLY._startReview(s, (WEEKLY.attempts && WEEKLY.attempts[id]) || null);
   },
 
-  async _startReview(s, attempt) {
+  reviewMissedById(id) {
+    const s = (WEEKLY.sets || []).find(x => x.id === id);
+    if (s) WEEKLY._startReview(s, (WEEKLY.attempts && WEEKLY.attempts[id]) || null, true);
+  },
+
+  async _startReview(s, attempt, missedOnly = false) {
     if (!s) { toast('Weekly set not found.', 5000); return; }
 
     const paper = this._loadPaper(s.id);
+    if (missedOnly && !(paper && paper.qs.length)) {
+      toast('The saved paper is not on this device — opening the full review.', 4000);
+      missedOnly = false;
+    }
     if (paper && paper.qs.length) {
-      const qs = paper.qs.slice();
-      const ans = (paper.ans && paper.ans.length === qs.length)
+      let qs = paper.qs.slice();
+      let ans = (paper.ans && paper.ans.length === qs.length)
         ? paper.ans.slice()
         : new Array(qs.length).fill(null);
-      QUIZ._doStart(qs, 'flashcard', s.title, false, {
+      if (missedOnly) {
+        const keep = qs.map((q, i) => {
+          const a = ans[i];
+          return (a === null || a === undefined || !isOk(a, q.correct)) ? i : -1;
+        }).filter(i => i >= 0);
+        if (!keep.length) { toast('Nothing missed in this attempt — a clean paper.'); return; }
+        qs = keep.map(i => paper.qs[i]);
+        ans = keep.map(i => paper.ans[i]);
+      }
+      QUIZ._doStart(qs, 'flashcard', s.title + (missedOnly ? ' — Missed' : ''), false, {
         weeklyId: s.id, weeklyTitle: s.title,
-        weeklyReviewMode: true,
+        weeklyReviewMode: true, weeklyReviewMissed: missedOnly,
         weeklyAttempt: Object.assign({}, attempt || {}, { answers: ans })
       });
       return;

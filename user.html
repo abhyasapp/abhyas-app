@@ -918,6 +918,7 @@
             <div class="bg" style="justify-content:center;margin-bottom:var(--sp-4)">
               <button class="btn btn-p btn-lg" data-on-click="QUIZ.retryWrong()"><i class="ph ph-repeat"></i> Retry what I missed</button>
               <button class="btn btn-quiet btn-lg" id="res-skipped" data-on-click="QUIZ.retrySkipped()" hidden><i class="ph ph-arrow-down"></i> Practice skipped (<span id="res-skipped-n">0</span>)</button>
+              <button class="btn btn-quiet btn-lg" id="res-marked" data-on-click="QUIZ.retryMarked()" hidden><i class="ph ph-flag"></i> Practice marked (<span id="res-marked-n">0</span>)</button>
               <button class="btn btn-quiet btn-lg" id="res-again" data-on-click="QUIZ.practiceAgain()"><i class="ph ph-arrows-clockwise"></i> Practice again</button>
               <button class="btn btn-quiet btn-lg" data-on-click="UI.go('home')"><i class="ph ph-house"></i> Home</button>
             </div>
