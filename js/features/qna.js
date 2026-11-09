@@ -21,6 +21,13 @@ window.QNA = {
 
   _store(){ return (typeof STUDYDOCS !== 'undefined') ? STUDYDOCS : null; },
 
+  _readPosition(e){
+    try {
+      return (typeof PDFVIEW !== 'undefined' && typeof PDFVIEW.position === 'function')
+        ? PDFVIEW.position('studydoc:' + e.id) : null;
+    } catch (err) { return null; }
+  },
+
   async load(force){
     const box = $('qna-body');
     if (!box) return;
@@ -155,13 +162,16 @@ window.QNA = {
 
   _row(e){
     const marks = e.marks ? '<span class="qm ' + (e.marks >= 10 ? 'm10' : 'm5') + '">' + e.marks + 'M</span>' : '';
+    const readAt = (this._readPosition(e) || {}).page || 0;
+    const openLabel = readAt > 1 ? 'Continue p. ' + readAt : 'Question &amp; solution';
+    const openTitle = readAt > 1 ? 'Continue reading at page ' + readAt : 'Open the question and its solution';
     return '<div class="subj-q-row qna-row">' +
       '<span class="qn">' + e.index + '.</span>' +
       '<div class="qna-main">' +
         '<span class="qt">' + esc(e.title) + '</span>' +
         (e.note ? '<span class="qna-note">' + esc(e.note) + '</span>' : '') +
-        '<button type="button" class="qna-open" data-on-click="QNA.open(\'' + escAttrJs(e.id) + '\')">' +
-          '<i class="ph ph-file-pdf"></i> Question &amp; solution' +
+        '<button type="button" class="qna-open" data-on-click="QNA.open(\'' + escAttrJs(e.id) + '\')" title="' + openTitle + '">' +
+          '<i class="ph ph-file-pdf"></i> ' + openLabel +
         '</button>' +
       '</div>' + marks +
     '</div>';

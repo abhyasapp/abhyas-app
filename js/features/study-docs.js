@@ -235,6 +235,12 @@ window.STUDYDOCS = {
 
   _cacheIndex(){ return this._read(this.CACHE_KEY, []); },
   _isCached(d){ const e = this._cacheIndex().find(x => x.id === d.id); return !!(e && e.updatedAt === d.updatedAt); },
+  _readPosition(d){
+    try {
+      return (typeof PDFVIEW !== 'undefined' && typeof PDFVIEW.position === 'function')
+        ? PDFVIEW.position('studydoc:' + d.id) : null;
+    } catch (e) { return null; }
+  },
 
   render(note){
     const box = $('studydocs-body'), chips = $('sd-chips');
@@ -269,6 +275,7 @@ window.STUDYDOCS = {
     requestAnimationFrame(() => {
       box.innerHTML = banner + '<div class="sd-list">' + list.map(d => {
         const off = this._isCached(d);
+        const readAt = (this._readPosition(d) || {}).page || 0;
         return '<div class="card sd-card">' +
           '<div class="sd-ic"><i class="ph ph-file-pdf"></i></div>' +
           '<div class="sd-main">' +
@@ -279,7 +286,7 @@ window.STUDYDOCS = {
               (this.newIds.has(d.id) ? '<span class="sd-new">New</span>' : '') +
               '<span>' + esc(formatBytes(d.sizeBytes)) + '</span>' +
               (off ? '<span class="sd-off"><i class="ph ph-check-circle"></i> Works offline</span>' : '') + '</div>' +
-            '<div class="sd-acts"><button class="btn btn-solid btn-sm" data-on-click="STUDYDOCS.open(\'' + escAttrJs(d.id) + '\')"><i class="ph ph-book-open"></i> Read</button>' +
+            '<div class="sd-acts"><button class="btn btn-solid btn-sm" data-on-click="STUDYDOCS.open(\'' + escAttrJs(d.id) + '\')" title="' + (readAt > 1 ? 'Continue reading at page ' + readAt : 'Open this PDF') + '"><i class="ph ph-book-open"></i> ' + (readAt > 1 ? 'Continue p. ' + readAt : 'Read') + '</button>' +
               (off ? '<button class="btn btn-quiet btn-sm" data-on-click="STUDYDOCS.removeOffline(\'' + escAttrJs(d.id) + '\')"><i class="ph ph-trash"></i> Free up space</button>' : '') +
             '</div>' +
           '</div></div>';
@@ -320,6 +327,7 @@ window.STUDYDOCS = {
 
     PDFVIEW.open({
       title: d.title,
+      resumeKey: 'studydoc:' + d.id,
       load: async () => {
         if (this._isCached(d)) {
           const hit = await QDB.get('studydoc:' + d.id);

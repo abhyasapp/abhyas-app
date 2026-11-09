@@ -81,6 +81,7 @@ test('STUDYDOCS.open reads a listed document through getStudyDocPdf by record id
   assert.equal(calls[0].url, context.ABHYAS_CONFIG.SUPABASE_URL);
   assert.equal(JSON.parse(calls[0].options.body).id, listedDoc.id);
   assert.equal(calls[1].url, signedUrl);
+  assert.equal(viewerOptions.resumeKey, 'studydoc:' + listedDoc.id);
 });
 
 test('STUDYDOCS.open falls back to getFile when the document carries a storage path', async () => {

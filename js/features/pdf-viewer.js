@@ -67,6 +67,8 @@ const SOURCES = [
   { lib: CDN + 'pdf.min.js', worker: CDN + 'pdf.worker.min.js' }
 ];
 const FIT_KEY = 'abhyas_pdf_fit'; // 'page' | 'width'
+const POS_KEY = 'abhyas_pdf_positions'; // per-document last page
+const POS_KEEP = 120;
 const MIN_SCALE = 0.2, MAX_SCALE = 6, MAX_FIT_SCALE = 3.5;
 const SIDE_PAD = 12, GAP = 10, TOP_PAD = 8, BOTTOM_PAD = 24;
 const MAX_CANVAS_PIXELS = 16e6;
@@ -165,6 +167,42 @@ background:rgba(0,0,0,.35);color:inherit;font-family:inherit;font-size:16px;resi
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* Reading positions are deliberately tiny (page + total + time) and live in
+   localStorage, not the annotation cache: they are a convenience, not study
+   data, and must survive an offline PDF being removed. */
+function positionsRead() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(POS_KEY) || '{}');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  } catch (e) { return {}; }
+}
+function positionGet(key, total) {
+  if (!key) return null;
+  const rec = positionsRead()[key];
+  if (!rec) return null;
+  const page = Math.round(Number(rec.page));
+  if (!isFinite(page) || page < 1) return null;
+  const max = Math.max(1, Math.round(Number(total) || Number(rec.total) || 1));
+  return { page: clamp(page, 1, max), total: max, at: Number(rec.at) || 0 };
+}
+function positionSet(key, page, total) {
+  if (!key) return;
+  const max = Math.max(1, Math.round(Number(total) || 1));
+  const at = clamp(Math.round(Number(page) || 1), 1, max);
+  const all = positionsRead();
+  const old = all[key];
+  if (old && Number(old.page) === at && Number(old.total) === max) return;
+  all[key] = { page: at, total: max, at: Date.now() };
+  const keep = Object.keys(all)
+    .filter(k => all[k] && typeof all[k] === 'object')
+    .sort((a, b) => (Number(all[b].at) || 0) - (Number(all[a].at) || 0))
+    .slice(0, POS_KEEP);
+  const out = {};
+  keep.forEach(k => { out[k] = all[k]; });
+  try { localStorage.setItem(POS_KEY, JSON.stringify(out)); }
+  catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
+}
 
 /* A script tag that fires neither load nor error — a captive-portal
    redirect, a stalled CDN — would otherwise leave the reader on
@@ -391,6 +429,7 @@ async function open(opts) {
   const gen = ++GEN;
   prevFocus = document.activeElement;
   const ann = opts.annotate || null;
+  const resumeKey = String(opts.resumeKey || '');
   if (ann && !els.ann.innerHTML) buildAnnToolbar();
   root.classList.toggle('annotate', !!ann);
   root.classList.remove('finding', 'drawing');
@@ -413,7 +452,7 @@ async function open(opts) {
     if (src.title) setTitle(src.title);
     bytes = await toBytes(src);
     if (gen !== GEN) return;
-    S = newState(gen, bytes, src.filename || opts.filename || 'document.pdf', ann);
+    S = newState(gen, bytes, src.filename || opts.filename || 'document.pdf', ann, resumeKey);
   } catch (err) {
     if (gen !== GEN) return;
     S = null;
@@ -482,12 +521,15 @@ async function open(opts) {
     setTool('hand'); setColor(COLORS[0].hex); setWidth(3); paintState();
   }
   layout(false);
-  els.scroll.scrollTop = 0;
+  const resume = positionGet(resumeKey, S.pages.length);
+  els.scroll.scrollTop = resume && resume.page > 1
+    ? Math.max(0, S.pages[resume.page - 1].top - TOP_PAD)
+    : 0;
   update();
   els.scroll.focus({ preventScroll: true });
 }
 
-function newState(gen, bytes, filename, ann) {
+function newState(gen, bytes, filename, ann, resumeKey) {
   let blobUrl = '';
   try { blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
   return {
@@ -495,7 +537,7 @@ function newState(gen, bytes, filename, ann) {
     blobUrl, filename, bytes,
     ann: ann, ink: {}, redo: {}, tool: 'hand', color: COLORS[0].hex, width: 3,
     dirty: false, saveState: '', saveTimer: null, saving: false,
-    find: null, text: {}
+    find: null, text: {}, resumeKey: String(resumeKey || '')
   };
 }
 
@@ -658,6 +700,7 @@ function update() {
   let cur = 0;
   for (let i = 0; i < S.pages.length; i++) { if (S.pages[i].top <= probe) cur = i; else break; }
   S.current = cur;
+  if (S.resumeKey) positionSet(S.resumeKey, cur + 1, S.pages.length);
   if (document.activeElement !== els.pgin) els.pgin.value = String(cur + 1);
   updateZoomLabel();
   /* Render a margin of pages around the viewport; release the rest. */
@@ -1157,6 +1200,8 @@ function toggleFull() {
 window.PDFVIEW = {
   open,
   close,
+  position(key) { return positionGet(key); },
+  rememberPosition(key, page, total) { positionSet(key, page, total); return positionGet(key); },
   isOpen() { return !!(root && root.classList.contains('on')); },
   isAnnotating() { return !!(S && S.ann); },           // legacy alias
   hasUnsavedMarks() { return !!(S && S.ann && S.dirty); }, // legacy alias
