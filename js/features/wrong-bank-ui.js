@@ -95,6 +95,26 @@ window.WRONGBY = {
     if (c) this.start(c.files.map(f => f.fid), dueOnly, mode);
   },
   startFile(fid, dueOnly, mode){ this.start([fid], dueOnly, mode); },
+  _notes(term){
+    term = String(term || '').trim();
+    if (!term) return;
+    if (typeof QNA === 'undefined' || typeof QNA.openQuery !== 'function') {
+      toast('Notes and Q&A are not available right now.');
+      return;
+    }
+    QNA.openQuery(term);
+  },
+  notesChapter(i){
+    const c = this._last[i];
+    if (c) this._notes(c.name);
+  },
+  notesFile(fid){
+    const c = (this._last || []).find(x => (x.files || []).some(f => f.fid === fid));
+    const f = c && (c.files || []).find(x => x.fid === fid);
+    const ref = (f && f.ref) || {};
+    const sub = (typeof prettySub === 'function') ? prettySub(ref.subtopic) : ref.subtopic;
+    this._notes(sub || ref.ch);
+  },
   toggle(i){ const c = this._last[i]; if (!c) return; this._open[c.key] = !this._open[c.key]; this.render(); },
   downloadChapter(i){
     const c = this._last[i];
@@ -241,6 +261,7 @@ window.WRONGBY = {
         '<button class="btn btn-solid btn-blk mt3" data-on-click="WRONGBY.dueAll()"><i class="ph ph-repeat"></i> Review all ' + dueTotal + ' due now</button></div>' +
       due.map(x => '<div class="card" style="margin-bottom:var(--sp-2)"><div class="card-hd"><h3>' + esc(x.c.name) + '</h3><span class="ctag tr">' + x.c.due + ' due</span></div>' +
         '<div class="bg"><button class="btn btn-sm btn-solid" data-on-click="WRONGBY.startChapter(' + x.i + ',true)">Do what\'s due</button>' +
+        '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.notesChapter(' + x.i + ')" title="Open notes and Q&A for this chapter" aria-label="Open notes and Q&A for this chapter"><i class="ph ph-text-columns"></i> Notes</button>' +
         '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.downloadChapter(' + x.i + ')" title="Download missed questions for this chapter" aria-label="Download missed questions for this chapter"><i class="ph ph-download-simple"></i> Download</button></div></div>').join('');
   },
 
@@ -323,6 +344,7 @@ window.WRONGBY = {
           '</div>' +
           '<button class="btn btn-sm btn-a" data-on-click="WRONGBY.startFile(\'' + escAttrJs(f.fid) + '\',false)">Practise</button>' +
           '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.startFile(\'' + escAttrJs(f.fid) + '\',false,\'exam\')">Test</button>' +
+          '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.notesFile(\'' + escAttrJs(f.fid) + '\')" title="Open notes and Q&A for this topic" aria-label="Open notes and Q&A for this topic"><i class="ph ph-text-columns"></i> Notes</button>' +
         '</div>'
       ).join('') : '';
       return '<div class="card" style="margin-bottom:var(--sp-2)">' +
@@ -332,6 +354,7 @@ window.WRONGBY = {
         '<div class="bg">' +
           (c.due ? '<button class="btn btn-sm btn-solid" data-on-click="WRONGBY.startChapter(' + i + ',true)">Do what\'s due</button>' : '') +
           '<button class="btn btn-sm btn-a" data-on-click="WRONGBY.startChapter(' + i + ',false)">All ' + c.n + '</button>' +
+          '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.notesChapter(' + i + ')" title="Open notes and Q&A for this chapter" aria-label="Open notes and Q&A for this chapter"><i class="ph ph-text-columns"></i> Notes</button>' +
           '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.downloadChapter(' + i + ')" title="Download missed questions for this chapter" aria-label="Download missed questions for this chapter"><i class="ph ph-download-simple"></i> Download</button>' +
           '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.toggle(' + i + ')">' + (open ? 'Hide files' : 'By file (' + c.files.length + ')') + '</button>' +
         '</div>' +

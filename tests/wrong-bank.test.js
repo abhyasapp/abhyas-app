@@ -55,6 +55,25 @@ describe('wrong-bank mastery and chapter downloads', () => {
     expect(html).toContain('class="opt correct"');
   });
 
+  it('opens the written-answer library from a missed chapter or set', async () => {
+    const out = await p.ev(`(() => {
+      WRONGBY._last = [{
+        name: 'Soil Mechanics',
+        files: [{ fid: 'f_soil', ref: { lv: 'level7', ch: 'soil', subtopic: 'Soil Mechanics' } }]
+      }];
+      const orig = UI.go; const went = [];
+      UI.go = v => { went.push(v); };
+      WRONGBY.notesChapter(0); const chapterQ = QNA.q;
+      WRONGBY.notesFile('f_soil'); const fileQ = QNA.q;
+      UI.go = orig;
+      return { went, chapterQ, fileQ, input: document.querySelector('#qna-q').value };
+    })()`);
+    expect(out.went).toEqual(['qna', 'qna']);
+    expect(out.chapterQ).toBe('Soil Mechanics');
+    expect(out.fileQ).toBe('Soil Mechanics');
+    expect(out.input).toBe('Soil Mechanics');
+  });
+
   it('downloads only the chosen chapter', async () => {
     await p.ev(`
       WRONGBY._last = [
