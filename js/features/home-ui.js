@@ -208,6 +208,7 @@ function _refreshHints(){
   try { HARDQ.load(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
   try { if (typeof SYLLABUS_MOCK     !== 'undefined') SYLLABUS_MOCK.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
   try { if (typeof PRACTICE_RESUME   !== 'undefined') PRACTICE_RESUME.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
+  try { if (typeof READING_RESUME    !== 'undefined') READING_RESUME.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
   try { if (typeof SPRINT_PAGE !== 'undefined' && SPRINT_PAGE.renderHomeStrip) SPRINT_PAGE.renderHomeStrip(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
   try { if (typeof DAILY10           !== 'undefined') DAILY10.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
   try { if (typeof DIGEST            !== 'undefined') DIGEST.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }

@@ -242,6 +242,30 @@ window.STUDYDOCS = {
     } catch (e) { return null; }
   },
 
+  /* The most recently opened PDF that the student actually moved into. Home
+     uses this instead of making them find the same note again. */
+  recentReading(){
+    const docs = (Array.isArray(this.docs) && this.docs.length)
+      ? this.docs : this._read(this.LIST_KEY, []);
+    let best = null;
+    (Array.isArray(docs) ? docs : []).forEach(d => {
+      if (!d || !d.id) return;
+      const pos = this._readPosition(d);
+      if (!pos || pos.page < 2) return;
+      if (!best || (pos.at || 0) > (best.at || 0)) {
+        best = {
+          id: d.id,
+          title: d.title || 'Untitled PDF',
+          page: pos.page,
+          total: pos.total || 0,
+          at: pos.at || 0,
+          kind: (typeof studyDocsIsQna === 'function' && studyDocsIsQna(d)) ? 'qna' : 'note'
+        };
+      }
+    });
+    return best;
+  },
+
   render(note){
     const box = $('studydocs-body'), chips = $('sd-chips');
     if (!box) return;
@@ -316,7 +340,8 @@ window.STUDYDOCS = {
   },
 
   open(id){
-    const d = this.docs.find(x => x.id === id);
+    const d = (this.docs || []).find(x => x.id === id) ||
+      this._read(this.LIST_KEY, []).find(x => x.id === id);
     if (!d) { toast('That PDF is no longer available.'); return; }
     if (!window.PDFVIEW) { toast('The PDF reader did not load. Reload the page and try again.', 5000); return; }
 
@@ -382,6 +407,42 @@ window.STUDYDOCS = {
     try { QDB.del('studydoc:' + id); } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); }
     this._write(this.CACHE_KEY, this._cacheIndex().filter(x => x.id !== id));
   },
+};
+
+window.READING_RESUME = {
+  recent(){
+    try {
+      return (typeof STUDYDOCS !== 'undefined' && typeof STUDYDOCS.recentReading === 'function')
+        ? STUDYDOCS.recentReading() : null;
+    } catch (e) { return null; }
+  },
+
+  render(){
+    const slot = $('reading-resume-slot');
+    if (!slot) return;
+    const r = this.recent();
+    if (!r) { slot.innerHTML = ''; return; }
+    const mins = Math.max(1, Math.round((Date.now() - (r.at || 0)) / 60000));
+    const when = mins < 60 ? mins + ' min ago' : Math.round(mins / 60) + ' h ago';
+    const kind = r.kind === 'qna' ? 'Question & answer' : 'Notes';
+    slot.innerHTML =
+      '<button class="resume-chip" type="button" data-on-click="READING_RESUME.open()">' +
+        '<i class="ph ph-book-open"></i>' +
+        '<span class="grow">Continue reading <b>' + esc(r.title) + '</b>' +
+          '<span class="t-cap" style="display:block;opacity:.7">' + esc(kind) +
+            ' \u00b7 page ' + r.page + (r.total ? ' of ' + r.total : '') + ' \u00b7 ' + when +
+          '</span>' +
+        '</span>' +
+        '<i class="ph ph-arrow-right arrow"></i>' +
+      '</button>';
+  },
+
+  open(){
+    const r = this.recent();
+    if (!r) { this.render(); toast('Nothing to continue reading yet.'); return; }
+    if (typeof STUDYDOCS === 'undefined' || typeof STUDYDOCS.open !== 'function') return;
+    STUDYDOCS.open(r.id);
+  }
 };
 
 window.RECOVER = {

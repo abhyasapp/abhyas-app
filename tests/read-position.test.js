@@ -24,6 +24,33 @@ describe('PDF reading positions', () => {
     expect(out.unknown).toBeNull();
   });
 
+  it('surfaces the most recently read PDF on Home and opens that document', async () => {
+    const out = await p.ev(`(() => {
+      STUDYDOCS.docs = [
+        { id: 'd1', title: 'Long notes', category: 'notes', sizeBytes: 2048 },
+        { id: 'd2', chapterId: 'qna.geotech.soil-mechanics', title: 'Define bearing capacity', sizeBytes: 2048 }
+      ];
+      const pos = JSON.parse(localStorage.getItem('abhyas_pdf_positions') || '{}');
+      pos['studydoc:d1'] = { page: 4, total: 12, at: 1 };
+      pos['studydoc:d2'] = { page: 2, total: 3, at: 2 };
+      localStorage.setItem('abhyas_pdf_positions', JSON.stringify(pos));
+      READING_RESUME.render();
+      const html = document.querySelector('#reading-resume-slot').innerHTML;
+      const orig = STUDYDOCS.open;
+      let opened = null;
+      STUDYDOCS.open = id => { opened = id; };
+      READING_RESUME.open();
+      STUDYDOCS.open = orig;
+      return { html, opened };
+    })()`);
+    expect(out.html).toContain('Continue reading');
+    expect(out.html).toContain('Define bearing capacity');
+    expect(out.html).toContain('Question &amp; answer');
+    expect(out.html).toContain('page 2 of 3');
+    expect(out.html).not.toContain('Long notes');
+    expect(out.opened).toBe('d2');
+  });
+
   it('shows Continue p. N in both model answers and questions', async () => {
     await p.ev(`
       PDFVIEW.rememberPosition('studydoc:d1', 4, 12);

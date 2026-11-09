@@ -597,6 +597,8 @@ function close() {
   if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); } }
   teardown();
   root.classList.remove('on', 'annotate', 'finding', 'drawing');
+  try { if (typeof window.READING_RESUME !== 'undefined' && window.READING_RESUME.render) window.READING_RESUME.render(); }
+  catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
   /* The admin console's overlays also run full-screen; only hand the
      scroll lock back when none of them are showing. */
   if (!document.querySelector('.overlay.show')) document.body.style.overflow = '';
