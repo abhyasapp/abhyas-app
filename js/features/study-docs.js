@@ -244,12 +244,14 @@ window.STUDYDOCS = {
 
   /* The most recently opened PDF that the student actually moved into. Home
      uses this instead of making them find the same note again. */
-  recentReading(){
+  recentReading(kind){
     const docs = (Array.isArray(this.docs) && this.docs.length)
       ? this.docs : this._read(this.LIST_KEY, []);
     let best = null;
     (Array.isArray(docs) ? docs : []).forEach(d => {
       if (!d || !d.id) return;
+      const docKind = (typeof studyDocsIsQna === 'function' && studyDocsIsQna(d)) ? 'qna' : 'note';
+      if (kind && kind !== docKind) return;
       const pos = this._readPosition(d);
       if (!pos || pos.page < 2) return;
       if (!best || (pos.at || 0) > (best.at || 0)) {
@@ -259,7 +261,7 @@ window.STUDYDOCS = {
           page: pos.page,
           total: pos.total || 0,
           at: pos.at || 0,
-          kind: (typeof studyDocsIsQna === 'function' && studyDocsIsQna(d)) ? 'qna' : 'note'
+          kind: docKind
         };
       }
     });
@@ -297,7 +299,9 @@ window.STUDYDOCS = {
     }
     
     requestAnimationFrame(() => {
-      box.innerHTML = banner + '<div class="sd-list">' + list.map(d => {
+      box.innerHTML = banner +
+        ((typeof READING_RESUME !== 'undefined' && READING_RESUME.chip) ? READING_RESUME.chip('note') : '') +
+        '<div class="sd-list">' + list.map(d => {
         const off = this._isCached(d);
         const readAt = (this._readPosition(d) || {}).page || 0;
         return '<div class="card sd-card">' +
@@ -339,10 +343,11 @@ window.STUDYDOCS = {
     toast('Removed from this device');
   },
 
-  open(id){
+  open(id, opts){
     const d = (this.docs || []).find(x => x.id === id) ||
       this._read(this.LIST_KEY, []).find(x => x.id === id);
     if (!d) { toast('That PDF is no longer available.'); return; }
+    const nav = opts && opts.nav ? opts.nav : null;
     if (!window.PDFVIEW) { toast('The PDF reader did not load. Reload the page and try again.', 5000); return; }
 
     /* If the saved offline copy is broken, opening once more from the network
@@ -353,6 +358,7 @@ window.STUDYDOCS = {
     PDFVIEW.open({
       title: d.title,
       resumeKey: 'studydoc:' + d.id,
+      nav: nav,
       load: async () => {
         if (this._isCached(d)) {
           const hit = await QDB.get('studydoc:' + d.id);
@@ -397,7 +403,7 @@ window.STUDYDOCS = {
           healed = true;
           self._purgeCache(d.id);
           toast('The saved copy was damaged — re-downloading…', 4000);
-          setTimeout(() => self.open(id), 60);
+          setTimeout(() => self.open(id, opts), 60);
         }
       }
     });
@@ -410,31 +416,35 @@ window.STUDYDOCS = {
 };
 
 window.READING_RESUME = {
-  recent(){
+  recent(kind){
     try {
       return (typeof STUDYDOCS !== 'undefined' && typeof STUDYDOCS.recentReading === 'function')
-        ? STUDYDOCS.recentReading() : null;
+        ? STUDYDOCS.recentReading(kind) : null;
     } catch (e) { return null; }
   },
+
+  html(r){
+    if (!r) return '';
+    const mins = Math.max(1, Math.round((Date.now() - (r.at || 0)) / 60000));
+    const when = mins < 60 ? mins + ' min ago' : Math.round(mins / 60) + ' h ago';
+    const kind = r.kind === 'qna' ? 'Question & answer' : 'Notes';
+    return '<button class="resume-chip" type="button" data-on-click="READING_RESUME.open()">' +
+      '<i class="ph ph-book-open"></i>' +
+      '<span class="grow">Continue reading <b>' + esc(r.title) + '</b>' +
+        '<span class="t-cap" style="display:block;opacity:.7">' + esc(kind) +
+          ' \u00b7 page ' + r.page + (r.total ? ' of ' + r.total : '') + ' \u00b7 ' + when +
+        '</span>' +
+      '</span>' +
+      '<i class="ph ph-arrow-right arrow"></i>' +
+    '</button>';
+  },
+
+  chip(kind){ return this.html(this.recent(kind)); },
 
   render(){
     const slot = $('reading-resume-slot');
     if (!slot) return;
-    const r = this.recent();
-    if (!r) { slot.innerHTML = ''; return; }
-    const mins = Math.max(1, Math.round((Date.now() - (r.at || 0)) / 60000));
-    const when = mins < 60 ? mins + ' min ago' : Math.round(mins / 60) + ' h ago';
-    const kind = r.kind === 'qna' ? 'Question & answer' : 'Notes';
-    slot.innerHTML =
-      '<button class="resume-chip" type="button" data-on-click="READING_RESUME.open()">' +
-        '<i class="ph ph-book-open"></i>' +
-        '<span class="grow">Continue reading <b>' + esc(r.title) + '</b>' +
-          '<span class="t-cap" style="display:block;opacity:.7">' + esc(kind) +
-            ' \u00b7 page ' + r.page + (r.total ? ' of ' + r.total : '') + ' \u00b7 ' + when +
-          '</span>' +
-        '</span>' +
-        '<i class="ph ph-arrow-right arrow"></i>' +
-      '</button>';
+    slot.innerHTML = this.html(this.recent());
   },
 
   open(){

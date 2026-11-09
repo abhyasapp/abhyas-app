@@ -100,6 +100,8 @@ padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bott
 background:#1f2426;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
 .pdfv-title{flex:1 1 120px;min-width:0;font-size:.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pdfv-grp{display:flex;align-items:center;gap:.2rem}
+.pdfv-qnav[hidden]{display:none}
+.pdfv-qlabel{font-size:.68rem;opacity:.85;white-space:nowrap}
 .pdfv button{min-width:32px;height:32px;padding:0 .5rem;border-radius:8px;border:1px solid rgba(255,255,255,.14);
 background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:.72rem;font-weight:600;cursor:pointer;line-height:1;
 display:inline-flex;align-items:center;justify-content:center;gap:.25rem;touch-action:manipulation}
@@ -302,6 +304,11 @@ function ensureUI() {
   root.innerHTML =
     '<div class="pdfv-bar">' +
       '<div class="pdfv-title" data-el="title">Document</div>' +
+      '<div class="pdfv-grp pdfv-qnav" data-el="qnav" hidden>' +
+        '<button type="button" data-a="qprev" aria-label="Previous question" title="Previous question">&#8249;</button>' +
+        '<span class="pdfv-qlabel" data-el="qnavlabel"></span>' +
+        '<button type="button" data-a="qnext" aria-label="Next question" title="Next question">&#8250;</button>' +
+      '</div>' +
       '<div class="pdfv-grp">' +
         '<button type="button" data-a="prev" aria-label="Previous page" title="Previous page">&#9650;</button>' +
         '<span class="pdfv-pgs"><input class="pdfv-pgin" data-el="pgin" type="text" inputmode="numeric" value="1" aria-label="Page number"> / <span data-el="pgn">&ndash;</span></span>' +
@@ -430,6 +437,8 @@ async function open(opts) {
   prevFocus = document.activeElement;
   const ann = opts.annotate || null;
   const resumeKey = String(opts.resumeKey || '');
+  const nav = opts.nav || null;
+  if (els.qnav) els.qnav.hidden = true;
   if (ann && !els.ann.innerHTML) buildAnnToolbar();
   root.classList.toggle('annotate', !!ann);
   root.classList.remove('finding', 'drawing');
@@ -452,7 +461,7 @@ async function open(opts) {
     if (src.title) setTitle(src.title);
     bytes = await toBytes(src);
     if (gen !== GEN) return;
-    S = newState(gen, bytes, src.filename || opts.filename || 'document.pdf', ann, resumeKey);
+    S = newState(gen, bytes, src.filename || opts.filename || 'document.pdf', ann, resumeKey, nav);
   } catch (err) {
     if (gen !== GEN) return;
     S = null;
@@ -511,6 +520,7 @@ async function open(opts) {
   }
   clearMsg();
   setBusy(false);
+  paintQnav();
 
   let saved = null;
   try { saved = localStorage.getItem(FIT_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
@@ -529,7 +539,20 @@ async function open(opts) {
   els.scroll.focus({ preventScroll: true });
 }
 
-function newState(gen, bytes, filename, ann, resumeKey) {
+function paintQnav() {
+  if (!els.qnav) return;
+  const nav = S && S.nav;
+  const has = !!(nav && (nav.prev || nav.next));
+  els.qnav.hidden = !has;
+  if (!has) return;
+  if (els.qnavlabel) els.qnavlabel.textContent = nav.label || '';
+  const prev = els.qnav.querySelector('[data-a="qprev"]');
+  const next = els.qnav.querySelector('[data-a="qnext"]');
+  if (prev) { prev.disabled = !nav.prev; prev.title = nav.prev ? 'Previous question' : 'No previous question'; }
+  if (next) { next.disabled = !nav.next; next.title = nav.next ? 'Next question' : 'No next question'; }
+}
+
+function newState(gen, bytes, filename, ann, resumeKey, nav) {
   let blobUrl = '';
   try { blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
   return {
@@ -537,7 +560,7 @@ function newState(gen, bytes, filename, ann, resumeKey) {
     blobUrl, filename, bytes,
     ann: ann, ink: {}, redo: {}, tool: 'hand', color: COLORS[0].hex, width: 3,
     dirty: false, saveState: '', saveTimer: null, saving: false,
-    find: null, text: {}, resumeKey: String(resumeKey || '')
+    find: null, text: {}, resumeKey: String(resumeKey || ''), nav: nav || null
   };
 }
 
@@ -1117,6 +1140,11 @@ function onClick(e) {
   const a = btn.dataset.a;
   if (a === 'close') close();
   else if (a === 'retry') { const o = btn._retry; if (o) open(o); }
+  else if (a === 'qprev' || a === 'qnext') {
+    const nav = S && S.nav;
+    const fn = nav && (a === 'qprev' ? nav.prev : nav.next);
+    if (typeof fn === 'function') { close(); fn(); }
+  }
   else if (a === 'prev') gotoPage(0, -1);
   else if (a === 'next') gotoPage(0, 1);
   else if (a === 'in') zoomBy(1.25);

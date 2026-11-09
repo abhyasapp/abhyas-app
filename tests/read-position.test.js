@@ -51,6 +51,37 @@ describe('PDF reading positions', () => {
     expect(out.opened).toBe('d2');
   });
 
+  it('passes previous/next question navigation to the reader and filters the list chips', async () => {
+    const out = await p.ev(`(() => {
+      STUDYDOCS.docs = [
+        { id: 'n1', title: 'Long notes', category: 'notes', sizeBytes: 2048 },
+        { id: 'q1', chapterId: 'qna.geotech.soil-mechanics', title: 'Question one', sortOrder: 1 },
+        { id: 'q2', chapterId: 'qna.geotech.soil-mechanics', title: 'Question two', sortOrder: 2 }
+      ];
+      const pos = JSON.parse(localStorage.getItem('abhyas_pdf_positions') || '{}');
+      pos['studydoc:n1'] = { page: 3, total: 9, at: 5 };
+      pos['studydoc:q2'] = { page: 2, total: 4, at: 6 };
+      localStorage.setItem('abhyas_pdf_positions', JSON.stringify(pos));
+      QNA.docs = STUDYDOCS.docs; QNA.loaded = true; QNA.render();
+      const noteChip = READING_RESUME.chip('note');
+      const qnaChip = READING_RESUME.chip('qna');
+      let got = null;
+      const orig = STUDYDOCS.open;
+      STUDYDOCS.open = (id, opts) => { got = { id, opts }; };
+      QNA.open('q2');
+      STUDYDOCS.open = orig;
+      return { noteChip, qnaChip, id: got.id, label: got.opts.nav.label, prev: typeof got.opts.nav.prev, next: got.opts.nav.next };
+    })()`);
+    expect(out.noteChip).toContain('Long notes');
+    expect(out.noteChip).not.toContain('Question two');
+    expect(out.qnaChip).toContain('Question two');
+    expect(out.qnaChip).not.toContain('Long notes');
+    expect(out.id).toBe('q2');
+    expect(out.label).toBe('Question 2 of 2');
+    expect(out.prev).toBe('function');
+    expect(out.next).toBeNull();
+  });
+
   it('shows Continue p. N in both model answers and questions', async () => {
     await p.ev(`
       PDFVIEW.rememberPosition('studydoc:d1', 4, 12);

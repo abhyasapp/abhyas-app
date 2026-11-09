@@ -96,6 +96,14 @@ window.QNA = {
 
   _open(){ return !!this.q || !!this.group; },
 
+  _visibleEntries(){
+    const out = [];
+    qnaTree(this.docs, { q: this.q, group: this.group }).forEach(ch => {
+      (ch.items || []).forEach(e => out.push(e));
+    });
+    return out;
+  },
+
   render(){
     const box = $('qna-body');
     if (!box) return;
@@ -157,7 +165,9 @@ window.QNA = {
       '</div>';
     }).join('');
 
-    box.innerHTML = head + '<div class="qna-tree">' + html + '</div>';
+    const recentChip = (typeof READING_RESUME !== 'undefined' && READING_RESUME.chip)
+      ? READING_RESUME.chip('qna') : '';
+    box.innerHTML = head + recentChip + '<div class="qna-tree">' + html + '</div>';
   },
 
   _row(e){
@@ -184,6 +194,13 @@ window.QNA = {
       toast('That question PDF is no longer available.');
       return;
     }
-    store.open(id);
+    const entries = this._visibleEntries();
+    const at = entries.findIndex(e => e.id === id);
+    const nav = at >= 0 ? {
+      label: 'Question ' + (at + 1) + ' of ' + entries.length,
+      prev: at > 0 ? () => this.open(entries[at - 1].id) : null,
+      next: at < entries.length - 1 ? () => this.open(entries[at + 1].id) : null
+    } : null;
+    store.open(id, nav ? { nav: nav } : undefined);
   }
 };
