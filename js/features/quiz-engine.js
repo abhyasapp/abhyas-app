@@ -379,6 +379,7 @@ const QUIZ = {
   },
 
   _doStart(qsArr, mode, chapterName, doShuffle=true, scope=null){
+    QUIZ._palFilter = 'all';
     const isWeekly = !!(scope && scope.weeklyId);
     const reviewMode = !!(scope && scope.weeklyReviewMode);
     const effectiveShuffle = isWeekly ? false : doShuffle;
@@ -561,20 +562,57 @@ const QUIZ = {
     if(b) b.classList.toggle('fl-on', S.quiz.marked.has(qi));
     if(document.getElementById('pal-grid')) QUIZ.showPalette(true);
   },
+  _palFilter: 'all',
+  _palCounts(){
+    const ans = S.quiz.ans || [];
+    const marked = S.quiz.marked || new Set();
+    return {
+      all: S.quiz.qs.length,
+      answered: ans.filter(a => a !== null && a !== undefined).length,
+      unanswered: ans.filter(a => a === null || a === undefined).length,
+      marked: marked.size
+    };
+  },
+  palFilter(mode){
+    const allowed = ['all', 'unanswered', 'marked', 'answered'];
+    QUIZ._palFilter = allowed.indexOf(mode) !== -1 ? mode : 'all';
+    if(document.getElementById('pal-grid')) QUIZ.showPalette(true);
+    else QUIZ.showPalette();
+  },
   showPalette(refresh){
     if(!S.quiz || !S.quiz.qs) return;
     const marked = S.quiz.marked || new Set();
-    const tiles = S.quiz.qs.map((q, i) => {
+    const filter = QUIZ._palFilter || 'all';
+    const counts = QUIZ._palCounts();
+    const entries = S.quiz.qs.map((q, i) => {
       const done = S.quiz.ans[i] !== null && S.quiz.ans[i] !== undefined;
-      const m = marked.has(i);
+      return { q, i, done, marked: marked.has(i) };
+    });
+    const visible = entries.filter(x => filter === 'all' ||
+      (filter === 'unanswered' && !x.done) ||
+      (filter === 'answered' && x.done) ||
+      (filter === 'marked' && x.marked));
+    const tiles = visible.map(x => {
+      const m = x.marked, done = x.done;
       const bg = m ? 'var(--warning-soft)' : done ? 'var(--accent-soft)' : 'var(--bg-sunken)';
       const bd = m ? 'var(--warning)' : done ? 'var(--accent)' : 'var(--sep-strong)';
       const col = m ? 'var(--warning)' : done ? 'var(--accent)' : 'var(--ink-2)';
       const state = m ? 'marked for review' : done ? 'answered' : 'not answered';
-      return `<button type="button" data-on-click="QUIZ.goTo(${i})" aria-label="Question ${i+1}, ${state}" style="min-width:0;height:40px;border-radius:8px;border:1.5px solid ${bd};background:${bg};color:${col};font-weight:700;font-family:var(--mono);font-size:.8rem">${i+1}</button>`;
+      return `<button type="button" data-qi="${x.i}" data-on-click="QUIZ.goTo(${x.i})" aria-label="Question ${x.i+1}, ${state}" style="min-width:0;height:40px;border-radius:8px;border:1.5px solid ${bd};background:${bg};color:${col};font-weight:700;font-family:var(--mono);font-size:.8rem">${x.i+1}</button>`;
     }).join('');
-    const nAns = S.quiz.ans.filter(a => a !== null && a !== undefined).length;
-    const html = `<p class="t-foot mb3">${nAns} answered · ${S.quiz.qs.length - nAns} blank · ${marked.size} marked for review</p><div id="pal-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px">${tiles}</div>`;
+    const tab = (key, label) =>
+      `<button type="button" data-pal-filter="${key}" data-on-click="QUIZ.palFilter('${key}')" aria-pressed="${filter === key}" class="${filter === key ? 'active' : ''}">${label} <span class="n">${counts[key]}</span></button>`;
+    const empty = visible.length ? '' : '<p class="empty" style="padding:var(--sp-3)">' +
+      (filter === 'marked' ? 'No marked questions yet — flag a question on the paper to review it here.' :
+       filter === 'unanswered' ? 'Everything is answered. Submit when you are ready.' :
+       filter === 'answered' ? 'No answers yet. Tap an option on the paper to begin.' : 'No questions to show.') + '</p>';
+    const html =
+      `<div class="chg-tabs" role="group" aria-label="Filter the question grid" style="margin-bottom:var(--sp-3)">` +
+        tab('all', 'All') + tab('unanswered', 'Unanswered') + tab('marked', 'Marked') + tab('answered', 'Answered') +
+      `</div>` +
+      `<p class="t-foot mb3">${counts.answered} answered · ${counts.unanswered} blank · ${counts.marked} marked for review` +
+        (filter === 'all' ? '' : ` · showing ${visible.length}`) + `</p>` +
+      `<div id="pal-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px">${tiles}</div>` + empty;
     if(refresh){ const b = document.getElementById('mbody'); if(b) b.innerHTML = html; return; }
     openMod('Question grid', html);
   },
