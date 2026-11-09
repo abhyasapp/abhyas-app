@@ -779,7 +779,11 @@
     const origRecord = COV.record.bind(COV);
     COV.record = function (qres) {
       try { _countNew(qres); } catch (e) { console.error('[SPRINT] countNew', e); }
-      return origRecord(qres);
+      const out = origRecord(qres);
+      /* Coverage can change without a recorded session (e.g. a chapter run
+         that is finished elsewhere). Re-spread today and future days now. */
+      try { _refreshSoon(); } catch (e) { console.error('[SPRINT] refresh', e); }
+      return out;
     };
     const origSession = PROG.recordSession.bind(PROG);
     PROG.recordSession = function (sess) {

@@ -140,6 +140,20 @@ describe('missing days re-plans instead of failing', () => {
     expect(plan.schedule.every((d) => d.iso < plan.exam)).toBe(true);
   });
 
+  it('a completed chapter drops out while the rest keeps its future days', () => {
+    const plan = P.buildPlan({
+      units: [
+        { fid: 'done', lv: 'level7', ch: '1', book: 'Core', name: 'Done chapter', n: 20, seen: 20 },
+        { fid: 'open', lv: 'gk', ch: '2', book: 'GK', name: 'Open chapter', n: 20, seen: 0 }
+      ],
+      today: '2026-02-01', start: '2026-02-01', exam: '2026-03-31'
+    });
+    expect(plan.remaining).toBe(20);
+    expect(plan.schedule.flatMap((d) => d.slices).some((s) => s.fid === 'done')).toBe(false);
+    expect(plan.schedule.flatMap((d) => d.slices).some((s) => s.fid === 'open')).toBe(true);
+    expect(plan.perUnit.find((u) => u.fid === 'done').pct).toBe(100);
+  });
+
   it('syllabus complete: nothing scheduled, status complete', () => {
     const u = units(); u.forEach((x) => { x.seen = x.n; });
     const plan = P.buildPlan({ ...base, units: u, today: '2026-02-20' });

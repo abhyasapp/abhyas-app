@@ -70,6 +70,12 @@ describe('wrong-bank mastery and chapter downloads', () => {
     expect(await p.ev('window.__dl')).toEqual({ n: 1, uid: 'f_survey_0', title: 'Surveying — Missed questions' });
   });
 
+  it('offers download-all from the miss-list header, not only per chapter', () => {
+    const btn = p.w.document.querySelector('#view-wrong [data-on-click="WRONGBY.downloadAll()"]');
+    expect(btn).not.toBeNull();
+    expect(btn.getAttribute('aria-label')).toContain('Download all missed questions');
+  });
+
   it('downloads every missed question as one sheet', async () => {
     await p.ev(`
       S.wr = [
