@@ -868,10 +868,11 @@
             <div id="fc-hist"></div>
             <div id="fc-note"></div>
             <div id="fc-similar"></div>
-            <div class="kbd-hint"><kbd>A</kbd>–<kbd>D</kbd> or <kbd>1</kbd>–<kbd>5</kbd> to answer · <kbd>Enter</kbd> for next · <kbd>←</kbd><kbd>→</kbd> to move · <kbd>Esc</kbd> to quit</div>
+            <div class="kbd-hint"><kbd>A</kbd>–<kbd>D</kbd> or <kbd>1</kbd>–<kbd>5</kbd> to answer · <kbd>Enter</kbd> for next · <kbd>N</kbd> next unanswered · <kbd>←</kbd><kbd>→</kbd> to move · <kbd>Esc</kbd> to quit</div>
           </div>
           <div class="fc-nav" id="fc-nav">
             <button class="btn btn-quiet" id="fc-prev" data-on-click="QUIZ.fcNav(-1)" aria-label="Previous question"><i class="ph ph-arrow-left"></i> <span class="fc-nav-lbl">Back</span></button>
+            <button class="btn btn-quiet fc-unanswered-btn" id="fc-unanswered" data-on-click="QUIZ.fcNextUnanswered()" aria-label="Jump to the next unanswered question" title="Jump to the next unanswered question" hidden><i class="ph ph-arrow-down"></i> <span id="fc-unanswered-n">0</span> left</button>
             <span class="fc-hint" id="fc-hint">Tap an option to answer</span>
             <span class="fc-nav-ctr" id="fc-nav-ctr" role="status" aria-live="polite"><span class="fc-nav-word">Question </span><span id="fc-nav-n">1 / 1</span></span>
             <button class="btn btn-solid" id="fc-next" data-on-click="QUIZ.fcNav(1)">Next <i class="ph ph-arrow-right"></i></button>
@@ -916,10 +917,13 @@
             <div class="g4" id="res-stats" style="margin:var(--sp-4) 0"></div>
             <div class="bg" style="justify-content:center;margin-bottom:var(--sp-4)">
               <button class="btn btn-p btn-lg" data-on-click="QUIZ.retryWrong()"><i class="ph ph-repeat"></i> Retry what I missed</button>
+              <button class="btn btn-quiet btn-lg" id="res-skipped" data-on-click="QUIZ.retrySkipped()" hidden><i class="ph ph-arrow-down"></i> Practice skipped (<span id="res-skipped-n">0</span>)</button>
               <button class="btn btn-quiet btn-lg" id="res-again" data-on-click="QUIZ.practiceAgain()"><i class="ph ph-arrows-clockwise"></i> Practice again</button>
               <button class="btn btn-quiet btn-lg" data-on-click="UI.go('home')"><i class="ph ph-house"></i> Home</button>
             </div>
             <h3 class="t-t3 mb3">Every question</h3>
+            <div id="res-filters" class="chg-tabs" role="group" aria-label="Filter reviewed questions" hidden></div>
+            <p id="res-filter-empty" class="empty" style="padding:var(--sp-4)" hidden></p>
             <div id="res-review"></div>
           </div>
         </div>

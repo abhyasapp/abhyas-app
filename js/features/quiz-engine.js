@@ -836,6 +836,13 @@ const QUIZ = {
         : (S.quiz.idx===S.quiz.qs.length-1 ? 'Finish ✔' : 'Next →');
 
       QUIZ._updateFcCounts();
+      const otherBlanks = S.quiz.ans.filter((a, i) => i !== S.quiz.idx && (a === null || a === undefined)).length;
+      const unansweredBtn = document.getElementById('fc-unanswered');
+      if(unansweredBtn){
+        unansweredBtn.hidden = !!S.quiz.reviewOnly || otherBlanks === 0;
+        const unansweredN = document.getElementById('fc-unanswered-n');
+        if(unansweredN) unansweredN.textContent = String(otherBlanks);
+      }
 
       try {
         const existing = document.getElementById('fc-hard');
@@ -900,6 +907,70 @@ const QUIZ = {
     document.getElementById('fc-ok').textContent=ok;
     document.getElementById('fc-bad').textContent=bad;
     document.getElementById('fc-skip').textContent=skip;
+  },
+
+  /* Results review used to be one long, wrong-first list. These filters keep
+     the same cards but make a specific repair pass one tap away. */
+  _reviewFilter: 'all',
+  _renderReviewFilters(){
+    const box = document.getElementById('res-filters');
+    if(!box || !S.quiz || !Array.isArray(S.quiz.qs)) return;
+    const counts = { all: 0, wrong: 0, skipped: 0, confident: 0 };
+    const conf = S.quiz.conf || {};
+    S.quiz.qs.forEach((q, i) => {
+      const a = S.quiz.ans[i];
+      counts.all++;
+      if(a === null || a === undefined) counts.skipped++;
+      else if(!isOk(a, q.correct)){
+        counts.wrong++;
+        if(conf[i] === 'sure') counts.confident++;
+      }
+    });
+    const items = [
+      ['all', 'All', counts.all],
+      ['wrong', 'Wrong', counts.wrong],
+      ['skipped', 'Skipped', counts.skipped]
+    ];
+    if(counts.confident) items.push(['confident', 'Confident misses', counts.confident]);
+    const current = QUIZ._reviewFilter || 'all';
+    box.innerHTML = items.map(([key, label, n]) =>
+      `<button type="button" data-review-filter="${key}" data-on-click="QUIZ.filterReview('${key}')" aria-pressed="${current === key}" class="${current === key ? 'active' : ''}">${label} <span class="n">${n}</span></button>`
+    ).join('');
+    box.hidden = false;
+  },
+  filterReview(mode){
+    if(!S.quiz || !Array.isArray(S.quiz.qs)) return;
+    const filter = mode || 'all';
+    const box = document.getElementById('res-review');
+    if(!box) return;
+    QUIZ._reviewFilter = filter;
+    let visible = 0;
+    Array.from(box.children).forEach(card => {
+      const i = Number(card.dataset && card.dataset.qi);
+      if(!Number.isFinite(i) || !S.quiz.qs[i]) return;
+      const a = S.quiz.ans[i];
+      const state = (a === null || a === undefined) ? 'skipped' : (isOk(a, S.quiz.qs[i].correct) ? 'correct' : 'wrong');
+      const conf = S.quiz.conf && S.quiz.conf[i];
+      const show = filter === 'all' || filter === state || (filter === 'confident' && state === 'wrong' && conf === 'sure');
+      card.hidden = !show;
+      if(show) visible++;
+    });
+    document.querySelectorAll('#res-filters [data-review-filter]').forEach(btn => {
+      const on = btn.getAttribute('data-review-filter') === filter;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    const empty = document.getElementById('res-filter-empty');
+    if(empty){
+      empty.hidden = visible > 0;
+      empty.textContent = filter === 'confident'
+        ? 'No confident misses in this set — your “sure” answers held up.'
+        : filter === 'wrong'
+          ? 'No wrong answers in this set.'
+          : filter === 'skipped'
+            ? 'You answered every question.'
+            : 'No questions to show.';
+    }
   },
   /* A compact, evidence-based read on whether the learner's confidence
      matched reality. It is computed from this session only; no extra storage
@@ -1003,6 +1074,26 @@ const QUIZ = {
     if (qcard) qcard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     QUIZ._renderFlashcard();
+  },
+  fcNextUnanswered(){
+    if(!S.quiz || !Array.isArray(S.quiz.qs)) return;
+    const n = S.quiz.qs.length, start = S.quiz.idx;
+    if(!S.quiz.shown) S.quiz.shown = new Set();
+    for(let step = 1; step <= n; step++){
+      const i = (start + step) % n;
+      if(i === start) continue;
+      const a = S.quiz.ans[i];
+      if(a !== null && a !== undefined) continue;
+      S.quiz.shown.add(start);
+      S.quiz.idx = i;
+      const qcard = document.querySelector('.qcard');
+      if(qcard) qcard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      QUIZ._renderFlashcard();
+      try { if(typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(true); }
+      catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
+      return;
+    }
+    if(typeof toast === 'function') toast('No other unanswered questions — finish this one or move on.');
   },
   _star(){
     if(S.quiz.reviewOnly) return;
@@ -1173,6 +1264,14 @@ const QUIZ = {
     const wrongIdx = S.quiz.qs.map((q,i)=>({q,i})).filter(({i})=>!isOk(S.quiz.ans[i], S.quiz.qs[i].correct));
     if(!wrongIdx.length){ toast('🎉 Nothing to retry — all correct!'); UI.go('home'); return; }
     QUIZ.startWith(wrongIdx.map(x=>x.q), 'flashcard', S.quiz.ch + ' (Retry)');
+  },
+
+  retrySkipped(){
+    if(!S.quiz || !Array.isArray(S.quiz.qs)) return;
+    if(S.quiz.scope && S.quiz.scope.weeklyId){ toast('🔒 Weekly sets are one attempt only'); return; }
+    const skipped = S.quiz.qs.filter((q, i) => S.quiz.ans[i] === null || S.quiz.ans[i] === undefined);
+    if(!skipped.length){ toast('You answered every question in this set.'); return; }
+    QUIZ.startWith(skipped, 'flashcard', S.quiz.ch + ' (Skipped)');
   },
 
   practiceAgain(){
@@ -1507,8 +1606,11 @@ const QUIZ = {
       document.getElementById('res-review').innerHTML = S.quiz.qs.map((q,i)=>{
         const a = S.quiz.ans[i];
         const correctPick = isOk(a,q.correct);
-        return `<div class="qcard" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
-          <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${correctPick?'Correct':a===null?'Skipped':'Wrong'}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}${qSearchHtml(q)}</div>
+        const skipped = a === null || a === undefined;
+        const status = correctPick ? 'Correct' : skipped ? 'Skipped' : 'Wrong';
+        const conf = (S.quiz.conf && S.quiz.conf[i]) || '';
+        return `<div class="qcard" data-qi="${i}" data-state="${skipped ? 'skipped' : correctPick ? 'correct' : 'wrong'}" data-conf="${conf}" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
+          <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${status}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}${qSearchHtml(q)}</div>
           <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
           ${qImgHtml(q)}
           ${q.options.map((opt,oi)=>{
@@ -1528,6 +1630,15 @@ const QUIZ = {
         S.quiz.qs.forEach((q, i) => { try { QNOTE.render('res-note-' + i, q.uid); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } });
       }
       renderMath(document.getElementById('res-review'));
+      QUIZ._renderReviewFilters();
+      QUIZ.filterReview('all');
+      const skippedCount = S.quiz.ans.filter(a => a === null || a === undefined).length;
+      const skippedBtn = document.getElementById('res-skipped');
+      if(skippedBtn){
+        skippedBtn.hidden = skippedCount === 0 || !!(S.quiz.scope && S.quiz.scope.weeklyId);
+        const skippedN = document.getElementById('res-skipped-n');
+        if(skippedN) skippedN.textContent = String(skippedCount);
+      }
     });
 
     if(pct>=70 && window.confetti){ confetti({particleCount:90,spread:75,origin:{y:0.6}}); setTimeout(()=>document.querySelectorAll('body > canvas').forEach(c=>c.setAttribute('aria-hidden','true')),0); }
@@ -1626,6 +1737,7 @@ document.addEventListener('keydown', e=>{
       if(answered){ e.preventDefault(); QUIZ.fcNav(1); }
       return;
     }
+    if(e.key === 'n' || e.key === 'N'){ e.preventDefault(); QUIZ.fcNextUnanswered(); return; }
     if(['1','2','3','4','5'].includes(e.key)){
       const i=Number(e.key)-1;
       if(S.quiz.qs[S.quiz.idx]?.options[i]!==undefined) QUIZ.fcAnswer(i);

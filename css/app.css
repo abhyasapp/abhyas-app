@@ -1269,6 +1269,9 @@ input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(-
 .chg-tabs::-webkit-scrollbar{display:none}
 .chg-tabs button{flex:1 0 auto;min-height:38px;padding:0 var(--sp-2);white-space:nowrap;border-radius:calc(var(--r-input) - 3px);font-size:var(--fs-callout);font-weight:600;color:var(--ink-2)}
 .chg-tabs button.active{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
+.chg-tabs button .n{font-family:var(--mono);font-size:var(--fs-cap);opacity:.72;margin-left:.15rem}
+.fc-unanswered-btn{font-size:var(--fs-foot);color:var(--ink-2)}
+.fc-unanswered-btn:hover{color:var(--ink)}
 .chg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--sp-2);margin-bottom:var(--sp-4)}
 .chg-card{text-align:left;padding:var(--sp-3);min-height:96px;display:flex;flex-direction:column;gap:var(--sp-2);background:var(--surface);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-card);transition:border-color var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease)}
 .chg-card:hover:not([disabled]){border-color:var(--accent)}

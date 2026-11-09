@@ -6,10 +6,21 @@ const PROG = {
     S.prog.total = (S.prog.total || 0) + 1;
     if(correct) S.prog.correct = (S.prog.correct || 0) + 1;
     PROG._saveSoon();
-    if (typeof HOME !== 'undefined') {
-      HOME.updateStats();
-      HOME.updateBadges();
-    }
+    PROG._paintHomeSoon();
+  },
+
+  /* Every answer used to repaint the Home counters and recompute due counts.
+     One paint per frame keeps the same feedback without the repeated work. */
+  _homePaint: 0,
+  _paintHomeSoon(){
+    if(PROG._homePaint) return;
+    const run = () => {
+      PROG._homePaint = 0;
+      if (typeof HOME !== 'undefined') { HOME.updateStats(); HOME.updateBadges(); }
+    };
+    PROG._homePaint = (typeof requestAnimationFrame === 'function')
+      ? requestAnimationFrame(run)
+      : setTimeout(run, 16);
   },
 
   /* Longest run of correct answers is a personal best across every practice

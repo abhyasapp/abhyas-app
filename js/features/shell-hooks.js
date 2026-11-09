@@ -138,14 +138,13 @@
     IMGZOOM.open(img.src, img.alt);
   });
 
-  const _figureObserver = new MutationObserver(() => {
+  function _decorateFigures() {
     document.querySelectorAll('.qcard img, #fc-img-wrap img, #ex-qs img, #res-review img').forEach(img => {
       if (!img.classList.contains('question-figure') && !img.classList.contains('avatar')) {
         img.classList.add('question-figure');
       }
     });
-  });
-  _figureObserver.observe(document.body, { childList: true, subtree: true });
+  }
 
   /* ── Copy-explanation button ── */
   function _decorateExplanations() {
@@ -164,8 +163,26 @@
       el.insertBefore(btn, el.firstChild);
     });
   }
-  new MutationObserver(() => { try { _decorateExplanations(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); } })
-    .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+
+  /* One coalesced pass per frame instead of two observers scanning the whole
+     document for every mutation during practice and results rendering. */
+  let _shellDecorateQueued = false;
+  function _decorateShell(){
+    _shellDecorateQueued = false;
+    try { _decorateFigures(); }
+    catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); }
+    try { _decorateExplanations(); }
+    catch (e) { window.warnCaught && window.warnCaught('js/features/shell-hooks.js', e); }
+  }
+  function _queueShellDecorate(){
+    if (_shellDecorateQueued) return;
+    _shellDecorateQueued = true;
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(_decorateShell);
+    else setTimeout(_decorateShell, 16);
+  }
+  new MutationObserver(_queueShellDecorate)
+    .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'src'] });
+  _queueShellDecorate();
 
   /* ── Progress tabs ── */
   (function progressTabs() {

@@ -85,17 +85,21 @@
       }
       const box = document.getElementById('res-review');
       if (box && S.quiz && S.quiz.qs) {
-        const cards = Array.from(box.children);
-        if (cards.length === S.quiz.qs.length) {
+        /* The cards are painted in the next animation frame by _showResults,
+           so this reorder has to wait for that frame too. */
+        requestAnimationFrame(() => {
+          const cards = Array.from(box.children);
+          if (cards.length !== S.quiz.qs.length) return;
           const pairs = cards.map((c, i) => {
             const a = S.quiz.ans[i];
             const ok = isOk(a, S.quiz.qs[i].correct);
-            const rank = (a === null) ? 1 : (ok ? 3 : 0);
+            const rank = (a === null || a === undefined) ? 1 : (ok ? 3 : 0);
             return { c, rank, i };
           });
           pairs.sort((x, y) => x.rank - y.rank || x.i - y.i);
           pairs.forEach(p => box.appendChild(p.c));
-        }
+          if (QUIZ.filterReview) QUIZ.filterReview(QUIZ._reviewFilter || 'all');
+        });
       }
     } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
   };
