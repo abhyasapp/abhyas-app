@@ -228,11 +228,12 @@ window.PRACTICE_RESUME = {
   KEY: 'abhyas_practice_snap',
   MAX_AGE_MS: 30 * 24 * 60 * 60 * 1000,
   SIZE_CEILING: 500 * 1024,
+  _lastAt: 0,
 
   get() { try { const r = localStorage.getItem(this.KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } },
   clear() { try { localStorage.removeItem(this.KEY); } catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); } },
 
-  snapshot() {
+  snapshot(force) {
     try {
       if (!S.quiz || !S.quiz.active) return;
       if (S.quiz.mode !== 'flashcard') return;
@@ -241,11 +242,14 @@ window.PRACTICE_RESUME = {
       if (S.quiz.scope && (S.quiz.scope.daily10 || S.quiz.scope.weeklyId)) return;
       const answered = (S.quiz.ans || []).filter(a => a !== null && a !== undefined).length;
       if (answered === 0) return;
+      const now = Date.now();
+      if (!force && now - this._lastAt < 600) return;
+      this._lastAt = now;
       let snap = {
         username: S.user.username, ch: S.quiz.ch || 'Practice',
         qs: S.quiz.qs, ans: S.quiz.ans.slice ? S.quiz.ans.slice() : [],
         idx: S.quiz.idx || 0, scope: S.quiz.scope || null,
-        startedAt: S.quiz.startedAt || Date.now(), savedAt: Date.now(),
+        startedAt: S.quiz.startedAt || now, savedAt: now,
         run: Number(S.quiz.run) || 0,
         bestRun: Number(S.quiz.bestRun) || 0,
         bestRunBefore: Number(S.quiz.bestRunBefore) || 0,
@@ -340,7 +344,7 @@ window.PRACTICE_RESUME = {
 /* Page-hide and tab-switch are the two exits we cannot intercept. Save there
    too, so the last visited question is not lost between answers. */
 function _snapshotPracticeOnExit() {
-  try { if (typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); }
+  try { if (typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(true); }
   catch (e) { window.warnCaught && window.warnCaught('js/features/session.js', e); }
 }
 window.addEventListener('pagehide', _snapshotPracticeOnExit);

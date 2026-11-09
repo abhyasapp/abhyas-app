@@ -45,6 +45,7 @@ QUIZ.setConf = function(level){
     _save(LS.WR, S.wr);
   }
   CONF.render();
+  try { if (typeof QUIZ._paintFeedback === 'function') QUIZ._paintFeedback(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
   try { if (typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
 };
 

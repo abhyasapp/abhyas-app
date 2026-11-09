@@ -404,7 +404,7 @@ const QUIZ = {
       examEndAt: mode==='exam' ? Date.now() + examSeconds*1000 : 0,
       examTotal: mode==='exam' ? examSeconds : 0, warned: [],
       active:true, ch: chapterName||'Study', scope, skipped:new Set(), shown:new Set(),
-      startedAt: Date.now(),
+      startedAt: Date.now(), conf: {},
       run: 0, bestRun: 0, bestRunBefore: (S.prog && Number(S.prog.bestRun)) || 0,
       reviewOnly: reviewMode
     };
@@ -523,6 +523,7 @@ const QUIZ = {
         S.quiz.elapsed++;
         const tEl=document.getElementById('fc-tmr'); if(tEl) tEl.textContent=fmt(S.quiz.elapsed);
       }
+      if(typeof QUIZ._paintUrgency === 'function') QUIZ._paintUrgency();
     },1000);
   },
   _stopTimer(){ if(S.quiz.timer){ clearInterval(S.quiz.timer); S.quiz.timer=null; } },
@@ -734,7 +735,7 @@ const QUIZ = {
     }
     if(canResume){
       document.getElementById('qem-leave').onclick = ()=>{
-        try { if(typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(); }
+        try { if(typeof PRACTICE_RESUME !== 'undefined') PRACTICE_RESUME.snapshot(true); }
         catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
         close();
         QUIZ._stopTimer();
@@ -802,22 +803,7 @@ const QUIZ = {
         runEl.hidden = !showRun;
         runEl.textContent = showRun ? '🔥 ' + run + ' in a row' : '';
       }
-      const feedbackEl = document.getElementById('fc-feedback');
-      if(feedbackEl){
-        if(answered && !S.quiz.reviewOnly){
-          const correctNow = isOk(ansIdx, q.correct);
-          const run = Number(S.quiz.run) || 0;
-          feedbackEl.hidden = false;
-          feedbackEl.className = 'fc-feedback ' + (correctNow ? 'ok' : 'bad');
-          feedbackEl.textContent = correctNow
-            ? (run >= 2 ? 'Correct — ' + run + ' in a row. Keep the rhythm.' : 'Correct. Nicely done.')
-            : 'Not quite. The correct option is highlighted — read why below.';
-        } else {
-          feedbackEl.hidden = true;
-          feedbackEl.textContent = '';
-          feedbackEl.className = 'fc-feedback';
-        }
-      }
+      QUIZ._paintFeedback();
 
       requestAnimationFrame(() => {
         optsEl.innerHTML = q.options.map((opt,i)=>{
@@ -915,6 +901,76 @@ const QUIZ = {
     document.getElementById('fc-bad').textContent=bad;
     document.getElementById('fc-skip').textContent=skip;
   },
+  /* A compact, evidence-based read on whether the learner's confidence
+     matched reality. It is computed from this session only; no extra storage
+     is written per question. */
+  _calibration(){
+    const qs = (S.quiz && Array.isArray(S.quiz.qs)) ? S.quiz.qs : [];
+    const ans = (S.quiz && Array.isArray(S.quiz.ans)) ? S.quiz.ans : [];
+    const conf = (S.quiz && S.quiz.conf && typeof S.quiz.conf === 'object') ? S.quiz.conf : {};
+    const out = {
+      tagged: 0, sure: 0, sureCorrect: 0,
+      unsure: 0, unsureCorrect: 0,
+      guessed: 0, guessedCorrect: 0,
+      confidentMisses: [], luckyGuesses: []
+    };
+    qs.forEach((q, i) => {
+      const a = ans[i];
+      if (a === null || a === undefined) return;
+      const level = conf[i];
+      if (level !== 'sure' && level !== 'unsure' && level !== 'guess') return;
+      const ok = isOk(a, q.correct);
+      out.tagged++;
+      if (level === 'sure') {
+        out.sure++;
+        if (ok) out.sureCorrect++; else out.confidentMisses.push(q);
+      } else if (level === 'unsure') {
+        out.unsure++;
+        if (ok) out.unsureCorrect++;
+      } else {
+        out.guessed++;
+        if (ok) { out.guessedCorrect++; out.luckyGuesses.push(q); }
+      }
+    });
+    out.surePct = out.sure ? Math.round((out.sureCorrect / out.sure) * 100) : null;
+    return out;
+  },
+
+  /* Feedback adapts to the confidence the learner reported. Wrong-but-sure is
+     the highest-value error because it is already encoded; right-but-guessed is
+     fragile knowledge that needs another retrieval attempt. */
+  _paintFeedback(){
+    if(!S.quiz) return;
+    const el = document.getElementById('fc-feedback');
+    if(!el) return;
+    const q = S.quiz.qs[S.quiz.idx];
+    const ansIdx = S.quiz.ans[S.quiz.idx];
+    const answered = ansIdx !== null && ansIdx !== undefined;
+    if(!q || !answered || S.quiz.reviewOnly){
+      el.hidden = true; el.textContent = ''; el.className = 'fc-feedback'; return;
+    }
+    const correct = isOk(ansIdx, q.correct);
+    const run = Number(S.quiz.run) || 0;
+    const conf = S.quiz.conf && S.quiz.conf[S.quiz.idx];
+    let text;
+    if(correct){
+      text = run >= 2 ? 'Correct — ' + run + ' in a row. Keep the rhythm.' : 'Correct. Nicely done.';
+      if(conf === 'guess') text += ' You guessed this one, so review it soon.';
+      else if(conf === 'unsure') text += ' You were unsure — worth another pass.';
+    } else if(conf === 'sure'){
+      text = 'You were sure, but missed it. That is a misconception worth fixing — read why below.';
+    } else if(conf === 'unsure'){
+      text = 'Not quite. You were unsure — read why below, then try it again soon.';
+    } else if(conf === 'guess'){
+      text = 'Not quite — and this was a guess. Slow down and read the explanation.';
+    } else {
+      text = 'Not quite. The correct option is highlighted — read why below.';
+    }
+    el.hidden = false;
+    el.className = 'fc-feedback ' + (correct ? 'ok' : 'bad');
+    el.textContent = text;
+  },
+
   fcAnswer(i){
     if(S.quiz.reviewOnly) return;
     if(S.quiz.ans[S.quiz.idx]!==null)return;
@@ -1129,6 +1185,18 @@ const QUIZ = {
     QUIZ._doStart(qs, 'flashcard', S.quiz.ch || 'Practice', true, scope);
   },
 
+  reviewConfidentMisses(){ QUIZ._reviewCalibration('confidentMisses', 'Confident misses'); },
+  reviewGuesses(){ QUIZ._reviewCalibration('luckyGuesses', 'Lucky guesses'); },
+  _reviewCalibration(key, label){
+    if(!S.quiz || !Array.isArray(S.quiz.qs)) return;
+    if(S.quiz.reviewOnly){ toast('This is a recorded review.'); return; }
+    if(S.quiz.scope && S.quiz.scope.weeklyId){ toast('🔒 Weekly sets are one attempt only'); return; }
+    const cal = QUIZ._calibration();
+    const list = Array.isArray(cal[key]) ? cal[key].slice() : [];
+    if(!list.length){ toast('Nothing to review from this session.'); return; }
+    QUIZ.startWith(list, 'flashcard', (S.quiz.ch || 'Practice') + ' (' + label + ')');
+  },
+
   _showResults(){
     document.getElementById('fc-wrap').style.display='none';
     document.getElementById('ex-wrap').style.display='none';
@@ -1142,6 +1210,9 @@ const QUIZ = {
     const sc = scorePaper(S.quiz.ans, S.quiz.qs, S.quiz.scope);
     const total = sc.total, correct = sc.correct, wrong = sc.wrong, skipped = sc.skipped;
     const pct = sc.pct;
+    const cal = QUIZ._calibration();
+    const oldCal = document.getElementById('res-calibration');
+    if(oldCal) oldCal.remove();
 
     /* Compare with what came before this session, not with itself. The recap
        below turns a finished set into a small moment of progress. */
@@ -1217,6 +1288,11 @@ const QUIZ = {
     }
     if(newChapterBest) recapBits.push({ icon: 'ph-medal', text: 'New best for this chapter', cls: 'best' });
     else if(priorChapterBest !== null) recapBits.push({ icon: 'ph-medal', text: 'Chapter best: ' + priorChapterBest + '%' });
+    if(cal.sure >= 2) recapBits.push({
+      icon: 'ph-target',
+      text: 'Sure answers: ' + cal.sureCorrect + '/' + cal.sure + ' right',
+      cls: cal.sureCorrect === cal.sure ? 'up' : 'down'
+    });
 
     let recapEl = document.getElementById('res-recap');
     if(!recapEl){
@@ -1245,6 +1321,35 @@ const QUIZ = {
       <div class="sc"><div class="sv tb2">${wrong}</div><div class="stat-lbl">Wrong</div></div>
       <div class="sc"><div class="sv ta2">${skipped}</div><div class="stat-lbl">Skipped</div></div>
     `;
+
+    /* Calibration is the bridge between “I know it” and actually knowing it.
+       Only show it when the learner gave enough confidence signals, so the
+       panel never nags someone who skipped that step. */
+    const confidentMisses = cal.confidentMisses.length;
+    const luckyGuesses = cal.guessedCorrect;
+    if(!isWeekly && (confidentMisses || luckyGuesses >= 2)){
+      const lines = [];
+      if(confidentMisses) lines.push('<b>' + confidentMisses + ' confident miss' + (confidentMisses === 1 ? '' : 'es') + '</b> — you felt sure and got ' + (confidentMisses === 1 ? 'it' : 'them') + ' wrong. This is the highest-value thing to fix.');
+      if(luckyGuesses) lines.push('<b>' + luckyGuesses + ' lucky guess' + (luckyGuesses === 1 ? '' : 'es') + '</b> — correct, but not yet secure.');
+      const action = confidentMisses ? 'QUIZ.reviewConfidentMisses()' : 'QUIZ.reviewGuesses()';
+      const actionText = confidentMisses
+        ? 'Review ' + confidentMisses + ' confident miss' + (confidentMisses === 1 ? '' : 'es')
+        : 'Review ' + luckyGuesses + ' lucky guesses';
+      const calBox = document.createElement('div');
+      calBox.id = 'res-calibration';
+      calBox.innerHTML =
+        '<div class="banner banner-warning" style="align-items:flex-start;margin:0 0 var(--sp-4)">' +
+          '<i class="ph ph-target"></i>' +
+          '<div style="flex:1"><div style="font-weight:700">Confidence check</div>' +
+            '<div class="t-foot" style="line-height:1.55;margin-top:.2rem">' + lines.join('<br>') + '</div>' +
+            '<button class="btn btn-sm btn-quiet" style="margin-top:var(--sp-2)" data-on-click="' + action + '">' +
+              '<i class="ph ph-warning-circle"></i> ' + actionText +
+            '</button>' +
+          '</div>' +
+        '</div>';
+      const statsEl = document.getElementById('res-stats');
+      if(statsEl && statsEl.parentNode) statsEl.parentNode.insertBefore(calBox, statsEl.nextSibling);
+    }
 
     try {
       const oldBlock = document.querySelector('#view-results .chapter-breakdown, .chapter-breakdown');
@@ -1451,7 +1556,12 @@ const QUIZ = {
       weeklyId: scope.weeklyId || '',
       weeklyTitle: scope.weeklyTitle || '',
       sprintKind: scope.sprint || '',
-      qres
+      qres,
+      calibration: cal.tagged ? {
+        tagged: cal.tagged, sure: cal.sure, sureCorrect: cal.sureCorrect,
+        guessed: cal.guessed, guessedCorrect: cal.guessedCorrect,
+        confidentMisses: confidentMisses
+      } : null
     };
     if(typeof COV !== 'undefined') COV.record(qres);
     PROG.recordSession(sessionObj);

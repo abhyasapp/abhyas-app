@@ -81,6 +81,25 @@ const PROG = {
     return { predicted, margin: Math.max(3,stdDev), confidence, sampleSize: sessions.length };
   },
 
+  /* Aggregate the compact calibration record saved with each session. Older
+     sessions simply have no record, so this never invents confidence data. */
+  calibration(){
+    const sessions = (S.prog && Array.isArray(S.prog.sessions) ? S.prog.sessions : [])
+      .filter(s => s && s.calibration && Number(s.calibration.tagged) > 0)
+      .slice(0, 20);
+    if(!sessions.length) return null;
+    const sum = (key) => sessions.reduce((n, s) => n + (Number(s.calibration[key]) || 0), 0);
+    const sure = sum('sure'), sureCorrect = sum('sureCorrect');
+    return {
+      sessions: sessions.length,
+      tagged: sum('tagged'),
+      sure, sureCorrect,
+      surePct: sure ? Math.round((sureCorrect / sure) * 100) : null,
+      guessed: sum('guessed'), guessedCorrect: sum('guessedCorrect'),
+      confidentMisses: sum('confidentMisses')
+    };
+  },
+
   renderPredict(){
     const els = [
       document.getElementById('predict-card-2'),
@@ -104,6 +123,7 @@ const PROG = {
         </div>
         <div class="pb"><div class="pb-f" style="width:${p.predicted}%;background:${barColor};transition:width 0.6s ease-out"></div></div>
         <div style="font-size:.7rem;color:var(--t3);margin-top:.55rem">Recent and exam-mode sessions count more. Not a guarantee — use it to gauge where you stand.</div>
+        ${(function(){ const c = PROG.calibration(); if(!c || c.sure < 5) return ''; const cls = c.surePct >= 85 ? 'var(--success)' : c.surePct < 70 ? 'var(--warning)' : 'var(--ink-2)'; const msg = c.surePct >= 85 ? 'Confidence is tracking your answers well.' : c.surePct < 70 ? 'You are often sure and wrong — slow down on familiar-looking questions.' : 'Your confidence is reasonably calibrated.'; return '<div class="t-cap" style="margin-top:.55rem;color:' + cls + ';display:flex;gap:.35rem;align-items:flex-start"><i class="ph ph-target"></i><span><b>' + c.sureCorrect + '/' + c.sure + '</b> sure answers right · ' + msg + '</span></div>'; })()}
       </div>`;
     }
     els.forEach(el => { el.innerHTML = html; });

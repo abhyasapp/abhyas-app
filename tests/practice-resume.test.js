@@ -35,7 +35,7 @@ describe('practice continuity', () => {
     await p.ev('QUIZ.fcNav(1)');
     await p.ev('QUIZ.fcAnswer(0)');
     await p.ev(`S.quiz.elapsed = 95; S.quiz.conf = {0:'sure'}; S.quiz.bestRunBefore = 3;`);
-    await p.ev('PRACTICE_RESUME.snapshot()');
+    await p.ev('PRACTICE_RESUME.snapshot(true)');
 
     const snap = JSON.parse(await p.ev(`localStorage.getItem('abhyas_practice_snap')`));
     expect(snap).toMatchObject({ run: 2, bestRunBefore: 3, elapsed: 95, conf: { 0: 'sure' } });

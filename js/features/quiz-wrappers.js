@@ -33,7 +33,6 @@
     if (typeof FAST_GUESS !== 'undefined') FAST_GUESS.reset();
     try { if (typeof RECOVERY !== 'undefined') RECOVERY.markActive(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
     try { if (typeof READALOUD !== 'undefined') READALOUD.stop(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-wrappers.js', e); }
-    if (S && S.quiz) S.quiz.conf = {};
     return _doStart.apply(QUIZ, arguments);
   };
 
@@ -202,14 +201,13 @@
     const el = S.quiz.mode === 'exam' ? document.getElementById('ex-tmr') : null;
     if (el) el.classList.toggle('urgent', S.quiz.left > 0 && S.quiz.left < S.quiz.qs.length * 18);
   }
+  /* The base quiz tick already runs once a second; reuse that tick instead of
+     starting a second interval for the same urgency paint. */
+  QUIZ._paintUrgency = _paintUrgency;
   const _st = QUIZ._startTimer.bind(QUIZ);
   QUIZ._startTimer = function () {
     _st();
-    if (QUIZ._urgTimer) clearInterval(QUIZ._urgTimer);
-    QUIZ._urgTimer = setInterval(() => {
-      if (!S.quiz || !S.quiz.active) { clearInterval(QUIZ._urgTimer); QUIZ._urgTimer = null; return; }
-      _paintUrgency();
-    }, 1000);
+    _paintUrgency();
   };
 
   /* ── 12. Body class: `quiz-on` while a quiz is open ── */
