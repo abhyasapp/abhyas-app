@@ -23,6 +23,29 @@ describe('PWA install metadata', () => {
     }
   });
 
+  it('keeps visible FAQ questions aligned with FAQPage structured data', () => {
+    const html = read('index.html');
+    const faqBlock = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .map((m) => JSON.parse(m[1]))
+      .find((block) => block['@type'] === 'FAQPage');
+    const visible = [...html.matchAll(/<summary data-i18n>([^<]+)<\/summary>/g)]
+      .map((m) => m[1].replace(/&amp;/g, '&').trim())
+      .sort();
+    expect(visible).toEqual(faqBlock.mainEntity.map((q) => q.name).sort());
+  });
+
+  it('translates every interactive landing question and explanation', () => {
+    const script = read('js/app/index-page.js');
+    const dictionary = read('js/core/i18n.js');
+    const questionBlock = script.slice(
+      script.indexOf('var TRY_QUESTIONS ='),
+      script.indexOf('var _tryIdx'),
+    );
+    const strings = [...questionBlock.matchAll(/\b(?:q|exp): '([^']+)'/g)].map((m) => m[1]);
+    expect(strings.length).toBeGreaterThan(0);
+    for (const text of strings) expect(dictionary).toContain(text);
+  });
+
   it('routes every shortcut to a unique, supported student view', () => {
     const routes = new Set([
       'home', 'offline', 'downloads', 'progress', 'subjective',

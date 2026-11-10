@@ -44,6 +44,18 @@ describe('language switch (index.html)', () => {
     expect(p.ev(`document.querySelector('[data-lang-label]').textContent.trim()`)).toBe('English');
   });
 
+  it('translates the syllabus, FAQ and live practice question', () => {
+    p.ev(`I18N.setLang('ne', { silent: true })`);
+    expect(p.ev(`document.querySelector('#faq-h').textContent.trim()`)).toBe('सामान्य प्रश्नहरू');
+    expect(p.ev(`document.querySelector('#faq summary').textContent.trim()`)).toBe('अभ्यास सिभिल लोकसेवा के हो?');
+    expect(p.ev(`document.querySelector('#about .subject-list li').textContent.trim()`)).toBe('संरचना इन्जिनियरिङ');
+
+    p.ev(`TRY_Q.next()`);
+    expect(p.ev(`document.getElementById('try-q').textContent`)).toContain('गतिशील श्यानताको एकाइ');
+    p.ev(`document.querySelector('#try-opts button').click()`);
+    expect(p.ev(`document.getElementById('try-exp').textContent`)).toContain('पास्कल-सेकेन्ड');
+  });
+
   it('switches back and restores the original English text', () => {
     p.ev(`I18N.toggleLang()`);
 

@@ -60,7 +60,7 @@ describe('SEO audit', () => {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     // Crawlers must see this without running the app's scripts.
     expect(html).toMatch(/<section[^>]+id="syllabus"/);
-    expect(html).toMatch(/<th scope="row">A<\/th><td>Structure and Geotechnical Engineering<\/td><td>30<\/td>/);
+    expect(html).toMatch(/<th scope="row">A<\/th><td[^>]*>Structure and Geotechnical Engineering<\/td><td>30<\/td>/);
     expect(html).not.toMatch(/id="syllabus"[^>]*hidden/);
   });
 
@@ -89,6 +89,6 @@ describe('SEO audit', () => {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     expect(html).toMatch(/<title>[^<]*Civil Loksewa[^<]*<\/title>/);
     expect(html).toMatch(/<meta name="description" content="[^"]*Civil Loksewa/);
-    expect(html).toMatch(/<summary>What is Abhyas Civil Loksewa\?<\/summary>/);
+    expect(html).toMatch(/<summary[^>]*>What is Abhyas Civil Loksewa\?<\/summary>/);
   });
 });

@@ -31,6 +31,14 @@ export function dictionaryKeys() {
   return keys;
 }
 
+const decodeEntities = (text) => text
+  .replace(/&amp;/g, '&')
+  .replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'")
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&nbsp;/g, ' ');
+
 export function missingKeys() {
   const have = dictionaryKeys();
   const missing = [];
@@ -41,7 +49,7 @@ export function missingKeys() {
     const re = /data-i18n(?:\s*=\s*"([^"]*)")?[^>]*>([^<]*)</g;
     let m;
     while ((m = re.exec(html))) {
-      const key = (m[1] || m[2] || '').trim().replace(/\s+/g, ' ');
+      const key = decodeEntities((m[1] || m[2] || '').trim().replace(/\s+/g, ' '));
       if (key && !have.has(key)) missing.push(`${page} :: ${JSON.stringify(key)}`);
     }
   }

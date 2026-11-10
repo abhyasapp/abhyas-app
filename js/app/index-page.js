@@ -26,6 +26,9 @@
   var _googleScriptState = 0;                     // 0 idle, 1 loading, 2 loaded, -1 failed
 
   function _get(id) { return document.getElementById(id); }
+  function _tr(text) {
+    return typeof I18N !== 'undefined' && I18N.t ? I18N.t(text) : text;
+  }
   function _show(id) { var el = _get(id); if (el) el.style.display = ''; }
   function _hide(id) { var el = _get(id); if (el) el.style.display = 'none'; }
 
@@ -402,7 +405,7 @@
     }
 
     var price = _get('faq-price');
-    if (price) price.textContent = s.paymentAmount ? ('Rs ' + s.paymentAmount) : 'a small amount';
+    if (price) price.textContent = s.paymentAmount ? ('Rs ' + s.paymentAmount) : _tr('a small amount');
 
     _maybeShowMobilePrompt();
   }
@@ -754,7 +757,7 @@
     var q = TRY_QUESTIONS[_tryIdx];
     var qEl = _get('try-q'), optsEl = _get('try-opts'), expEl = _get('try-exp'), nextBtn = _get('try-next');
     if (!qEl || !optsEl) return;
-    qEl.textContent = q.q;
+    qEl.textContent = _tr(q.q);
     expEl.hidden = true;
     expEl.textContent = '';
     if (nextBtn) nextBtn.hidden = true;
@@ -779,13 +782,21 @@
             b.style.color = 'var(--danger)';
           }
         });
-        expEl.textContent = q.exp;
+        expEl.textContent = _tr(q.exp);
         expEl.hidden = false;
         if (nextBtn) nextBtn.hidden = false;
       });
       optsEl.appendChild(btn);
     });
   }
+
+  document.addEventListener('abhyas:lang', function () {
+    if (_tryIdx < 0) return;
+    var q = TRY_QUESTIONS[_tryIdx];
+    var qEl = _get('try-q'), expEl = _get('try-exp');
+    if (qEl) qEl.textContent = _tr(q.q);
+    if (expEl && !expEl.hidden) expEl.textContent = _tr(q.exp);
+  });
 
   /* ================================================================ */
   /* Boot                                                              */

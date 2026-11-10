@@ -596,7 +596,7 @@ details.faq p{padding-top:var(--sp-1)}
 </head>
 <body>
 
-<a href="#main-card" class="skip-link">Skip to sign in</a>
+<a href="#main-card" class="skip-link" data-i18n>Skip to sign in</a>
 
 <button class="theme-toggle" data-on-click="toggleTheme()" aria-label="Switch theme" title="Switch theme" data-i18n-aria="Switch theme">
   <i class="ph ph-circle-half" aria-hidden="true"></i>
@@ -614,16 +614,16 @@ details.faq p{padding-top:var(--sp-1)}
     <p class="tag" data-i18n>Your path to mastery</p>
     <p class="what" data-i18n>Loksewa Civil Engineering practice — online or offline</p>
     <div class="net" role="status" aria-live="polite"><span class="ndot" id="ndot" aria-hidden="true"></span><span id="nstat">Online</span></div>
-    <div class="hero-proof" aria-label="Why students choose Abhyas">
+    <div class="hero-proof" aria-label="Why students choose Abhyas" data-i18n-aria="Why students choose Abhyas">
       <span><i class="ph ph-wifi-slash" aria-hidden="true"></i> <b data-i18n>Offline first</b></span>
       <span><i class="ph ph-check-circle" aria-hidden="true"></i> <b data-i18n>Human marked</b></span>
       <span><i class="ph ph-device-mobile" aria-hidden="true"></i> <b data-i18n>Built for phones</b></span>
     </div>
   </header>
 
-  <div class="cookie-banner" id="cookie-banner" hidden role="region" aria-label="Cookie notice">
-    <p>Abhyas keeps you signed in and saves your progress on this device. No ads, no tracking. <a href="privacy.html">Privacy</a></p>
-    <button class="btn" data-on-click="COOKIE_NOTICE.accept()">Got it</button>
+  <div class="cookie-banner" id="cookie-banner" hidden role="region" aria-label="Cookie notice" data-i18n-aria="Cookie notice">
+    <p><span data-i18n>Abhyas keeps you signed in and saves your progress on this device. No ads, no tracking.</span> <a href="privacy.html" data-i18n>Privacy</a></p>
+    <button class="btn" data-on-click="COOKIE_NOTICE.accept()" data-i18n>Got it</button>
   </div>
 
   <div class="card" id="main-card">
@@ -840,10 +840,10 @@ details.faq p{padding-top:var(--sp-1)}
 
 <div class="wide">
   <section class="section" id="try" aria-labelledby="try-h" style="margin-top:var(--sp-8)">
-    <div class="section-head"><h2 id="try-h">Try a question</h2></div>
-    <p class="lede">No account needed. Here is the kind of practice you get.</p>
+    <div class="section-head"><h2 id="try-h" data-i18n>Try a question</h2></div>
+    <p class="lede" data-i18n>No account needed. Here is the kind of practice you get.</p>
     <div class="card" id="try-card">
-      <p id="try-q" style="font-weight:600;margin-bottom:var(--sp-3)">The minimum grade of concrete for reinforced cement concrete work as per IS 456:2000 is:</p>
+      <p id="try-q" style="font-weight:600;margin-bottom:var(--sp-3)" data-i18n>The minimum grade of concrete for reinforced cement concrete work as per IS 456:2000 is:</p>
       <div id="try-opts" style="display:flex;flex-direction:column;gap:var(--sp-2)">
         <ul class="try-opts-static">
           <li><b>A.</b> M15</li>
@@ -854,8 +854,8 @@ details.faq p{padding-top:var(--sp-1)}
       </div>
       <p id="try-exp" class="t-callout" style="margin-top:var(--sp-3)" hidden></p>
       <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-3);flex-wrap:wrap">
-        <button class="btn btn-sec btn-sm" type="button" id="try-next" data-on-click="TRY_Q.next()" hidden style="margin-top:0">Another question</button>
-        <button class="btn btn-sm" type="button" data-on-click="APP.setMode('signup');document.getElementById('main-card').scrollIntoView({behavior:'smooth'})">Create a free account</button>
+        <button class="btn btn-sec btn-sm" type="button" id="try-next" data-on-click="TRY_Q.next()" hidden style="margin-top:0" data-i18n>Another question</button>
+        <button class="btn btn-sm" type="button" data-on-click="APP.setMode('signup');document.getElementById('main-card').scrollIntoView({behavior:'smooth'})" data-i18n>Create a free account</button>
       </div>
     </div>
   </section>
@@ -880,15 +880,15 @@ details.faq p{padding-top:var(--sp-1)}
   </section>
 
   <section class="section" id="about" aria-labelledby="about-h">
-    <div class="section-head"><h2 id="about-h">What Abhyas is</h2></div>
-    <p class="lede">Abhyas is a Civil Loksewa practice app for Nepal's Lok Sewa Aayog Level 7 Civil Engineering exam. It includes chapter-wise technical questions plus General Knowledge practice alongside them.</p>
+    <div class="section-head"><h2 id="about-h" data-i18n>What Abhyas is</h2></div>
+    <p class="lede" data-i18n>Abhyas is a Civil Loksewa practice app for Nepal's Lok Sewa Aayog Level 7 Civil Engineering exam. It includes chapter-wise technical questions plus General Knowledge practice alongside them.</p>
 
-    <h3 class="t-cap" style="font-weight:700;margin-bottom:var(--sp-2);letter-spacing:.06em;text-transform:uppercase">Subjects covered</h3>
+    <h3 class="t-cap" style="font-weight:700;margin-bottom:var(--sp-2);letter-spacing:.06em;text-transform:uppercase" data-i18n>Subjects covered</h3>
     <ul class="subject-list">
-      <li>Structural Engineering</li><li>Engineering Survey</li><li>Construction Materials</li>
-      <li>Concrete Technology</li><li>Geotechnical Engineering</li><li>Construction Management</li>
-      <li>Estimating &amp; Costing</li><li>Engineering Drawing</li><li>Engineering Economics</li>
-      <li>Professional Practices</li><li>General Knowledge</li>
+      <li data-i18n>Structural Engineering</li><li data-i18n>Engineering Survey</li><li data-i18n>Construction Materials</li>
+      <li data-i18n>Concrete Technology</li><li data-i18n>Geotechnical Engineering</li><li data-i18n>Construction Management</li>
+      <li data-i18n>Estimating &amp; Costing</li><li data-i18n>Engineering Drawing</li><li data-i18n>Engineering Economics</li>
+      <li data-i18n>Professional Practices</li><li data-i18n>General Knowledge</li>
     </ul>
 
     <div class="feature-grid">
@@ -916,62 +916,62 @@ details.faq p{padding-top:var(--sp-1)}
   </section>
 
   <section class="section" id="syllabus" aria-labelledby="syllabus-h">
-    <div class="section-head"><h2 id="syllabus-h">The Level 7 Civil Engineering paper</h2></div>
-    <p class="lede">Abhyas follows the Lok Sewa Aayog Level 7 Civil Engineering syllabus: the technical paper, the objective paper and General Knowledge. For written practice, the 100-mark paper is organised into four groups:</p>
+    <div class="section-head"><h2 id="syllabus-h" data-i18n>The Level 7 Civil Engineering paper</h2></div>
+    <p class="lede" data-i18n>Abhyas follows the Lok Sewa Aayog Level 7 Civil Engineering syllabus: the technical paper, the objective paper and General Knowledge. For written practice, the 100-mark paper is organised into four groups:</p>
 
     <table class="marks">
-      <caption>Written-paper groups and marks, as covered in Abhyas</caption>
+      <caption data-i18n>Written-paper groups and marks, as covered in Abhyas</caption>
       <thead>
-        <tr><th scope="col">Group</th><th scope="col">Subjects</th><th scope="col">Marks</th></tr>
+        <tr><th scope="col" data-i18n>Group</th><th scope="col" data-i18n>Subjects</th><th scope="col" data-i18n>Marks</th></tr>
       </thead>
       <tbody>
-        <tr><th scope="row">A</th><td>Structure and Geotechnical Engineering</td><td>30</td></tr>
-        <tr><th scope="row">B</th><td>Water Resource and Irrigation</td><td>25</td></tr>
-        <tr><th scope="row">C</th><td>Transportation Engineering</td><td>25</td></tr>
-        <tr><th scope="row">D</th><td>Public Health, Project Management and Professional Practice</td><td>20</td></tr>
+        <tr><th scope="row">A</th><td data-i18n>Structure and Geotechnical Engineering</td><td>30</td></tr>
+        <tr><th scope="row">B</th><td data-i18n>Water Resource and Irrigation</td><td>25</td></tr>
+        <tr><th scope="row">C</th><td data-i18n>Transportation Engineering</td><td>25</td></tr>
+        <tr><th scope="row">D</th><td data-i18n>Public Health, Project Management and Professional Practice</td><td>20</td></tr>
       </tbody>
     </table>
 
-    <h3 class="t-cap" style="font-weight:700;margin-bottom:var(--sp-2);letter-spacing:.06em;text-transform:uppercase">Topics practised</h3>
+    <h3 class="t-cap" style="font-weight:700;margin-bottom:var(--sp-2);letter-spacing:.06em;text-transform:uppercase" data-i18n>Topics practised</h3>
     <ul class="subject-list">
-      <li>Reinforced concrete structures</li><li>Steel and timber structures</li>
-      <li>Earthquake-resistant buildings</li><li>Structural design of bridges</li>
-      <li>Soil mechanics</li><li>Foundation engineering</li><li>Site investigation</li>
-      <li>Hydrology and sediment</li><li>Hydraulics</li><li>Irrigation</li><li>Hydropower</li>
-      <li>Highway engineering</li><li>Airport engineering</li>
-      <li>Water supply</li><li>Sanitation and sewerage</li><li>Environment</li>
-      <li>Project management</li><li>Quantity surveying</li><li>Ethics and codes</li>
+      <li data-i18n>Reinforced concrete structures</li><li data-i18n>Steel and timber structures</li>
+      <li data-i18n>Earthquake-resistant buildings</li><li data-i18n>Structural design of bridges</li>
+      <li data-i18n>Soil mechanics</li><li data-i18n>Foundation engineering</li><li data-i18n>Site investigation</li>
+      <li data-i18n>Hydrology and sediment</li><li data-i18n>Hydraulics</li><li data-i18n>Irrigation</li><li data-i18n>Hydropower</li>
+      <li data-i18n>Highway engineering</li><li data-i18n>Airport engineering</li>
+      <li data-i18n>Water supply</li><li data-i18n>Sanitation and sewerage</li><li data-i18n>Environment</li>
+      <li data-i18n>Project management</li><li data-i18n>Quantity surveying</li><li data-i18n>Ethics and codes</li>
     </ul>
 
-    <p class="lede" style="margin-bottom:0">Each topic has chapter-wise practice questions, and the written-answer bank uses the same groups. Exam patterns change, so confirm the current year's marks in the notice published by the Lok Sewa Aayog before you rely on any split.</p>
+    <p class="lede" style="margin-bottom:0" data-i18n>Each topic has chapter-wise practice questions, and the written-answer bank uses the same groups. Exam patterns change, so confirm the current year's marks in the notice published by the Lok Sewa Aayog before you rely on any split.</p>
   </section>
 
   <section class="section" id="faq" aria-labelledby="faq-h">
-    <div class="section-head"><h2 id="faq-h">Common questions</h2></div>
+    <div class="section-head"><h2 id="faq-h" data-i18n>Common questions</h2></div>
     <div style="margin-top:var(--sp-4)">
       <details class="faq">
-        <summary>What is Abhyas Civil Loksewa?</summary>
-        <p>Abhyas is a Civil Loksewa practice app for Nepal's Level 7 Civil Engineering exam. It combines chapter-wise questions, offline study and written-answer practice marked by a person.</p>
+        <summary data-i18n>What is Abhyas Civil Loksewa?</summary>
+        <p data-i18n>Abhyas is a Civil Loksewa practice app for Nepal's Level 7 Civil Engineering exam. It combines chapter-wise questions, offline study and written-answer practice marked by a person.</p>
       </details>
       <details class="faq">
-        <summary>What is Lok Sewa Aayog?</summary>
-        <p>Nepal's Public Service Commission. It runs the civil service examinations, including the Level 7 Civil Engineering exam that Abhyas is built around.</p>
+        <summary data-i18n>What is Lok Sewa Aayog?</summary>
+        <p data-i18n>Nepal's Public Service Commission. It runs the civil service examinations, including the Level 7 Civil Engineering exam that Abhyas is built around.</p>
       </details>
       <details class="faq">
-        <summary>Can I really use it with no internet?</summary>
-        <p>Yes, for anything you've opened before. Once a chapter or subtopic has loaded while you were online, it stays on your device and opens with no connection. You can also download everything at once from the Downloads screen.</p>
+        <summary data-i18n>Can I really use it with no internet?</summary>
+        <p data-i18n>Yes, for anything you've opened before. Once a chapter or subtopic has loaded while you were online, it stays on your device and opens with no connection. You can also download everything at once from the Downloads screen.</p>
       </details>
       <details class="faq">
-        <summary>What does it cost?</summary>
-        <p>New accounts start on a free trial with full access. After that there's a one-time payment of <strong id="faq-price">a small amount</strong>; the QR code is on the payment screen once your trial ends.</p>
+        <summary data-i18n>What does it cost?</summary>
+        <p><span data-i18n>New accounts start on a free trial with full access. After that there's a one-time payment of</span> <strong id="faq-price" data-i18n>a small amount</strong><span data-i18n>; the QR code is on the payment screen once your trial ends.</span></p>
       </details>
       <details class="faq">
-        <summary>Is my progress safe if I change phone?</summary>
-        <p>Yes. Progress backs up to your Abhyas account whenever you're online, and you can restore it on a new device by signing in. You can also keep a second copy in your own Google Drive, or export a backup file.</p>
+        <summary data-i18n>Is my progress safe if I change phone?</summary>
+        <p data-i18n>Yes. Progress backs up to your Abhyas account whenever you're online, and you can restore it on a new device by signing in. You can also keep a second copy in your own Google Drive, or export a backup file.</p>
       </details>
       <details class="faq">
-        <summary>I forgot my password.</summary>
-        <p>Use "Forgot your password?" on the sign-in form. If the username or email matches an account, a reset code goes to that account's email address.</p>
+        <summary data-i18n>I forgot my password.</summary>
+        <p data-i18n>Use "Forgot your password?" on the sign-in form. If the username or email matches an account, a reset code goes to that account's email address.</p>
       </details>
     </div>
   </section>
@@ -988,7 +988,7 @@ details.faq p{padding-top:var(--sp-1)}
     </div>
   </section>
 
-  <footer class="foot">Abhyas — Civil Loksewa practice for Nepal<br>Updated 4 November 2026 · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></footer>
+  <footer class="foot"><span data-i18n>Abhyas — Civil Loksewa practice for Nepal</span><br><span data-i18n>Updated 4 November 2026</span> · <a href="privacy.html" data-i18n>Privacy</a> · <a href="terms.html" data-i18n>Terms</a></footer>
 </div>
 
 <script type="application/ld+json">
