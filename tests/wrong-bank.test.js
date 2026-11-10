@@ -30,6 +30,86 @@ describe('wrong-bank mastery and chapter downloads', () => {
     expect(await p.ev(`REV._masteredLoad().some(x => x.uid === 'f_soil_0')`)).toBe(true);
   });
 
+  it('uses confidence to price the next interval and classify a miss', async () => {
+    expect(await p.ev(`REV.intervalFor(4, 'sure')`)).toBe(14);
+    expect(await p.ev(`REV.intervalFor(4, 'unsure')`)).toBe(3);
+    expect(await p.ev(`REV.intervalFor(4, 'guess')`)).toBe(1);
+
+    await p.ev(`
+      S.wr = [{ uid: 'f_soil_0', q: 'Which soil holds water?', options: ['Clay', 'Sand'], correct: 0, _streak: 0, _nextDue: Date.now() }];
+      S.prog = { total: 0, correct: 0, sessions: [] };
+      REV.trackAnswer({ uid: 'f_soil_0' }, true, { conf: 'guess' });
+    `);
+    expect(await p.ev('S.wr[0]._streak')).toBe(0);
+    expect(await p.ev('S.wr[0]._nextDue - Date.now()')).toBeGreaterThan(23 * 60 * 60 * 1000);
+    expect(await p.ev('S.wr[0]._nextDue - Date.now()')).toBeLessThan(25 * 60 * 60 * 1000);
+
+    await p.ev(`REV.trackAnswer({ uid: 'f_survey_0' }, false, { conf: 'sure' })`);
+    expect(await p.ev(`S.wr.find(x => x.uid === 'f_survey_0')._reason`)).toBe('careless');
+
+    await p.ev(`REV.trackAnswer({ uid: 'f_survey_1' }, false, { conf: 'guess' })`);
+    expect(await p.ev(`S.wr.find(x => x.uid === 'f_survey_1')._reason`)).toBe('concept');
+  });
+
+  it('takes back the streak point when a flashcard answer was a guess', async () => {
+    await p.ev(`
+      S.wr = [{ uid: 'f_soil_0', q: 'Which soil holds water?', options: ['Clay', 'Sand'], correct: 0, _streak: 2, _nextDue: Date.now() }];
+      S.prog = { total: 0, correct: 0, sessions: [] };
+      REV.trackAnswer({ uid: 'f_soil_0' }, true);
+    `);
+    expect(await p.ev('S.wr[0]._streak')).toBe(3);
+
+    await p.ev(`REV.applyConfidence('f_soil_0', 'guess', { correct: true })`);
+    expect(await p.ev('S.wr[0]._streak')).toBe(2);
+    expect(await p.ev('S.wr[0]._nextDue - Date.now()')).toBeGreaterThan(23 * 60 * 60 * 1000);
+
+    await p.ev(`REV.applyConfidence('f_soil_0', 'sure', { correct: true })`);
+    expect(await p.ev('S.wr[0]._streak')).toBe(3);
+    expect(await p.ev('S.wr[0]._nextDue - Date.now()')).toBeGreaterThan(6 * 24 * 60 * 60 * 1000);
+  });
+
+  it('offers a focused smart start when more than ten questions are due', async () => {
+    const out = await p.ev(`(() => {
+      S.wr = Array.from({ length: 11 }, (_, i) => ({
+        uid: 'f_soil_' + i, q: 'Q' + i, _nextDue: Date.now() - i * 86400000, _streak: 0
+      }));
+      S.prog = { total: 0, correct: 0, sessions: [] };
+      WRONGBY._last = [{ name: 'Soil Mechanics', due: 11, n: 11, files: [] }];
+      const el = document.getElementById('wr-list');
+      WRONGBY._renderDue(el);
+      const btn = el.querySelector('[data-on-click="WRONGBY.smartStart()"]');
+      return { has: !!btn, text: btn ? btn.textContent : '' };
+    })()`);
+    expect(out.has).toBe(true);
+    expect(out.text).toContain('Smart review 10 first');
+  });
+
+  it('sends a long home review queue to smart review', async () => {
+    const item = await p.ev(`(() => {
+      S.wr = Array.from({ length: 11 }, (_, i) => ({
+        uid: 'f_soil_' + i, q: 'Q' + i, _nextDue: Date.now() - i * 86400000, _streak: 0
+      }));
+      const due = _dueItems().find(x => x.go.indexOf('WRONGBY.smartStart') !== -1);
+      return due ? { go: due.go, meta: due.meta, sub: due.sub } : null;
+    })()`);
+    expect(item).toEqual({ go: 'WRONGBY.smartStart()', meta: 'Review 10', sub: 'Smart review picks the most urgent 10' });
+  });
+
+  it('ranks due questions by overdue time, misses and reason', async () => {
+    const plan = await p.ev(`(() => {
+      S.wr = [
+        { uid: 'f_a_0', q: 'A', _nextDue: Date.now() - 3 * 86400000, _reason: 'careless', _streak: 2 },
+        { uid: 'f_b_1', q: 'B', _nextDue: Date.now() - 86400000, _reason: 'concept', _streak: 1 },
+        { uid: 'f_c_2', q: 'C', _nextDue: Date.now() - 86400000, _reason: 'concept', _streak: 0 },
+        { uid: 'f_d_3', q: 'D', _nextDue: Date.now() + 86400000 }
+      ];
+      S.prog = { total: 0, correct: 0, sessions: [] };
+      const p = WRONGBY.reviewPlan(2);
+      return { total: p.total, overdue: p.overdue, concept: p.concept, careless: p.careless, uids: p.items.map(x => x.uid) };
+    })()`);
+    expect(plan).toEqual({ total: 3, overdue: 3, concept: 2, careless: 1, uids: ['f_a_0', 'f_c_2'] });
+  });
+
   it('resets the count when the question is missed again', async () => {
     for (let i = 0; i < 3; i++) await p.ev(`REV.trackAnswer({ uid: 'f_soil_0' }, true)`);
     await p.ev(`REV.trackAnswer({ uid: 'f_soil_0' }, false)`);

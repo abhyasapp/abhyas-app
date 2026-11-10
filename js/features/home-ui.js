@@ -55,12 +55,16 @@ function _dueItems(){
   try {
     if (typeof REV !== 'undefined' && REV.dueCount) {
       const n = REV.dueCount();
-      if (n > 0) out.push({
-        icon:'ph-arrow-counter-clockwise',
-        title:(n === 1 ? '1 question is' : n + ' questions are') + ' ready again',
-        sub:'You missed these before',
-        meta:'Review', go:"REV.start('wr','flashcard',true)"
-      });
+      if (n > 0) {
+        const smart = n > 10 && typeof WRONGBY !== 'undefined' && typeof WRONGBY.smartStart === 'function';
+        out.push({
+          icon:'ph-arrow-counter-clockwise',
+          title:(n === 1 ? '1 question is' : n + ' questions are') + ' ready again',
+          sub: smart ? 'Smart review picks the most urgent 10' : 'You missed these before',
+          meta: smart ? 'Review 10' : 'Review',
+          go: smart ? "WRONGBY.smartStart()" : "REV.start('wr','flashcard',true)"
+        });
+      }
     }
   } catch (e) { window.warnCaught && window.warnCaught('js/features/home-ui.js', e); }
 

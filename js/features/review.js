@@ -179,23 +179,81 @@ const REV = {
     b.textContent = 'Bring back mastered (' + n + ')';
   },
   
-  trackAnswer(question, isCorrect) {
+  /* The interval should reflect how the answer was reached, not just whether
+     it was right. A guess must not buy a two-week holiday; an unsure answer
+     gets a short consolidation step; a confident answer follows the normal
+     ladder. `streak` is the value BEFORE this answer, matching the old
+     SR_INTERVALS[prev] behaviour. */
+  intervalFor(streak, confidence) {
+    const i = Math.max(0, Math.min(SR_INTERVALS.length - 1, Math.floor(Number(streak) || 0)));
+    const base = SR_INTERVALS[i];
+    if (confidence === 'guess') return 1;
+    if (confidence === 'unsure') return Math.min(base, 3);
+    return base;
+  },
+
+  /* Re-price a just-recorded answer when the learner reports confidence after
+     answering (flashcards ask after the tap). This keeps the reason and due
+     date honest even when the initial trackAnswer had no confidence value. */
+  applyConfidence(uid, level, opts) {
+    const item = S.wr.find(x => x && x.uid === uid);
+    if (!item) return false;
+    const correct = !!(opts && opts.correct);
+    item._lastConfidence = level || '';
+    if (!correct) {
+      if (level === 'sure') { item._reason = 'careless'; item._misconception = true; }
+      else if (level === 'unsure' || level === 'guess') { item._reason = 'concept'; item._misconception = false; }
+      item._nextDue = Date.now();
+    } else {
+      /* Flashcards record the answer before the confidence tap. Recompute
+         from the streak before that answer so “guessed” really does take
+         back the point it briefly earned. */
+      const last = item._lastTrack;
+      if (last && Date.now() - last.at < 15 * 60 * 1000) {
+        const next = level === 'guess' ? last.before : last.before + 1;
+        if (next >= WR_GRADUATE_AT) { REV.graduate(uid); return true; }
+        item._streak = next;
+        item._nextDue = Date.now() + REV.intervalFor(last.before, level) * 24 * 60 * 60 * 1000;
+        if (level === 'guess') item._guessed = (Number(item._guessed) || 0) + 1;
+      } else if (level === 'guess' || level === 'unsure') {
+        const before = Math.max(0, (Number(item._streak) || 0) - 1);
+        item._nextDue = Date.now() + REV.intervalFor(before, level) * 24 * 60 * 60 * 1000;
+      }
+    }
+    _save(LS.WR, S.wr);
+    return true;
+  },
+
+  trackAnswer(question, isCorrect, opts) {
     if (!question || !question.uid) return;
+    const confidence = (opts && opts.conf) || '';
     if (isCorrect) {
       const item = S.wr.find(x => x && x.uid === question.uid);
       if (!item) return;
       /* Every correct answer counts toward mastery, even one given before
-         the scheduled review date. Five in a row graduates the question. */
+         the scheduled review date. Five in a row graduates the question.
+         A guessed-correct answer is evidence of luck, not recall, so it
+         keeps the streak where it was and comes back tomorrow. */
       const prev = Number(item._streak) || 0;
-      const next = prev + 1;
+      const next = confidence === 'guess' ? prev : prev + 1;
+      item._lastConfidence = confidence;
+      item._lastTrack = { at: Date.now(), before: prev, after: next, conf: confidence };
       if (next >= WR_GRADUATE_AT) { REV.graduate(question.uid); return; }
       item._streak = next;
-      const wait = SR_INTERVALS[prev] != null ? SR_INTERVALS[prev] : SR_INTERVALS[SR_INTERVALS.length - 1];
+      const wait = REV.intervalFor(prev, confidence);
       item._nextDue = Date.now() + wait * 24 * 60 * 60 * 1000;
       _save(LS.WR, S.wr);
       if (typeof HOME !== 'undefined') HOME.updateBadges?.();
     } else {
       REV.addWrong(question);
+      const item = S.wr.find(x => x && x.uid === question.uid);
+      if (item) {
+        item._lastConfidence = confidence;
+        if (confidence === 'sure') { item._reason = 'careless'; item._misconception = true; }
+        else if (confidence === 'unsure' || confidence === 'guess') { item._reason = 'concept'; item._misconception = false; }
+        item._nextDue = Date.now();
+        _save(LS.WR, S.wr);
+      }
     }
   },
   

@@ -62,13 +62,18 @@ window.WRONGBY = {
     }).length;
   },
 
-  async start(fids, dueOnly, mode){
-    let items = (S.wr || []).filter(q => !q._withdrawn && fids.indexOf(this._fidOf(q)) !== -1);
+  async start(fids, dueOnly, mode, opts){
+    opts = opts || {};
+    const wanted = Array.isArray(opts.items) ? opts.items : null;
+    let items = wanted
+      ? wanted.filter(q => q && !q._withdrawn)
+      : (S.wr || []).filter(q => !q._withdrawn && (fids || []).indexOf(this._fidOf(q)) !== -1);
     if (dueOnly) items = items.filter(q => this._due(q));
     if (!items.length) { toast(dueOnly ? 'Nothing due here right now.' : 'No missed questions here.'); return; }
+    const useFids = (fids && fids.length) ? fids : [...new Set(items.map(q => this._fidOf(q)).filter(Boolean))];
     QUIZ._showLoader('Getting your missed questions…');
     const fresh = {};
-    for (const fid of fids) {
+    for (const fid of useFids) {
       const ref = this._ref(fid);
       if (!ref) continue;
       try {
@@ -80,14 +85,15 @@ window.WRONGBY = {
     const merged = items.map(q => {
       const f = fresh[q.uid];
       if (!f || !sameQuestionAfterCorrection(q, f, 0.6)) return q;
-      return Object.assign({}, f, {
-        _streak: q._streak, _nextDue: q._nextDue,
-        _reason: q._reason, _misconception: q._misconception, _note: q._note
-      });
+      /* Keep every local review field, not only the four we knew about when
+         this was written. New scheduling data must survive a corrected fetch. */
+      const carry = {};
+      Object.keys(q).forEach(k => { if (k.charAt(0) === '_') carry[k] = q[k]; });
+      return Object.assign({}, f, carry);
     });
-    const ref0 = this._ref(fids[0]);
-    const label = (ref0 ? ChapterData.chapterName(ref0.lv, ref0.ch) : 'Missed') + ' — Missed';
-    QUIZ.startWith(shuf(merged), mode || 'flashcard', label);
+    const ref0 = useFids.length ? this._ref(useFids[0]) : null;
+    const label = opts.label || ((ref0 ? ChapterData.chapterName(ref0.lv, ref0.ch) : 'Missed') + ' — Missed');
+    QUIZ.startWith(opts.keepOrder ? merged : shuf(merged), mode || 'flashcard', label);
   },
 
   startChapter(i, dueOnly, mode){
@@ -246,6 +252,47 @@ window.WRONGBY = {
   },
   startHardest(){ WRONGBY.startList(WRONGBY._hardest().map(x => x.q), 'Hardest 20 \u00b7 Missed'); },
 
+  /* Due review used to be all-or-nothing: tap once and a hundred cards start,
+     or get a generic “how many?” dialog. This ranks the due queue by how long
+     it has waited, how often it has been missed and whether the error was a
+     concept gap, then offers a focused first set. */
+  reviewPlan(limit){
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const ranked = this._items().filter(q => this._due(q)).map(q => {
+      const overdueDays = q._nextDue == null ? 0 : Math.max(0, Math.floor((now - q._nextDue) / day));
+      const reason = this._reason(q);
+      const missed = this.missCount(q.uid);
+      return {
+        q: q, overdueDays: overdueDays, reason: reason, missed: missed,
+        score: overdueDays * 100 + missed * 10 + (reason === 'concept' ? 5 : reason === 'careless' ? 2 : 0)
+      };
+    }).sort((a, b) =>
+      b.score - a.score ||
+      (a.q._streak || 0) - (b.q._streak || 0) ||
+      String(a.q.uid).localeCompare(String(b.q.uid)));
+    const n = Number(limit);
+    const picked = n > 0 ? ranked.slice(0, n) : ranked;
+    return {
+      items: picked.map(x => x.q),
+      all: ranked.map(x => x.q),
+      total: ranked.length,
+      overdue: ranked.filter(x => x.overdueDays > 0).length,
+      concept: ranked.filter(x => x.reason === 'concept').length,
+      careless: ranked.filter(x => x.reason === 'careless').length,
+      unsorted: ranked.filter(x => x.reason !== 'concept' && x.reason !== 'careless').length
+    };
+  },
+  smartStart(limit){
+    const plan = this.reviewPlan(limit || 10);
+    if (!plan.items.length) { toast('Nothing is due right now.'); return; }
+    this.start([], true, 'flashcard', {
+      items: plan.items,
+      keepOrder: true,
+      label: 'Smart review \u2014 ' + plan.items.length + ' due'
+    });
+  },
+
   _renderDue(el){
     const due = this._last.map((c, i) => ({ c: c, i: i })).filter(x => x.c.due > 0);
     const total = this._last.reduce((n, c) => n + c.n, 0);
@@ -256,9 +303,18 @@ window.WRONGBY = {
         '<button class="btn btn-quiet btn-blk mt3" data-on-click="WRONGBY.tab(\'all\')">See all missed questions</button></div>';
       return;
     }
+    const plan = this.reviewPlan(10);
+    const smart = dueTotal > plan.items.length;
     el.innerHTML = this._wNote() + '<div class="card" style="margin-bottom:var(--sp-3);background:var(--accent-soft);border-color:var(--accent-line)">' +
         '<div class="t-callout" style="color:var(--ink)"><b>' + dueTotal + '</b> ready for review now, in ' + due.length + ' chapter' + (due.length === 1 ? '' : 's') + '.</div>' +
-        '<button class="btn btn-solid btn-blk mt3" data-on-click="WRONGBY.dueAll()"><i class="ph ph-repeat"></i> Review all ' + dueTotal + ' due now</button></div>' +
+        '<div class="t-foot mt2" style="color:var(--ink-2)">' +
+          plan.overdue + ' overdue \u00b7 ' + plan.concept + ' concept gap' + (plan.concept === 1 ? '' : 's') +
+          ' \u00b7 ' + plan.careless + ' careless' +
+        '</div>' +
+        '<div class="bg mt3">' +
+          (smart ? '<button class="btn btn-solid" data-on-click="WRONGBY.smartStart()" title="Start with the most overdue and hardest questions"><i class="ph ph-target"></i> Smart review ' + plan.items.length + ' first</button>' : '') +
+          '<button class="btn btn-' + (smart ? 'quiet' : 'solid') + '" data-on-click="WRONGBY.dueAll()"><i class="ph ph-repeat"></i> Review all ' + dueTotal + ' due now</button>' +
+        '</div></div>' +
       due.map(x => '<div class="card" style="margin-bottom:var(--sp-2)"><div class="card-hd"><h3>' + esc(x.c.name) + '</h3><span class="ctag tr">' + x.c.due + ' due</span></div>' +
         '<div class="bg"><button class="btn btn-sm btn-solid" data-on-click="WRONGBY.startChapter(' + x.i + ',true)">Do what\'s due</button>' +
         '<button class="btn btn-sm btn-quiet" data-on-click="WRONGBY.notesChapter(' + x.i + ')" title="Open notes and Q&A for this chapter" aria-label="Open notes and Q&A for this chapter"><i class="ph ph-text-columns"></i> Notes</button>' +

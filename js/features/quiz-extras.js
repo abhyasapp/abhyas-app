@@ -30,19 +30,12 @@ QUIZ.setConf = function(level){
   const q = S.quiz.qs[idx];
   const ans = S.quiz.ans[idx];
   if (!q || ans === null || ans === undefined) { CONF.render(); return; }
-  const item = (S.wr || []).find(x => x.uid === q.uid);
   const wasWrong = !isOk(ans, q.correct);
-  if (item) {
-    if (wasWrong && level === 'sure') {
-      item._misconception = true;
-      item._reason = 'careless';
-    } else if (wasWrong && (level === 'unsure' || level === 'guess')) {
-      item._reason = 'concept';
-      item._misconception = false;
-    } else if (!wasWrong && level === 'guess' && item._nextDue) {
-      item._nextDue = Date.now();
-    }
-    _save(LS.WR, S.wr);
+  /* Scheduling lives in REV so the same rules apply to flashcards, exams and
+     any future answer surface. A guessed-correct answer is not allowed to
+     take the normal long interval. */
+  if (typeof REV !== 'undefined' && REV.applyConfidence) {
+    REV.applyConfidence(q.uid, level, { correct: !wasWrong });
   }
   CONF.render();
   try { if (typeof QUIZ._paintFeedback === 'function') QUIZ._paintFeedback(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }

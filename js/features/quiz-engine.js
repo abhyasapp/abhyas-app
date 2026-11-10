@@ -1302,7 +1302,7 @@ const QUIZ = {
         if (S.quiz.ans[qi] === null) return;
         const correctPick = isOk(S.quiz.ans[qi], q.correct);
         PROG.track(correctPick);
-        REV.trackAnswer(q, correctPick);
+        REV.trackAnswer(q, correctPick, { conf: (S.quiz.conf && S.quiz.conf[qi]) || '' });
       });
       QUIZ._showResults();
     } finally {
