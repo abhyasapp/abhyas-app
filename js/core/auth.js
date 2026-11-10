@@ -160,7 +160,13 @@ const AUTH = {
   _updateSidebarCard(user) {
     const nameEl = document.getElementById('sb-uname');
     const statusEl = document.getElementById('sb-ustatus');
-    if (nameEl) nameEl.textContent = user?.name || user?.username || 'Student';
+    const avatarEl = document.getElementById('sb-avatar');
+    const displayName = user?.name || user?.username || 'Student';
+    if (nameEl) nameEl.textContent = displayName;
+    if (avatarEl) {
+      const initial = Array.from(String(displayName).trim())[0] || 'S';
+      avatarEl.textContent = initial.toUpperCase();
+    }
     if (statusEl) {
       const a = user?.access || {};
       if (a.level === 'permanent' && a.accessType === 'yearly') {

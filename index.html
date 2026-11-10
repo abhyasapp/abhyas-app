@@ -509,6 +509,55 @@ details.faq p{
 .cookie-banner .btn{width:auto;min-height:38px;padding:0 var(--sp-4);font-size:var(--fs-foot)}
 #cookie-banner a{text-decoration:underline;text-underline-offset:2px}
 
+/* ── Presentation pass ──────────────────────────────────────── */
+body{
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(880px 520px at 8% -8%,rgba(var(--accent-rgb),.12),transparent 62%),
+    radial-gradient(720px 480px at 100% 4%,rgba(33,92,153,.07),transparent 66%);
+  background-attachment:fixed
+}
+.dark body{
+  background-image:
+    radial-gradient(880px 520px at 8% -8%,rgba(var(--accent-rgb),.11),transparent 62%),
+    radial-gradient(720px 480px at 100% 4%,rgba(84,185,240,.07),transparent 66%)
+}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:var(--sp-2);
+  font-size:var(--fs-cap);font-weight:750;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:var(--sp-4)
+}
+.hero-eyebrow::before{content:'';width:18px;height:1px;background:currentColor;opacity:.55}
+.hero-proof{display:flex;justify-content:center;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-4)}
+.hero-proof span{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .65rem;border-radius:var(--r-full);background:var(--surface);border:var(--hairline-w) solid var(--sep);color:var(--ink-2);font-size:var(--fs-cap);font-weight:600;box-shadow:var(--sh-1)}
+.hero-proof i{color:var(--accent);font-size:.95rem}
+.mast h1{font-size:clamp(2.2rem,8vw,3rem);letter-spacing:-.045em}
+.mast .tag{font-size:var(--fs-body);font-weight:600;color:var(--ink-2);margin-top:var(--sp-2)}
+.mast img{width:64px;height:64px;border-radius:18px;box-shadow:0 8px 24px rgba(var(--accent-rgb),.18),var(--sh-2)}
+#main-card{border-color:var(--accent-line);box-shadow:0 18px 50px rgba(18,28,22,.08),var(--sh-2)}
+.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin:var(--sp-4) 0 var(--sp-5)}
+@media (max-width:620px){.feature-grid{grid-template-columns:1fr}}
+.feature-grid .feature-card{display:block;padding:var(--sp-4);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-card);background:var(--surface);box-shadow:var(--sh-1)}
+.feature-grid .feature-card h3{font-size:var(--fs-t3);margin:var(--sp-3) 0 var(--sp-1)}
+.feature-grid .feature-card p{font-size:var(--fs-callout);line-height:1.65;margin:0}
+.feature-ic{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:11px;background:var(--accent-soft);color:var(--accent);font-size:1.05rem}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-3);margin-top:var(--sp-3)}
+@media (max-width:680px){.steps{grid-template-columns:1fr}}
+.step{display:flex;gap:var(--sp-3);padding:var(--sp-4);border-radius:var(--r-card);background:var(--surface);border:var(--hairline-w) solid var(--sep);box-shadow:var(--sh-1)}
+.step-n{font-family:var(--mono);font-size:var(--fs-cap);font-weight:700;color:var(--accent);letter-spacing:.04em;padding-top:2px}
+.step h3{font-size:var(--fs-t3);margin-bottom:var(--sp-1)}
+.step p{font-size:var(--fs-callout);line-height:1.6;color:var(--ink-2)}
+.cta-band{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-5);margin-top:var(--sp-12);padding:var(--sp-6) var(--sp-5);border-radius:var(--r-sheet);background:var(--accent);color:var(--on-accent);box-shadow:0 16px 40px rgba(var(--accent-rgb),.20)}
+.cta-band h2{font-size:var(--fs-t1);color:var(--on-accent);letter-spacing:-.02em}
+.cta-band p{font-size:var(--fs-callout);color:var(--on-accent);opacity:.82;line-height:1.55;max-width:46ch;margin-top:var(--sp-1)}
+.cta-kicker{font-size:var(--fs-cap);font-weight:750;letter-spacing:.10em;text-transform:uppercase;opacity:.72;margin-bottom:var(--sp-2)}
+.cta-actions{display:flex;flex-direction:column;gap:var(--sp-2);flex:0 0 210px}
+.cta-band .btn{background:#fff;color:#145536;box-shadow:none}
+.cta-band .btn:hover{background:var(--accent-soft);color:#145536}
+.cta-band .btn-sec{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff}
+.cta-band .btn-sec:hover{background:rgba(255,255,255,.20);color:#fff}
+@media (max-width:620px){.cta-band{flex-direction:column;align-items:stretch;padding:var(--sp-5) var(--sp-4)}.cta-actions{flex:auto}}
+
 /* ── Contrast patch ───────────────────────────────────────────── */
 /* --ink-3 now comes from css/tokens.css so both student pages share one
    value; only the page-specific tokens stay here. */
@@ -530,11 +579,17 @@ details.faq p{
 
 <main class="page">
   <header class="mast">
+    <p class="hero-eyebrow">Nepal · Level 7 Civil Engineering</p>
     <img src="icon-192.png" width="192" height="192" alt="">
     <h1>Abhyas</h1>
     <p class="tag" data-i18n>Your path to mastery</p>
     <p class="what" data-i18n>Loksewa Civil Engineering practice — online or offline</p>
     <div class="net" role="status" aria-live="polite"><span class="ndot" id="ndot" aria-hidden="true"></span><span id="nstat">Online</span></div>
+    <div class="hero-proof" aria-label="Why students choose Abhyas">
+      <span><i class="ph ph-wifi-slash" aria-hidden="true"></i> Offline first</span>
+      <span><i class="ph ph-check-circle" aria-hidden="true"></i> Human marked</span>
+      <span><i class="ph ph-device-mobile" aria-hidden="true"></i> Built for phones</span>
+    </div>
   </header>
 
   <div class="cookie-banner" id="cookie-banner" hidden role="region" aria-label="Cookie notice">
@@ -775,6 +830,25 @@ details.faq p{
     </div>
   </section>
 
+  <section class="section" id="how" aria-labelledby="how-h">
+    <div class="section-head"><h2 id="how-h">How it works</h2></div>
+    <p class="lede">A simple loop, built around the way exam preparation actually happens: pick up your phone, answer a few questions, and come back to what you missed.</p>
+    <div class="steps">
+      <div class="step">
+        <span class="step-n">01</span>
+        <div><h3>Pick a chapter</h3><p>Start with the subject you are covering today, or let the 30-minute session choose for you.</p></div>
+      </div>
+      <div class="step">
+        <span class="step-n">02</span>
+        <div><h3>Practice anywhere</h3><p>Open a chapter once. Your questions stay on your phone, ready for the bus or a power cut.</p></div>
+      </div>
+      <div class="step">
+        <span class="step-n">03</span>
+        <div><h3>Review what matters</h3><p>Missed questions return on a spaced schedule, with the most urgent ones first.</p></div>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="about" aria-labelledby="about-h">
     <div class="section-head"><h2 id="about-h">What Abhyas is</h2></div>
     <p class="lede">Abhyas is a Civil Loksewa practice app for Nepal's Lok Sewa Aayog Level 7 Civil Engineering exam. It includes chapter-wise technical questions plus General Knowledge practice alongside them.</p>
@@ -787,21 +861,27 @@ details.faq p{
       <li>Professional Practices</li><li>General Knowledge</li>
     </ul>
 
-    <div class="point">
-      <h3>It keeps working when the power doesn't</h3>
-      <p>Open a chapter once while you have signal and its questions are saved to your phone. After that it opens during load-shedding, on the bus, or anywhere with no connection at all. New chapters need a connection the first time.</p>
-    </div>
-    <div class="point">
-      <h3>It tells you what to revise next</h3>
-      <p>Accuracy per chapter, a daily streak, and a miss list that brings questions back on a spacing schedule until you've got them right four times, days apart. Your progress follows you to any device you sign in on.</p>
-    </div>
-    <div class="point">
-      <h3>Written answers, marked by a person</h3>
-      <p>A timed question every day and full 100-mark papers on demand. Write on paper, photograph it, upload one PDF, and an admin marks it and sends feedback.</p>
-    </div>
-    <div class="point">
-      <h3>Free to try first</h3>
-      <p>Every new account gets a trial period with everything unlocked. Pay only once you know it's useful.</p>
+    <div class="feature-grid">
+      <div class="point feature-card">
+        <span class="feature-ic"><i class="ph ph-wifi-slash" aria-hidden="true"></i></span>
+        <h3>It keeps working when the power doesn't</h3>
+        <p>Open a chapter once while you have signal and its questions are saved to your phone. After that it opens during load-shedding, on the bus, or anywhere with no connection at all. New chapters need a connection the first time.</p>
+      </div>
+      <div class="point feature-card">
+        <span class="feature-ic"><i class="ph ph-target" aria-hidden="true"></i></span>
+        <h3>It tells you what to revise next</h3>
+        <p>Accuracy per chapter, a daily streak, and a miss list that brings questions back on a spacing schedule until you've got them right four times, days apart. Your progress follows you to any device you sign in on.</p>
+      </div>
+      <div class="point feature-card">
+        <span class="feature-ic"><i class="ph ph-note-pencil" aria-hidden="true"></i></span>
+        <h3>Written answers, marked by a person</h3>
+        <p>A timed question every day and full 100-mark papers on demand. Write on paper, photograph it, upload one PDF, and an admin marks it and sends feedback.</p>
+      </div>
+      <div class="point feature-card">
+        <span class="feature-ic"><i class="ph ph-sparkle" aria-hidden="true"></i></span>
+        <h3>Free to try first</h3>
+        <p>Every new account gets a trial period with everything unlocked. Pay only once you know it's useful.</p>
+      </div>
     </div>
   </section>
 
@@ -863,6 +943,18 @@ details.faq p{
         <summary>I forgot my password.</summary>
         <p>Use "Forgot your password?" on the sign-in form. If the username or email matches an account, a reset code goes to that account's email address.</p>
       </details>
+    </div>
+  </section>
+
+  <section class="cta-band" aria-labelledby="cta-h">
+    <div>
+      <div class="cta-kicker">Start small. Stay consistent.</div>
+      <h2 id="cta-h">One question is enough to begin.</h2>
+      <p>Try a real Loksewa question without an account, then keep your progress across every device you study on.</p>
+    </div>
+    <div class="cta-actions">
+      <button class="btn" type="button" data-on-click="APP.setMode('signup');document.getElementById('main-card').scrollIntoView({behavior:'smooth'})">Create a free account</button>
+      <a class="btn btn-sec" href="#try">Try a question</a>
     </div>
   </section>
 
