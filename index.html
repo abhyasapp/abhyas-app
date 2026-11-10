@@ -112,7 +112,8 @@
 <link rel="dns-prefetch" href="https://script.googleusercontent.com">
 <link rel="stylesheet" href="tools/vendor/fonts/fonts.css">
 <link rel="preload" href="tools/vendor/phosphor/Phosphor.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="tools/vendor/phosphor/phosphor-regular.css">
+<link rel="preload" href="tools/vendor/phosphor/phosphor-regular.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="tools/vendor/phosphor/phosphor-regular.css"></noscript>
 
 <link rel="stylesheet" href="css/tokens.css">
 <style>

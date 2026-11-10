@@ -1724,7 +1724,24 @@ const QUIZ = {
       }
     });
 
-    if(pct>=70 && window.confetti){ confetti({particleCount:90,spread:75,origin:{y:0.6}}); setTimeout(()=>document.querySelectorAll('body > canvas').forEach(c=>c.setAttribute('aria-hidden','true')),0); }
+    if(pct>=70){
+      /* Load the celebration only when a result earns it. Keeping this 24 KB
+         vendor script out of the boot path removes a ~400 ms parse/eval task
+         on a throttled phone; the first qualifying result loads it async. */
+      const party = () => {
+        if(!window.confetti) return;
+        confetti({particleCount:90,spread:75,origin:{y:0.6}});
+        setTimeout(()=>document.querySelectorAll('body > canvas').forEach(c=>c.setAttribute('aria-hidden','true')),0);
+      };
+      if(window.confetti) party();
+      else {
+        const s = document.createElement('script');
+        s.src = 'tools/vendor/confetti/confetti.browser.js';
+        s.async = true;
+        s.onload = party;
+        document.head.appendChild(s);
+      }
+    }
     const qres = S.quiz.qs
       .map((q,i)=> S.quiz.ans[i]===null ? null : {uid:q.uid, ok:isOk(S.quiz.ans[i], q.correct)})
       .filter(Boolean);

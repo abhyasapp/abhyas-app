@@ -46,6 +46,18 @@ describe('PWA install metadata', () => {
     for (const text of strings) expect(dictionary).toContain(text);
   });
 
+  it('keeps heavy vendor work off the first paint', () => {
+    const index = read('index.html');
+    const user = read('user.html');
+    // 78 KB of icon CSS must not hold up the first paint on either page.
+    for (const html of [index, user]) {
+      expect(html).toMatch(/rel="preload"[^>]*phosphor-regular\.css[^>]*as="style"/);
+    }
+    // Confetti is only needed after a >=70% result, so it must load on demand.
+    expect(user).not.toMatch(/<script[^>]+confetti\.browser\.js/);
+    expect(read('js/features/quiz-engine.js')).toContain("s.src = 'tools/vendor/confetti/confetti.browser.js'");
+  });
+
   it('routes every shortcut to a unique, supported student view', () => {
     const routes = new Set([
       'home', 'offline', 'downloads', 'progress', 'subjective',

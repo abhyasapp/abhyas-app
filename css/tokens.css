@@ -6,6 +6,10 @@
    in each page. Load this BEFORE any page <style> so page overrides win.
    ═════════════════════════════════════════════════════════════════════ */
 
+/* Reserve an icon's box before the non-blocking Phosphor stylesheet lands, so
+   first paint is not delayed and the icon cannot shift the line when it does. */
+.ph{display:inline-block;width:1em;text-align:center;font-style:normal;line-height:1;flex:none}
+
 :root{
   color-scheme: light;
   --fs-display:1.75rem;

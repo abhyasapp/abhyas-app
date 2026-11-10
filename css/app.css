@@ -1809,3 +1809,12 @@ html.reduce-motion *,html.reduce-motion *::before,html.reduce-motion *::after{an
   .qna-row{align-items:flex-start}
   .qna-open{align-self:stretch;justify-content:center}
 }
+
+/* Phones pay for every blurred surface during layout. The blur is decorative
+   (the background colour already separates these bars), so keep it on larger
+   screens and skip it on the viewport where it costs the most. */
+@media (max-width:960px){
+  #tb,#bnav,#ov,.mbg,.fc-nav,.ex-bottom,.qbar{
+    -webkit-backdrop-filter:none;backdrop-filter:none
+  }
+}
