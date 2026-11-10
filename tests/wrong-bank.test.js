@@ -3,7 +3,7 @@
 // printable offline file. No network.
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { bootPage } from '../tools/lib/boot-page.mjs';
-import { ROOT } from './helpers/load-globals.js';
+import { loadGlobals, ROOT } from './helpers/load-globals.js';
 
 const SEED = `
   localStorage.removeItem(REV.MASTERED_KEY);
@@ -93,6 +93,13 @@ describe('wrong-bank mastery and chapter downloads', () => {
       return due ? { go: due.go, meta: due.meta, sub: due.sub } : null;
     })()`);
     expect(item).toEqual({ go: 'WRONGBY.smartStart()', meta: 'Review 10', sub: 'Smart review picks the most urgent 10' });
+  });
+
+  it('retries the shared chapter lookup after content becomes available', () => {
+    const ctx = loadGlobals(['js/core/scope.js']);
+    expect(ctx.chapterRef('f_soil')).toBe(null);
+    ctx.ChapterData = { allFileRefs: () => [{ fid: 'f_soil', key: 'k_soil' }] };
+    expect(ctx.chapterRef('f_soil')).toEqual({ fid: 'f_soil', key: 'k_soil' });
   });
 
   it('builds the miss index in one pass across the whole session history', async () => {

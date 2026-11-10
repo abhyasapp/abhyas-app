@@ -42,8 +42,15 @@ function chapterRef(fid) {
   if (!fid) return null;
   try {
     if (!_chapterRefMapCache) {
-      _chapterRefMapCache = new Map();
-      (ChapterData.allFileRefs() || []).forEach(r => { if (r && r.fid) _chapterRefMapCache.set(r.fid, r); });
+      if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return null;
+      const refs = ChapterData.allFileRefs() || [];
+      /* Do not cache an empty list: a feature may ask before the published
+         chapters finish loading, and a permanent empty map would hide every
+         chapter for the rest of the page. */
+      if (!refs.length) return null;
+      const map = new Map();
+      refs.forEach(r => { if (r && r.fid) map.set(r.fid, r); });
+      _chapterRefMapCache = map;
     }
     return _chapterRefMapCache.get(fid) || null;
   } catch (e) { return null; }

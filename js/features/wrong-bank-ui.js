@@ -17,10 +17,14 @@ window.WRONGBY = {
      fid lookup for groups(), review plans and start(). */
   _refMap(){
     if (this._refs) return this._refs;
+    let refs = [];
+    try { refs = ChapterData.allFileRefs() || []; }
+    catch (e) { window.warnCaught && window.warnCaught('js/features/wrong-bank-ui.js', e); }
+    /* Leave the cache empty until content exists, so a render before data
+       loads cannot pin every later lookup to an empty map. */
+    if (!refs.length) return new Map();
     const map = new Map();
-    try {
-      (ChapterData.allFileRefs() || []).forEach(r => { if (r && r.fid) map.set(r.fid, r); });
-    } catch (e) { window.warnCaught && window.warnCaught('js/features/wrong-bank-ui.js', e); }
+    refs.forEach(r => { if (r && r.fid) map.set(r.fid, r); });
     this._refs = map;
     return map;
   },
