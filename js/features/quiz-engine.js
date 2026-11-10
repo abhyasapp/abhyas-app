@@ -1528,7 +1528,7 @@ const QUIZ = {
           try {
             if (typeof fidFromUid === 'function' && typeof ChapterData !== 'undefined') {
               const fid = fidFromUid(String(q.uid || ''));
-              const ref = ChapterData.allFileRefs().find(r => r.fid === fid);
+              const ref = chapterRef(fid);
               if (ref) label = ChapterData.chapterName(ref.lv, ref.ch) || 'Other';
             }
           } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
@@ -1569,7 +1569,7 @@ const QUIZ = {
           let lv = null, ch = null;
           try {
             const fid = (typeof fidFromUid === 'function') ? fidFromUid(String(q.uid || '')) : '';
-            const ref = ChapterData.allFileRefs().find(r => r.fid === fid);
+            const ref = (typeof chapterRef === 'function') ? chapterRef(fid) : null;
             if (ref) { lv = ref.lv; ch = ref.ch; }
           } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
           const a = S.quiz.ans[i];

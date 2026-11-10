@@ -541,7 +541,7 @@
 
   // ── Launchers: real practice, not just a link to a list ─────────────────────────────────
   const RUN = {
-    _ref(fid) { return _eligibleRefs().find((r) => r.fid === fid) || (ChapterData.allFileRefs().find((r) => r.fid === fid)); },
+    _ref(fid) { return _eligibleRefs().find((r) => r.fid === fid) || chapterRef(fid); },
     async _load(ref) { return normQ(await QUIZ._fetch(ref.fid, ref.key), ref.fid); },
     _seenQ(q) {
       const uid = String((q && q.uid) || ''), i = uid.lastIndexOf('_');

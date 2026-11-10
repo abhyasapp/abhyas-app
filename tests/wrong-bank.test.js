@@ -95,6 +95,54 @@ describe('wrong-bank mastery and chapter downloads', () => {
     expect(item).toEqual({ go: 'WRONGBY.smartStart()', meta: 'Review 10', sub: 'Smart review picks the most urgent 10' });
   });
 
+  it('builds the miss index in one pass across the whole session history', async () => {
+    const out = await p.ev(`(() => {
+      const sessions = [
+        { qres: [{ uid: 'f_a_0', ok: false }, { uid: 'f_a_0', ok: false }, { uid: 'f_b_1', ok: true }] },
+        { qres: [{ uid: 'f_b_1', ok: false }] }
+      ];
+      let reads = 0;
+      const prog = { total: 0, correct: 0 };
+      Object.defineProperty(prog, 'sessions', { get(){ reads++; return sessions; } });
+      S.prog = prog;
+      WRONGBY._missCache = null;
+      const a = WRONGBY.missCount('f_a_0');
+      const b = WRONGBY.missCount('f_b_1');
+      const unknown = WRONGBY.missCount('f_missing_0');
+      return { a, b, unknown, reads };
+    })()`);
+    expect(out).toEqual({ a: 2, b: 1, unknown: 0, reads: 1 });
+  });
+
+  it('shows the three most urgent questions with a reason and a notes action', async () => {
+    const out = await p.ev(`(() => {
+      S.wr = [
+        { uid: 'f_soil_0', q: 'Which soil holds water?', _nextDue: Date.now() - 5 * 86400000, _reason: 'concept', _streak: 0 },
+        { uid: 'f_survey_0', q: 'Survey correction?', _nextDue: Date.now() - 2 * 86400000, _reason: 'careless', _streak: 0 },
+        { uid: 'f_gk_0', q: 'General awareness?', _nextDue: Date.now() - 86400000, _streak: 0 }
+      ];
+      S.prog = { total: 0, correct: 0, sessions: [] };
+      WRONGBY._missCache = null;
+      WRONGBY._last = [
+        { name: 'Soil Mechanics', due: 1, n: 1, files: [] },
+        { name: 'Surveying', due: 1, n: 1, files: [] },
+        { name: 'General Knowledge', due: 1, n: 1, files: [] }
+      ];
+      const el = document.getElementById('wr-list');
+      WRONGBY._renderDue(el);
+      return {
+        text: el.textContent,
+        notes: el.querySelectorAll('[data-on-click^="WRONGBY.notesQuestion"]').length,
+        first: el.querySelector('.row .t-foot').textContent
+      };
+    })()`);
+    expect(out.text).toContain('Next in line');
+    expect(out.first).toContain('Which soil holds water?');
+    expect(out.text).toContain('Concept gap');
+    expect(out.text).toContain('Careless');
+    expect(out.notes).toBe(3);
+  });
+
   it('ranks due questions by overdue time, misses and reason', async () => {
     const plan = await p.ev(`(() => {
       S.wr = [
@@ -152,6 +200,26 @@ describe('wrong-bank mastery and chapter downloads', () => {
     expect(out.chapterQ).toBe('Soil Mechanics');
     expect(out.fileQ).toBe('Soil Mechanics');
     expect(out.input).toBe('Soil Mechanics');
+  });
+
+  it('opens notes for one missed question by resolving its set', async () => {
+    const out = await p.ev(`(() => {
+      const old = window.ChapterData;
+      window.ChapterData = { allFileRefs: () => [{ fid: 'f_quiz', lv: 'level7', ch: 'quiz', subtopic: 'Quiz Topic' }] };
+      WRONGBY._refs = null;
+      const orig = UI.go; let went = 0;
+      try {
+        UI.go = () => { went++; };
+        WRONGBY.notesQuestion('f_quiz_0');
+      } finally {
+        UI.go = orig;
+        window.ChapterData = old;
+        WRONGBY._refs = null;
+      }
+      return { went: went, q: QNA.q };
+    })()`);
+    expect(out.went).toBe(1);
+    expect(out.q).toContain('Quiz');
   });
 
   it('downloads only the chosen chapter', async () => {

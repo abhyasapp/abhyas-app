@@ -6,6 +6,7 @@ window.STUDYDOCS = {
   LIST_KEY: 'abhyas_studydocs', SEEN_KEY: 'abhyas_studydocs_seen', CACHE_KEY: 'abhyas_studydocs_cache',
   MAX_CACHE_BYTES: 25 * 1024 * 1024, STALE_MS: 10 * 60 * 1000,
   docs: [], loaded: false, loading: false, cat: 'all', q: '', chapter: '', newIds: new Set(), _at: 0,
+  _cacheIdx: null, _cacheById: null,
 
   _user(){ try { return (typeof S !== 'undefined' && S.user) ? S.user : null; } catch(e){ return null; } },
   _online(){ try { return !!(S.online && !S.forcedOffline); } catch(e){ return navigator.onLine; } },
@@ -233,8 +234,22 @@ window.STUDYDOCS = {
   setCat(c){ this.cat = c || 'all'; this.render(); },
   setQuery(v){ this.q = String(v || ''); clearTimeout(this._qt); this._qt = setTimeout(() => this.render(), 120); },
 
-  _cacheIndex(){ return this._read(this.CACHE_KEY, []); },
-  _isCached(d){ const e = this._cacheIndex().find(x => x.id === d.id); return !!(e && e.updatedAt === d.updatedAt); },
+  /* The list asks whether every row is cached. Parsing the same JSON index
+     once per row was the expensive part; keep the parsed list and a fid map
+     until a cache write changes them. */
+  _cacheIndex(){
+    if (this._cacheIdx) return this._cacheIdx;
+    const idx = this._read(this.CACHE_KEY, []);
+    this._cacheIdx = Array.isArray(idx) ? idx : [];
+    this._cacheById = new Map(this._cacheIdx.filter(x => x && x.id).map(x => [x.id, x]));
+    return this._cacheIdx;
+  },
+  _invalidateCache(){ this._cacheIdx = null; this._cacheById = null; },
+  _isCached(d){
+    this._cacheIndex();
+    const e = this._cacheById.get(d.id);
+    return !!(e && e.updatedAt === d.updatedAt);
+  },
   _readPosition(d){
     try {
       return (typeof PDFVIEW !== 'undefined' && typeof PDFVIEW.position === 'function')
@@ -331,6 +346,7 @@ window.STUDYDOCS = {
       idx.push({ id: d.id, at: Date.now(), updatedAt: d.updatedAt, size: Math.round(res.base64.length * 0.75) });
       idx.sort((a, b) => b.at - a.at);
       this._write(this.CACHE_KEY, idx);
+      this._invalidateCache();
       this.render();
     } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); }
   },
@@ -412,6 +428,7 @@ window.STUDYDOCS = {
   _purgeCache(id){
     try { QDB.del('studydoc:' + id); } catch (e) { window.warnCaught && window.warnCaught('js/features/study-docs.js', e); }
     this._write(this.CACHE_KEY, this._cacheIndex().filter(x => x.id !== id));
+    this._invalidateCache();
   },
 };
 

@@ -104,10 +104,19 @@ window.SESSION = {
       .filter(e => e.attempted >= 5 && e.accuracy < MASTERY_THRESHOLD * 100)
       .sort((a, b) => a.accuracy - b.accuracy)
       .slice(0, 6);
+    /* Group the refs once. A weak chapter may share a name with several sets;
+       rebuilding this filter inside the loop repeated both the scan and the
+       chapterName lookup for every entry. */
+    const byChapter = new Map();
+    (typeof ChapterData !== 'undefined' ? ChapterData.allFileRefs() : []).forEach(ref => {
+      const name = ChapterData.chapterName(ref.lv, ref.ch);
+      if (!byChapter.has(name)) byChapter.set(name, []);
+      byChapter.get(name).push(ref);
+    });
     const picked = [];
     for (const w of weak) {
       if (picked.length >= limit) break;
-      const refs = ChapterData.allFileRefs().filter(r => ChapterData.chapterName(r.lv, r.ch) === w.chapter);
+      const refs = byChapter.get(w.chapter) || [];
       for (const ref of refs) {
         if (picked.length >= limit) break;
         try {

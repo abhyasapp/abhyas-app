@@ -183,7 +183,7 @@ window.TODAY_PLAN = {
       const sessions = (S.prog && S.prog.sessions) || [];
       const last = sessions.find(s => s && s.fid && s.lv && s.ch);
       if (!last || !last.fid) return null;
-      const ref = ChapterData.allFileRefs().find(r => r.fid === last.fid);
+      const ref = chapterRef(last.fid);
       if (!ref) return null;
       const at = Number(last.at) || 0;
       if (Date.now() - at > 14 * 24 * 60 * 60 * 1000) return null;
@@ -217,7 +217,7 @@ window.TODAY_PLAN = {
   resume(){
     const ctx = this._resumeCtx();
     if (!ctx) { toast('Nothing to continue yet \u2014 pick a chapter to start.'); return; }
-    const ref = ChapterData.allFileRefs().find(r => r.fid === ctx.fid);
+    const ref = chapterRef(ctx.fid);
     if (!ref) { toast('That chapter is not available right now.'); return; }
     QUIZ.load(ref.fid, ref.key, 'flashcard',
       ChapterData.chapterName(ref.lv, ref.ch) + ' \u2014 ' + ref.book,
@@ -332,7 +332,7 @@ window.DAILY10 = {
     const shuffled = fids.slice();
     for (let i = shuffled.length - 1; i > 0; i--){ const j = Math.floor(rng() * (i + 1)); const t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t; }
     for (const fid of shuffled){
-      const ref = (typeof ChapterData !== 'undefined') ? ChapterData.allFileRefs().find(r => r.fid === fid) : null;
+      const ref = (typeof chapterRef === 'function') ? chapterRef(fid) : null;
       if (!ref) continue;
       try {
         const raw = await QUIZ._fetch(ref.fid, ref.key);

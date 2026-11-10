@@ -99,9 +99,7 @@ window.PRINT_Q = {
 
   async sheet(fid, title){
     if(!fid){ toast('Not available.'); return; }
-    const ref = (typeof ChapterData !== 'undefined')
-      ? ChapterData.allFileRefs().find(r => r.fid === fid)
-      : null;
+    const ref = (typeof chapterRef === 'function') ? chapterRef(fid) : null;
     if(!ref){ toast('That chapter is not registered.'); return; }
 
     toast('Preparing the sheet…', 2500);

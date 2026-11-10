@@ -34,6 +34,21 @@ function fidFromUid(uid) {
   return i > -1 ? uid.slice(0, i) : uid;
 }
 
+/* Many screens turn a question uid back into its chapter ref. The published
+   reference list is static for the page, so build the fid lookup once and
+   reuse it instead of scanning thousands of refs on every card. */
+let _chapterRefMapCache = null;
+function chapterRef(fid) {
+  if (!fid) return null;
+  try {
+    if (!_chapterRefMapCache) {
+      _chapterRefMapCache = new Map();
+      (ChapterData.allFileRefs() || []).forEach(r => { if (r && r.fid) _chapterRefMapCache.set(r.fid, r); });
+    }
+    return _chapterRefMapCache.get(fid) || null;
+  } catch (e) { return null; }
+}
+
 function fileStatsMap(leaves) {
   const map = new Map();
   leaves.forEach(ref => {

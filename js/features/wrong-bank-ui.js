@@ -10,8 +10,21 @@
 window.WRONGBY = {
   _open: {},
   _last: [],
+  _refs: null,
 
-  _ref(fid){ return ChapterData.allFileRefs().find(r => r.fid === fid) || null; },
+  /* ChapterData is static for the life of a page, but its full reference list
+     is not: this object used to scan it once per missed question. Keep one
+     fid lookup for groups(), review plans and start(). */
+  _refMap(){
+    if (this._refs) return this._refs;
+    const map = new Map();
+    try {
+      (ChapterData.allFileRefs() || []).forEach(r => { if (r && r.fid) map.set(r.fid, r); });
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/wrong-bank-ui.js', e); }
+    this._refs = map;
+    return map;
+  },
+  _ref(fid){ return this._refMap().get(fid) || null; },
   _due(q){ return q._nextDue == null || q._nextDue <= Date.now(); },
   _fidOf(q){ return fidFromUid(String((q && q.uid) || '')); },
   _reason(q){
@@ -121,6 +134,12 @@ window.WRONGBY = {
     const sub = (typeof prettySub === 'function') ? prettySub(ref.subtopic) : ref.subtopic;
     this._notes(sub || ref.ch);
   },
+  notesQuestion(uid){
+    const ref = this._ref(this._fidOf({ uid: uid }));
+    if (!ref){ toast('Notes are not available for this question.'); return; }
+    const sub = (typeof prettySub === 'function') ? prettySub(ref.subtopic) : ref.subtopic;
+    this._notes(sub || ref.ch);
+  },
   toggle(i){ const c = this._last[i]; if (!c) return; this._open[c.key] = !this._open[c.key]; this.render(); },
   downloadChapter(i){
     const c = this._last[i];
@@ -138,22 +157,32 @@ window.WRONGBY = {
     PRINT_Q.missed(items, 'All missed questions');
   },
 
-  missCount(uid){
-    if (!uid) return 0;
-    if (!this._missCache) this._missCache = {};
-    if (this._missCache[uid] != null) return this._missCache[uid];
-    let n = 0;
-    const sessions = (S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
+  /* Build every uid's miss count in one pass. The old version walked every
+     session for every uid, which made the hardest-20 and review-plan views
+     quadratic as the session history grew. */
+  _missIndex(){
+    if (this._missCache) return this._missCache;
+    const out = Object.create(null);
+    const prog = S.prog;
+    let sessions = prog && prog.sessions;
+    if (!Array.isArray(sessions)) sessions = [];
     for (let i = 0; i < sessions.length; i++){
       const qres = sessions[i] && sessions[i].qres;
       if (!Array.isArray(qres)) continue;
       for (let j = 0; j < qres.length; j++){
         const r = qres[j];
-        if (r && r.uid === uid && r.ok === false) n++;
+        if (r && r.uid && r.ok === false) out[r.uid] = (out[r.uid] || 0) + 1;
       }
     }
-    this._missCache[uid] = n;
-    return n;
+    this._missCache = out;
+    return out;
+  },
+  missCount(uid){
+    if (!uid) return 0;
+    return this._missIndex()[uid] || 0;
+  },
+  _reasonLabel(r){
+    return r === 'concept' ? 'Concept gap' : r === 'careless' ? 'Careless' : '';
   },
 
   async practiceSimilar(uid){
@@ -280,7 +309,8 @@ window.WRONGBY = {
       overdue: ranked.filter(x => x.overdueDays > 0).length,
       concept: ranked.filter(x => x.reason === 'concept').length,
       careless: ranked.filter(x => x.reason === 'careless').length,
-      unsorted: ranked.filter(x => x.reason !== 'concept' && x.reason !== 'careless').length
+      unsorted: ranked.filter(x => x.reason !== 'concept' && x.reason !== 'careless').length,
+      details: picked.map(x => ({ q: x.q, overdueDays: x.overdueDays, reason: x.reason, missed: x.missed }))
     };
   },
   smartStart(limit){
@@ -305,12 +335,23 @@ window.WRONGBY = {
     }
     const plan = this.reviewPlan(10);
     const smart = dueTotal > plan.items.length;
+    const preview = (plan.details || []).slice(0, 3).map(x => {
+      const dueText = x.overdueDays > 0 ? x.overdueDays + 'd overdue' : 'Due today';
+      const why = this._reasonLabel(x.reason);
+      return '<div class="row" style="padding:var(--sp-2) 0;border-top:1px solid var(--sep)">' +
+        '<div class="row-main"><div class="t-foot" style="color:var(--ink);line-height:1.45;font-weight:600">' +
+          esc(this._text(x.q).slice(0, 96) || 'Question') + '</div>' +
+          '<div class="t-cap">' + esc(dueText) + ' \u00b7 missed ' + x.missed + '\u00d7' + (why ? ' \u00b7 ' + esc(why) : '') + '</div></div>' +
+        '<button class="btn btn-sm btn-quiet" type="button" data-on-click="WRONGBY.notesQuestion(\'' + escAttrJs(x.q.uid) + '\')" title="Open notes for this question" aria-label="Open notes for this question"><i class="ph ph-text-columns"></i></button>' +
+      '</div>';
+    }).join('');
     el.innerHTML = this._wNote() + '<div class="card" style="margin-bottom:var(--sp-3);background:var(--accent-soft);border-color:var(--accent-line)">' +
         '<div class="t-callout" style="color:var(--ink)"><b>' + dueTotal + '</b> ready for review now, in ' + due.length + ' chapter' + (due.length === 1 ? '' : 's') + '.</div>' +
         '<div class="t-foot mt2" style="color:var(--ink-2)">' +
           plan.overdue + ' overdue \u00b7 ' + plan.concept + ' concept gap' + (plan.concept === 1 ? '' : 's') +
           ' \u00b7 ' + plan.careless + ' careless' +
         '</div>' +
+        (preview ? '<div class="t-cap" style="margin-top:var(--sp-3);color:var(--ink-3);font-weight:750">Next in line</div>' + preview : '') +
         '<div class="bg mt3">' +
           (smart ? '<button class="btn btn-solid" data-on-click="WRONGBY.smartStart()" title="Start with the most overdue and hardest questions"><i class="ph ph-target"></i> Smart review ' + plan.items.length + ' first</button>' : '') +
           '<button class="btn btn-' + (smart ? 'quiet' : 'solid') + '" data-on-click="WRONGBY.dueAll()"><i class="ph ph-repeat"></i> Review all ' + dueTotal + ' due now</button>' +

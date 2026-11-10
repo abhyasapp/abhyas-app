@@ -173,10 +173,19 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
 /* Reading positions are deliberately tiny (page + total + time) and live in
    localStorage, not the annotation cache: they are a convenience, not study
    data, and must survive an offline PDF being removed. */
+let posCacheRaw = null, posCache = null;
 function positionsRead() {
   try {
-    const raw = JSON.parse(localStorage.getItem(POS_KEY) || '{}');
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    const stored = localStorage.getItem(POS_KEY);
+    const rawText = stored == null ? '' : stored;
+    /* The lists read one position per row. Compare the raw value first so a
+       whole render costs one JSON.parse, while another tab's write is still
+       noticed because the stored string changes. */
+    if (rawText === posCacheRaw && posCache) return posCache;
+    const raw = JSON.parse(rawText || '{}');
+    posCacheRaw = rawText;
+    posCache = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    return posCache;
   } catch (e) { return {}; }
 }
 function positionGet(key, total) {
@@ -202,8 +211,11 @@ function positionSet(key, page, total) {
     .slice(0, POS_KEEP);
   const out = {};
   keep.forEach(k => { out[k] = all[k]; });
-  try { localStorage.setItem(POS_KEY, JSON.stringify(out)); }
-  catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
+  try {
+    const rawText = JSON.stringify(out);
+    localStorage.setItem(POS_KEY, rawText);
+    posCacheRaw = rawText; posCache = out;
+  } catch (e) { window.warnCaught && window.warnCaught('js/features/pdf-viewer.js', e); }
 }
 
 /* A script tag that fires neither load nor error — a captive-portal

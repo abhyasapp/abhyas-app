@@ -109,20 +109,27 @@ function qnaTopicName(chapter, topicSlug) {
 function qnaEntry(d) {
   const parsed = qnaParse(d);
   const chapter = qnaChapters().find(c => c.id === parsed.chapterId) || null;
+  const title = qnaTitle(d && d.title);
+  const chapterName = chapter ? chapter.name : (parsed.chapterId || 'Unsorted');
+  const topicName = qnaTopicName(chapter, parsed.topic);
+  const note = qnaNoteText(d);
   return {
     id: d && d.id,
     doc: d,
-    title: qnaTitle(d && d.title),
+    title: title,
     chapterId: parsed.chapterId,
-    chapterName: chapter ? chapter.name : (parsed.chapterId || 'Unsorted'),
+    chapterName: chapterName,
     group: chapter ? String(chapter.group || '') : '',
     topic: parsed.topic,
-    topicName: qnaTopicName(chapter, parsed.topic),
+    topicName: topicName,
     marks: qnaMarksValue(d),
-    note: qnaNoteText(d),
+    note: note,
     order: d && Number.isFinite(Number(d.sortOrder)) ? Number(d.sortOrder) : 100,
     updatedAt: d && Number(d.updatedAt || d.uploadedAt || 0),
-    sizeBytes: d && Number(d.sizeBytes || 0)
+    sizeBytes: d && Number(d.sizeBytes || 0),
+    /* Built once per entry. A search reuses this for every word instead of
+       concatenating and lowercasing the same four strings again. */
+    _hay: (title + ' ' + note + ' ' + topicName + ' ' + chapterName).toLowerCase()
   };
 }
 
@@ -134,7 +141,7 @@ function qnaDocs(docs) {
    capacity of soil". Chapter and topic names are searched too. */
 function qnaMatches(entry, words) {
   if (!words || !words.length) return true;
-  const hay = (entry.title + ' ' + entry.note + ' ' + entry.topicName + ' ' + entry.chapterName).toLowerCase();
+  const hay = entry._hay || (entry.title + ' ' + entry.note + ' ' + entry.topicName + ' ' + entry.chapterName).toLowerCase();
   return words.every(w => hay.indexOf(w) !== -1);
 }
 
@@ -145,7 +152,10 @@ function qnaTree(docs, opts) {
   const o = opts || {};
   const chapters = qnaChapters(o.chapters);
   const words = String(o.q || '').toLowerCase().split(/\s+/).filter(Boolean);
-  const entries = qnaDocs(docs).filter(e => qnaMatches(e, words))
+  /* Callers that already built the entry list (the student screen builds it
+     once for the chips, count and tree) can pass it in and avoid a second
+     full map over every document. */
+  const entries = (Array.isArray(o.entries) ? o.entries : qnaDocs(docs)).filter(e => qnaMatches(e, words))
     .filter(e => !o.group || e.group === o.group)
     .filter(e => !o.chapterId || e.chapterId === o.chapterId);
 
@@ -196,9 +206,11 @@ function qnaTree(docs, opts) {
 }
 
 /* Which groups have questions, for the filter chips. */
-function qnaGroups(docs, chapters) {
+function qnaGroups(docs, chapters, entries) {
   const counts = {};
-  qnaDocs(docs).forEach(e => { if (e.group) counts[e.group] = (counts[e.group] || 0) + 1; });
+  (Array.isArray(entries) ? entries : qnaDocs(docs)).forEach(e => {
+    if (e.group) counts[e.group] = (counts[e.group] || 0) + 1;
+  });
   return Object.keys(counts).sort().map(g => ({ group: g, count: counts[g] }));
 }
 

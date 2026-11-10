@@ -111,7 +111,7 @@ window.QNA = {
     const entries = qnaDocs(this.docs);
 
     if (chips) {
-      const groups = qnaGroups(this.docs);
+      const groups = qnaGroups(this.docs, null, entries);
       chips.innerHTML = groups.length < 2 ? '' :
         '<button type="button" class="sd-chip' + (this.group === '' ? ' on' : '') + '" data-on-click="QNA.setGroup(\'\')">All<small>' + entries.length + '</small></button>' +
         groups.map(g => '<button type="button" class="sd-chip' + (this.group === g.group ? ' on' : '') + '" data-on-click="QNA.setGroup(\'' + esc(g.group) + '\')">' +
@@ -129,7 +129,7 @@ window.QNA = {
       return;
     }
 
-    const tree = qnaTree(this.docs, { q: this.q, group: this.group });
+    const tree = qnaTree(this.docs, { q: this.q, group: this.group, entries: entries });
     if (!tree.length) {
       box.innerHTML = '<div class="card"><div class="empty">' +
         '<div class="empty-i"><i class="ph ph-magnifying-glass"></i></div>' +

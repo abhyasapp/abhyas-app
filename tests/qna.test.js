@@ -104,6 +104,16 @@ describe('the syllabus tree', () => {
     expect(all.map(x => x.group)).toEqual(['A']);
     expect(g.qnaTree(docs, { group: 'B' })).toEqual([]);
   });
+
+  it('reuses one prepared entry list for chips, counts and the tree', () => {
+    const entries = g.qnaDocs(docs);
+    const groups = g.qnaGroups([], null, entries);
+    const tree = g.qnaTree([], { entries, q: 'soil' });
+    expect(groups).toEqual([{ group: 'A', count: 3 }]);
+    expect(tree).toHaveLength(1);
+    expect(tree[0].count).toBe(2);
+    expect(entries[0]._hay).toContain('bearing capacity');
+  });
 });
 
 describe('page ranges for the slicer', () => {

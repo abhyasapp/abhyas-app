@@ -82,7 +82,7 @@ window.CH_GRID = {
   },
 
   _ref(fid){
-    try { return ChapterData.allFileRefs().find(r => r.fid === fid) || null; } catch(e){ return null; }
+    try { return chapterRef(fid); } catch(e){ return null; }
   },
 
   render(){

@@ -139,8 +139,7 @@ window.QSEARCH = {
     this.close();
     if (typeof QUIZ === 'undefined' || typeof QUIZ.startWith !== 'function') return;
     const fid = fidFromUid(String(q.uid || ''));
-    const ref = (typeof ChapterData !== 'undefined')
-      ? ChapterData.allFileRefs().find(r => r.fid === fid) : null;
+    const ref = (typeof chapterRef === 'function') ? chapterRef(fid) : null;
     if (!ref){ QUIZ.startWith([q], 'flashcard', 'Search result', null); return; }
     (async () => {
       let pool;
