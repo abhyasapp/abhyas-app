@@ -11,7 +11,7 @@ Live: https://app.mku.name.np/
 ```bash
 npm install
 npm run serve        # http://localhost:5500
-npm run verify       # syntax + i18n + SEO audit + lint + tests (what CI runs)
+npm run verify       # syntax + handlers + buttons + i18n + SEO + lint + tests (what CI runs)
 ```
 
 There is no build step: the app is static files (plain browser scripts, no bundler).
@@ -80,7 +80,7 @@ npm test             # vitest run
 npm run test:cov     # with coverage
 npm run lint         # ESLint (lenient on purpose — see eslint.config.mjs; no-eval / no-new-func are errors)
 npm run check-syntax # node --check on every first-party file
-npm run audit:buttons # boots every page, checks each button has a working handler (~45 s)
+npm run audit:buttons # boots every page, checks each button has a working handler (~45 s; included in verify)
 npm run check-i18n   # every data-i18n string has a Nepali translation
 npm run audit:seo    # titles, canonical, structured data, heading and CSS-weight checks
 npm run audit        # duplicate symbols, orphan files, unused vendor files (report only)

@@ -531,6 +531,7 @@ body{
 .hero-proof{display:flex;justify-content:center;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-4)}
 .hero-proof span{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .65rem;border-radius:var(--r-full);background:var(--surface);border:var(--hairline-w) solid var(--sep);color:var(--ink-2);font-size:var(--fs-cap);font-weight:600;box-shadow:var(--sh-1)}
 .hero-proof i{color:var(--accent);font-size:.95rem}
+.hero-proof b{font-weight:inherit}
 .mast h1{font-size:clamp(2.2rem,8vw,3rem);letter-spacing:-.045em}
 .mast .tag{font-size:var(--fs-body);font-weight:600;color:var(--ink-2);margin-top:var(--sp-2)}
 .mast img{width:64px;height:64px;border-radius:18px;box-shadow:0 8px 24px rgba(var(--accent-rgb),.18),var(--sh-2)}
@@ -607,16 +608,16 @@ details.faq p{padding-top:var(--sp-1)}
 
 <main class="page">
   <header class="mast">
-    <p class="hero-eyebrow">Nepal · Level 7 Civil Engineering</p>
+    <p class="hero-eyebrow" data-i18n>Nepal · Level 7 Civil Engineering</p>
     <img src="icon-192.png" width="192" height="192" alt="">
     <h1>Abhyas</h1>
     <p class="tag" data-i18n>Your path to mastery</p>
     <p class="what" data-i18n>Loksewa Civil Engineering practice — online or offline</p>
     <div class="net" role="status" aria-live="polite"><span class="ndot" id="ndot" aria-hidden="true"></span><span id="nstat">Online</span></div>
     <div class="hero-proof" aria-label="Why students choose Abhyas">
-      <span><i class="ph ph-wifi-slash" aria-hidden="true"></i> Offline first</span>
-      <span><i class="ph ph-check-circle" aria-hidden="true"></i> Human marked</span>
-      <span><i class="ph ph-device-mobile" aria-hidden="true"></i> Built for phones</span>
+      <span><i class="ph ph-wifi-slash" aria-hidden="true"></i> <b data-i18n>Offline first</b></span>
+      <span><i class="ph ph-check-circle" aria-hidden="true"></i> <b data-i18n>Human marked</b></span>
+      <span><i class="ph ph-device-mobile" aria-hidden="true"></i> <b data-i18n>Built for phones</b></span>
     </div>
   </header>
 
@@ -669,7 +670,7 @@ details.faq p{padding-top:var(--sp-1)}
       </div>
       <div class="link-right"><button type="button" data-on-click="APP.setMode('forgot')" data-i18n>Forgot your password?</button></div>
       <button class="btn" id="btn-login" type="submit" data-i18n>Sign in</button>
-      <p class="auth-note"><i class="ph ph-shield-check" aria-hidden="true"></i> Secure sign-in · Your progress stays private</p>
+      <p class="auth-note"><i class="ph ph-shield-check" aria-hidden="true"></i> <span data-i18n>Secure sign-in · Your progress stays private</span></p>
     </form>
 
     <!-- Forgot -->
@@ -860,20 +861,20 @@ details.faq p{padding-top:var(--sp-1)}
   </section>
 
   <section class="section" id="how" aria-labelledby="how-h">
-    <div class="section-head"><h2 id="how-h">How it works</h2></div>
-    <p class="lede">A simple loop, built around the way exam preparation actually happens: pick up your phone, answer a few questions, and come back to what you missed.</p>
+    <div class="section-head"><h2 id="how-h" data-i18n>How it works</h2></div>
+    <p class="lede" data-i18n>A simple loop, built around the way exam preparation actually happens: pick up your phone, answer a few questions, and come back to what you missed.</p>
     <div class="steps">
       <div class="step">
         <span class="step-n">01</span>
-        <div><h3>Pick a chapter</h3><p>Start with the subject you are covering today, or let the 30-minute session choose for you.</p></div>
+        <div><h3 data-i18n>Pick a chapter</h3><p data-i18n>Start with the subject you are covering today, or let the 30-minute session choose for you.</p></div>
       </div>
       <div class="step">
         <span class="step-n">02</span>
-        <div><h3>Practice anywhere</h3><p>Open a chapter once. Your questions stay on your phone, ready for the bus or a power cut.</p></div>
+        <div><h3 data-i18n>Practice anywhere</h3><p data-i18n>Open a chapter once. Your questions stay on your phone, ready for the bus or a power cut.</p></div>
       </div>
       <div class="step">
         <span class="step-n">03</span>
-        <div><h3>Review what matters</h3><p>Missed questions return on a spaced schedule, with the most urgent ones first.</p></div>
+        <div><h3 data-i18n>Review what matters</h3><p data-i18n>Missed questions return on a spaced schedule, with the most urgent ones first.</p></div>
       </div>
     </div>
   </section>
@@ -893,23 +894,23 @@ details.faq p{padding-top:var(--sp-1)}
     <div class="feature-grid">
       <div class="point feature-card">
         <span class="feature-ic"><i class="ph ph-wifi-slash" aria-hidden="true"></i></span>
-        <h3>It keeps working when the power doesn't</h3>
-        <p>Open a chapter once while you have signal and its questions are saved to your phone. After that it opens during load-shedding, on the bus, or anywhere with no connection at all. New chapters need a connection the first time.</p>
+        <h3 data-i18n>It keeps working when the power doesn't</h3>
+        <p data-i18n>Open a chapter once while you have signal and its questions are saved to your phone. After that it opens during load-shedding, on the bus, or anywhere with no connection at all. New chapters need a connection the first time.</p>
       </div>
       <div class="point feature-card">
         <span class="feature-ic"><i class="ph ph-target" aria-hidden="true"></i></span>
-        <h3>It tells you what to revise next</h3>
-        <p>Accuracy per chapter, a daily streak, and a miss list that brings questions back on a spacing schedule until you've got them right four times, days apart. Your progress follows you to any device you sign in on.</p>
+        <h3 data-i18n>It tells you what to revise next</h3>
+        <p data-i18n>Accuracy per chapter, a daily streak, and a miss list that brings questions back on a spacing schedule until you've got them right four times, days apart. Your progress follows you to any device you sign in on.</p>
       </div>
       <div class="point feature-card">
         <span class="feature-ic"><i class="ph ph-note-pencil" aria-hidden="true"></i></span>
-        <h3>Written answers, marked by a person</h3>
-        <p>A timed question every day and full 100-mark papers on demand. Write on paper, photograph it, upload one PDF, and an admin marks it and sends feedback.</p>
+        <h3 data-i18n>Written answers, marked by a person</h3>
+        <p data-i18n>A timed question every day and full 100-mark papers on demand. Write on paper, photograph it, upload one PDF, and an admin marks it and sends feedback.</p>
       </div>
       <div class="point feature-card">
         <span class="feature-ic"><i class="ph ph-sparkle" aria-hidden="true"></i></span>
-        <h3>Free to try first</h3>
-        <p>Every new account gets a trial period with everything unlocked. Pay only once you know it's useful.</p>
+        <h3 data-i18n>Free to try first</h3>
+        <p data-i18n>Every new account gets a trial period with everything unlocked. Pay only once you know it's useful.</p>
       </div>
     </div>
   </section>
@@ -977,13 +978,13 @@ details.faq p{padding-top:var(--sp-1)}
 
   <section class="cta-band" aria-labelledby="cta-h">
     <div>
-      <div class="cta-kicker">Start small. Stay consistent.</div>
-      <h2 id="cta-h">One question is enough to begin.</h2>
-      <p>Try a real Loksewa question without an account, then keep your progress across every device you study on.</p>
+      <div class="cta-kicker" data-i18n>Start small. Stay consistent.</div>
+      <h2 id="cta-h" data-i18n>One question is enough to begin.</h2>
+      <p data-i18n>Try a real Loksewa question without an account, then keep your progress across every device you study on.</p>
     </div>
     <div class="cta-actions">
-      <button class="btn" type="button" data-on-click="APP.setMode('signup');document.getElementById('main-card').scrollIntoView({behavior:'smooth'})">Create a free account</button>
-      <a class="btn btn-sec" href="#try">Try a question</a>
+      <button class="btn" type="button" data-on-click="APP.setMode('signup');document.getElementById('main-card').scrollIntoView({behavior:'smooth'})" data-i18n>Create a free account</button>
+      <a class="btn btn-sec" href="#try" data-i18n>Try a question</a>
     </div>
   </section>
 

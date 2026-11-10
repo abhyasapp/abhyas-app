@@ -1,6 +1,6 @@
 {
   "name": "abhyas",
-  "version": "2.14",
+  "version": "2.15",
   "private": true,
   "description": "Abhyas: Loksewa Civil Engineering exam prep (static PWA; backend in ../backend)",
   "scripts": {
@@ -16,7 +16,7 @@
     "audit": "node tools/audit.mjs",
     "build:sites": "node tools/build-sites.mjs",
     "sync-shell": "node tools/sync-shell.mjs",
-    "verify": "npm run check-syntax && npm run audit:handlers && npm run check-i18n && npm run audit:seo && npm run lint && npm test"
+    "verify": "npm run check-syntax && npm run audit:handlers && npm run audit:buttons && npm run check-i18n && npm run audit:seo && npm run lint && npm test"
   },
   "engines": {
     "node": ">=20.11"
