@@ -951,6 +951,49 @@ const QUIZ = {
   /* Results review used to be one long, wrong-first list. These filters keep
      the same cards but make a specific repair pass one tap away. */
   _reviewFilter: 'all',
+  _reviewChapter: '',
+  _reviewChapterNames: null,
+  _chapterInfo(q){
+    const fallback = { key: '__set__', label: (S.quiz && S.quiz.ch) || 'This set' };
+    if(typeof fidFromUid !== 'function' || typeof chapterRef !== 'function') return fallback;
+    try{
+      const fid = fidFromUid(String((q && q.uid) || ''));
+      const ref = chapterRef(fid);
+      if(!ref) return fallback;
+      let label = ref.ch || 'Other';
+      if(typeof ChapterData !== 'undefined' && ChapterData.chapterName){
+        label = ChapterData.chapterName(ref.lv, ref.ch) || label;
+      }
+      return { key: String(ref.lv || '') + ':' + String(ref.ch || ''), label };
+    }catch(e){ return fallback; }
+  },
+  _renderReviewChapters(){
+    const row = document.getElementById('res-chapter-row');
+    const sel = document.getElementById('res-chapter-filter');
+    if(!row || !sel || !S.quiz || !Array.isArray(S.quiz.qs)) return;
+    const chapters = new Map();
+    S.quiz.qs.forEach(q => {
+      const info = QUIZ._chapterInfo(q);
+      const entry = chapters.get(info.key) || { key: info.key, label: info.label, n: 0 };
+      entry.n++;
+      chapters.set(info.key, entry);
+    });
+    QUIZ._reviewChapterNames = chapters;
+    if(chapters.size <= 1){
+      QUIZ._reviewChapter = '';
+      row.hidden = true;
+      sel.innerHTML = '';
+      return;
+    }
+    if(QUIZ._reviewChapter && !chapters.has(QUIZ._reviewChapter)) QUIZ._reviewChapter = '';
+    sel.innerHTML =
+      '<option value="">All chapters (' + S.quiz.qs.length + ')</option>' +
+      Array.from(chapters.values()).map(c =>
+        '<option value="' + esc(c.key) + '">' + esc(c.label) + ' (' + c.n + ')</option>'
+      ).join('');
+    sel.value = QUIZ._reviewChapter;
+    row.hidden = false;
+  },
   _renderReviewFilters(){
     const box = document.getElementById('res-filters');
     if(!box || !S.quiz || !Array.isArray(S.quiz.qs)) return;
@@ -980,9 +1023,20 @@ const QUIZ = {
     ).join('');
     box.hidden = false;
   },
+  filterReviewChapter(key){
+    if(!S.quiz || !Array.isArray(S.quiz.qs)) return;
+    const next = String(key || '');
+    const chapters = QUIZ._reviewChapterNames;
+    if(next && chapters && !chapters.has(next)) return;
+    QUIZ._reviewChapter = next;
+    const sel = document.getElementById('res-chapter-filter');
+    if(sel && sel.value !== next) sel.value = next;
+    QUIZ.filterReview(QUIZ._reviewFilter || 'all');
+  },
   filterReview(mode){
     if(!S.quiz || !Array.isArray(S.quiz.qs)) return;
     const filter = mode || 'all';
+    const chapter = QUIZ._reviewChapter || '';
     const box = document.getElementById('res-review');
     if(!box) return;
     QUIZ._reviewFilter = filter;
@@ -994,7 +1048,8 @@ const QUIZ = {
       const state = (a === null || a === undefined) ? 'skipped' : (isOk(a, S.quiz.qs[i].correct) ? 'correct' : 'wrong');
       const conf = S.quiz.conf && S.quiz.conf[i];
       const marked = S.quiz.marked instanceof Set && S.quiz.marked.has(i);
-      const show = filter === 'all' || filter === state || (filter === 'marked' && marked) || (filter === 'confident' && state === 'wrong' && conf === 'sure');
+      const inChapter = !chapter || card.dataset.chapter === chapter;
+      const show = inChapter && (filter === 'all' || filter === state || (filter === 'marked' && marked) || (filter === 'confident' && state === 'wrong' && conf === 'sure'));
       card.hidden = !show;
       if(show) visible++;
     });
@@ -1003,24 +1058,39 @@ const QUIZ = {
       btn.classList.toggle('active', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
-    if(filter === 'marked' && visible){
+    if((filter === 'marked' || chapter) && visible){
       const first = box.querySelector('.qcard:not([hidden])');
       if(first && typeof first.scrollIntoView === 'function'){
         requestAnimationFrame(() => first.scrollIntoView({ behavior: 'smooth', block: 'start' }));
       }
     }
+    const note = document.getElementById('res-chapter-note');
+    if(note){
+      const chapterName = chapter && QUIZ._reviewChapterNames && QUIZ._reviewChapterNames.get(chapter);
+      note.textContent = chapterName
+        ? visible + ' of ' + S.quiz.qs.length + ' in ' + chapterName.label
+        : visible + ' of ' + S.quiz.qs.length + ' shown';
+    }
     const empty = document.getElementById('res-filter-empty');
     if(empty){
       empty.hidden = visible > 0;
-      empty.textContent = filter === 'confident'
-        ? 'No confident misses in this set — your “sure” answers held up.'
-        : filter === 'marked'
-          ? 'No questions were marked for review in this set.'
-          : filter === 'wrong'
-            ? 'No wrong answers in this set.'
-            : filter === 'skipped'
-              ? 'You answered every question.'
-              : 'No questions to show.';
+      const wanted = filter === 'confident' ? 'confident misses'
+        : filter === 'marked' ? 'marked questions'
+        : filter === 'wrong' ? 'wrong answers'
+        : filter === 'skipped' ? 'skipped questions'
+        : 'questions';
+      const chapterName = chapter && QUIZ._reviewChapterNames && QUIZ._reviewChapterNames.get(chapter);
+      empty.textContent = chapterName
+        ? 'No ' + wanted + ' in ' + chapterName.label + '.'
+        : filter === 'confident'
+          ? 'No confident misses in this set — your “sure” answers held up.'
+          : filter === 'marked'
+            ? 'No questions were marked for review in this set.'
+            : filter === 'wrong'
+              ? 'No wrong answers in this set.'
+              : filter === 'skipped'
+                ? 'You answered every question.'
+                : 'No questions to show.';
     }
   },
   /* A compact, evidence-based read on whether the learner's confidence
@@ -1671,6 +1741,9 @@ const QUIZ = {
     } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
 
     requestAnimationFrame(() => {
+      const chapterInfo = S.quiz.qs.map(q => QUIZ._chapterInfo(q));
+      const showChapter = new Set(chapterInfo.map(c => c.key)).size > 1;
+      QUIZ._reviewChapter = '';
       document.getElementById('res-review').innerHTML = S.quiz.qs.map((q,i)=>{
         const a = S.quiz.ans[i];
         const correctPick = isOk(a,q.correct);
@@ -1678,8 +1751,10 @@ const QUIZ = {
         const status = correctPick ? 'Correct' : skipped ? 'Skipped' : 'Wrong';
         const conf = (S.quiz.conf && S.quiz.conf[i]) || '';
         const isMarked = S.quiz.marked instanceof Set && S.quiz.marked.has(i);
-        return `<div class="qcard" data-qi="${i}" data-state="${skipped ? 'skipped' : correctPick ? 'correct' : 'wrong'}" data-conf="${conf}" data-marked="${isMarked ? '1' : '0'}" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
+        const chapter = chapterInfo[i] || QUIZ._chapterInfo(q);
+        return `<div class="qcard" data-qi="${i}" data-state="${skipped ? 'skipped' : correctPick ? 'correct' : 'wrong'}" data-conf="${conf}" data-marked="${isMarked ? '1' : '0'}" data-chapter="${esc(chapter.key)}" data-chapter-label="${esc(chapter.label)}" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
           <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${status}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}<button class="ib" data-on-click="QNA.fromResult(${i})" title="Open notes and Q&A for this chapter" aria-label="Open notes and Q&A for this chapter"><i class="ph ph-text-columns"></i></button>${qSearchHtml(q)}</div>
+          ${showChapter ? '<div class="t-cap" style="color:var(--ink-3);margin:0 0 var(--sp-1)"><i class="ph ph-book-open"></i> ' + esc(chapter.label) + '</div>' : ''}
           <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
           ${qImgHtml(q)}
           ${q.options.map((opt,oi)=>{
@@ -1699,6 +1774,7 @@ const QUIZ = {
         S.quiz.qs.forEach((q, i) => { try { QNOTE.render('res-note-' + i, q.uid); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } });
       }
       renderMath(document.getElementById('res-review'));
+      QUIZ._renderReviewChapters();
       QUIZ._renderReviewFilters();
       QUIZ.filterReview('all');
       const skippedCount = S.quiz.ans.filter(a => a === null || a === undefined).length;

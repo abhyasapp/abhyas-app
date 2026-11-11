@@ -928,6 +928,11 @@
               <button class="btn btn-quiet btn-lg" data-on-click="UI.go('home')"><i class="ph ph-house"></i> Home</button>
             </div>
             <h3 class="t-t3 mb3">Every question</h3>
+            <div id="res-chapter-row" class="toolbar" hidden>
+              <label class="t-foot" for="res-chapter-filter" style="font-weight:600;white-space:nowrap">Review by chapter</label>
+              <select id="res-chapter-filter" data-on-change="QUIZ.filterReviewChapter(this.value)" aria-label="Choose a chapter to review" style="max-width:18rem"></select>
+              <span id="res-chapter-note" class="t-foot" role="status" aria-live="polite"></span>
+            </div>
             <div id="res-filters" class="chg-tabs" role="group" aria-label="Filter reviewed questions" hidden></div>
             <p id="res-filter-empty" class="empty" style="padding:var(--sp-4)" hidden></p>
             <div id="res-review"></div>

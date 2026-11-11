@@ -101,4 +101,54 @@ describe('results review controls', () => {
     expect(await p.ev(`S.quiz.qs.map(q => q.uid).sort().join(',')`)).toBe('review_2,review_3');
     expect(await p.ev('S.quiz.ch')).toContain('(Marked)');
   });
+
+  it('reviews a mixed paper chapter by chapter', async () => {
+    await p.ev(`
+      window.ChapterData = {
+        allFileRefs: () => [
+          { fid: 'survey', lv: 'level7', ch: 'survey' },
+          { fid: 'struct', lv: 'level7', ch: 'struct' }
+        ],
+        chapterName: (lv, ch) => ch === 'survey' ? 'Surveying' : 'Structures'
+      };
+      S.prog = { total: 0, correct: 0, sessions: [], bestRun: 0 };
+      S.quiz = null;
+      QUIZ._doStart([
+        { uid: 'survey_1', q: 'Survey one', options: ['A', 'B', 'C', 'D'], correct: 0 },
+        { uid: 'survey_2', q: 'Survey two', options: ['A', 'B', 'C', 'D'], correct: 0 },
+        { uid: 'struct_1', q: 'Structure one', options: ['A', 'B', 'C', 'D'], correct: 0 },
+        { uid: 'struct_2', q: 'Structure two', options: ['A', 'B', 'C', 'D'], correct: 0 }
+      ], 'flashcard', 'Mixed paper', false, { fid: 'mixed' });
+      S.quiz.ans = [0, 1, null, 0];
+      S.quiz.startedAt = Date.now() - 60000;
+      QUIZ.fcFinish();
+    `);
+    await new Promise(r => setTimeout(r, 140));
+
+    expect(p.w.document.getElementById('res-chapter-row').hidden).toBe(false);
+    const options = p.w.document.getElementById('res-chapter-filter').options;
+    expect([...options].map(o => o.textContent)).toEqual([
+      'All chapters (4)', 'Surveying (2)', 'Structures (2)'
+    ]);
+    expect(p.w.document.querySelector('#res-review .qcard[data-chapter="level7:survey"]').textContent).toContain('Surveying');
+
+    await p.ev(`QUIZ.filterReviewChapter('level7:survey')`);
+    expect(await p.ev(`[...document.querySelectorAll('#res-review .qcard')].filter(c => !c.hidden).length`)).toBe(2);
+    expect(await p.ev(`[...document.querySelectorAll('#res-review .qcard:not([hidden])')].every(c => c.dataset.chapter === 'level7:survey')`)).toBe(true);
+    expect(p.w.document.getElementById('res-chapter-note').textContent).toBe('2 of 4 in Surveying');
+
+    await p.ev(`QUIZ.filterReview('wrong')`);
+    expect(await p.ev(`[...document.querySelectorAll('#res-review .qcard')].filter(c => !c.hidden).length`)).toBe(1);
+    expect(p.w.document.querySelector('#res-review .qcard:not([hidden])').dataset.qi).toBe('1');
+
+    await p.ev(`QUIZ.filterReviewChapter('level7:struct')`);
+    expect(await p.ev(`[...document.querySelectorAll('#res-review .qcard')].filter(c => !c.hidden).length`)).toBe(0);
+    expect(p.w.document.getElementById('res-filter-empty').hidden).toBe(false);
+    expect(p.w.document.getElementById('res-filter-empty').textContent).toBe('No wrong answers in Structures.');
+
+    await p.ev(`QUIZ.filterReviewChapter('')`);
+    expect(await p.ev(`[...document.querySelectorAll('#res-review .qcard')].filter(c => !c.hidden).length`)).toBe(1);
+    await p.ev(`QUIZ.filterReview('all')`);
+    expect(await p.ev(`[...document.querySelectorAll('#res-review .qcard')].filter(c => !c.hidden).length`)).toBe(4);
+  });
 });
