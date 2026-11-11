@@ -113,10 +113,32 @@ function badge(status, label) {
 }
 function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
 function copyText(text, label) {
-  navigator.clipboard.writeText(text).then(
-    () => TOAST.show((label || 'Copied'), 'success'),
-    () => TOAST.show('Copy failed — select the text manually', 'error')
-  );
+  const value = String(text == null ? '' : text);
+  const done = () => TOAST.show((label || 'Copied'), 'success');
+  const manual = () => {
+    /* Clipboard API is missing on insecure origins and in some embedded
+       browsers. Fall back to the selection-based copy before giving up. */
+    let ta = null;
+    try {
+      ta = document.createElement('textarea');
+      ta.value = value;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:-1000px;left:-1000px;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      if (document.execCommand && document.execCommand('copy')) { done(); return; }
+    } catch (e) {
+      window.warnCaught && window.warnCaught('js/admin/core.js', e);
+    } finally {
+      if (ta && ta.parentNode) ta.remove();
+    }
+    TOAST.show('Copy failed — select the text manually', 'error');
+  };
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(value).then(done, manual);
+  } else {
+    manual();
+  }
 }
 
 /* Safe DOM setters — no crash when an element is missing. */
@@ -157,6 +179,8 @@ const TOAST = {
     if (dup) return;
     const t = document.createElement('div');
     t.className = 'toast ' + kind;
+    t.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+    t.setAttribute('aria-live', kind === 'error' ? 'assertive' : 'polite');
     t.dataset.msg = msg; t.dataset.ts = Date.now();
     t.innerHTML = '<i class="ph ' + (this.ICONS[kind] || this.ICONS.info) + '"></i><span>' + esc(msg) + '</span>';
     box.appendChild(t);
@@ -666,22 +690,37 @@ const ADMIN = {
 
   /* ── refresh ── */
   async refresh(scope) {
+    /* A second click or Ctrl+R while a refresh is in flight must not fire a
+       duplicate set of requests and race the renders. */
+    if (this._refreshing) return false;
     const list = Array.isArray(scope) ? scope
       : (typeof scope === 'string' ? [scope] : this.ALL_SCOPES.slice());
     const wanted = list.filter(s => this.ALL_SCOPES.indexOf(s) !== -1);
-    if (!wanted.length) return;
+    if (!wanted.length) return true;
+    this._refreshing = true;
     this.setLoading(true);
     const fails = [];
-    await Promise.all(wanted.map(async s => {
-      try { await this._refreshOne(s); }
-      catch (e) { fails.push(s + ': ' + (e.message || 'failed')); }
-    }));
-    this.setLoading(false);
-    this.markSynced();
+    try {
+      await Promise.all(wanted.map(async s => {
+        try { await this._refreshOne(s); }
+        catch (e) { fails.push(s + ': ' + (e.message || 'failed')); }
+      }));
+    } finally {
+      this.setLoading(false);
+      this._refreshing = false;
+    }
     this._applyPermissions();
     if (typeof UI !== 'undefined' && UI.current) this._paintCurrentView(UI.current);
     if (typeof BADGES !== 'undefined') { try { BADGES.update(); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); } }
-    if (fails.length) TOAST.show('Some data could not be loaded: ' + fails.join('; '), 'warning', 6000);
+    if (fails.length) {
+      /* Keep the previous successful timestamp. Marking a failed refresh as
+         "just updated" is exactly the wrong thing to tell an operator. */
+      this.paintSync();
+      TOAST.show('Some data could not be loaded: ' + fails.join('; '), 'warning', 6000);
+      return false;
+    }
+    this.markSynced();
+    return true;
   },
 
   _paintCurrentView(view) {
@@ -817,16 +856,32 @@ const ADMIN = {
   markSynced() { this._lastSync = Date.now(); this.paintSync(); },
   paintSync() {
     const el = $('sync-note');
-    if (!el || !this._lastSync) return;
+    if (!el) return;
+    if (!this._lastSync) { el.textContent = ''; el.classList.remove('is-stale'); return; }
+    const age = Date.now() - this._lastSync;
     el.textContent = 'Updated ' + relTime(this._lastSync);
+    el.classList.toggle('is-stale', age > 5 * 60 * 1000);
+    el.title = 'Last successful load: ' + fullTime(this._lastSync) +
+      (age > 5 * 60 * 1000 ? ' — data may be out of date' : '');
   },
 
   setLoading(on) {
     const el = $('app-loading'); if (el) el.classList.toggle('on', on);
+    const app = $('app'); if (app) app.setAttribute('aria-busy', on ? 'true' : 'false');
     document.body.classList.toggle('is-loading', on);
+    document.querySelectorAll('[data-on-click="ADMIN.refresh()"]').forEach(btn => {
+      btn.disabled = on;
+      btn.classList.toggle('is-refreshing', on);
+      btn.setAttribute('aria-busy', on ? 'true' : 'false');
+    });
   },
   _gateBusy(on) {
-    const btn = $('gate-btn'); if (btn) { btn.disabled = on; btn.classList.toggle('loading', on); }
+    /* The sign-in button is #btn-login. The old #gate-btn lookup silently
+       did nothing, so a slow login could be clicked repeatedly. */
+    const btn = $('btn-login');
+    if (btn) { btn.disabled = on; btn.classList.toggle('loading', on); }
+    const gate = $('gate');
+    if (gate) gate.classList.toggle('busy', on);
     document.body.classList.toggle('gate-busy', on);
   },
   showErr(msg) { const t = $('gate-err-text'); if (t) t.textContent = msg; const e = $('gate-err'); if (e) e.classList.add('show'); },
@@ -834,11 +889,20 @@ const ADMIN = {
 
   /* ── CSV ── */
   toCSV(headers, rows) {
-    const e = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const e = v => {
+      let s = String(v == null ? '' : v);
+      /* Neutralise spreadsheet formulas (=, +, -, @) and control prefixes.
+         A student name or report note must never execute when an admin opens
+         the export in Excel, Numbers or Sheets. Real numbers stay numeric. */
+      if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
     return [headers.map(e).join(','), ...rows.map(r => r.map(e).join(','))].join('\n');
   },
   downloadCSV(content, filename) {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+    /* The UTF-8 BOM makes Excel open Devanagari and other non-ASCII text
+       correctly instead of mojibake. */
+    const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -914,9 +978,22 @@ const ADMIN = {
   /* ── password ── */
   changePassword() {
     const tt = $('tt-pwd'), bd = $('bd-pwd');
-    if (!tt || !bd) return;
+    if (!tt) return;
     tt.textContent = this._forcedPwChange ? 'Set a new password to continue' : 'Change password';
-    bd.innerHTML =
+    const note = $('pwd-forced-note');
+    if (note) note.hidden = !this._forcedPwChange;
+    const cancel = $('pwd-cancel');
+    if (cancel) cancel.hidden = !!this._forcedPwChange;
+    const close = $('pwd-close');
+    if (close) close.hidden = !!this._forcedPwChange;
+    ['pwd-current', 'pwd-new', 'pwd-confirm'].forEach(id => {
+      const input = $(id);
+      if (input) { input.value = ''; input.classList.remove('invalid'); }
+    });
+    /* admin.html ships the dialog markup directly; the dynamic body is only
+       a fallback for pages that do not. The previous version required
+       bd-pwd, so the menu item silently did nothing on this page. */
+    if (bd) bd.innerHTML =
       '<p class="t-callout mb4">' + (this._forcedPwChange
         ? 'Your current password has expired. Choose a new one to continue.'
         : 'Choose a new password for <b>' + esc(this.creds ? this.creds.user : 'this account') + '</b>.') + '</p>' +

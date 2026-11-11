@@ -90,6 +90,19 @@ const ADMIN_REPORT = {
   _historyCache: null,
 
   setFilter(v) { this.filter = v; ADMIN.state.qrPage = 1; this.render(this.all); },
+  clearFilters() {
+    this.filter = 'open';
+    this.chapterFilter = 'all';
+    this.reasonFilter = 'all';
+    this.searchTerm = '';
+    ADMIN.state.qrPage = 1;
+    const search = $('qreports-search');
+    if (search) search.value = '';
+    const status = $('qreports-filter'); if (status) status.value = 'open';
+    const chapter = $('qreports-chapter-filter'); if (chapter) chapter.value = 'all';
+    const reason = $('qreports-reason-filter'); if (reason) reason.value = 'all';
+    this.render(this.all);
+  },
   setChapterFilter(v) { this.chapterFilter = v; ADMIN.state.qrPage = 1; this.render(this.all); },
   setReasonFilter(v) { this.reasonFilter = v; ADMIN.state.qrPage = 1; this.render(this.all); },
 

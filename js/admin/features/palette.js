@@ -3,7 +3,7 @@
 // (ADMIN_NAV). Uses UI, PAYMENTS, USERS, WEEKLYSETS at call time.
 
 const PALETTE = {
-  _items: [], _filtered: [], _idx: 0, _bound: false,
+  _items: [], _filtered: [], _idx: 0, _bound: false, _prevFocus: null,
 
   open(){
     /* Cmd+K on the sign-in gate opened the palette before login, which
@@ -12,11 +12,15 @@ const PALETTE = {
     const app = $('app');
     if (app && !app.classList.contains('on')) return;
 
+    this._prevFocus = document.activeElement;
     $('palette').classList.add('show');
     document.body.style.overflow = 'hidden';
     const input = $('palette-q');
     if (!input) return;
     input.value = '';
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-haspopup', 'listbox');
+    input.setAttribute('aria-expanded', 'true');
     this._build();
     this._filtered = this._items;
     this._idx = 0;
@@ -34,12 +38,25 @@ const PALETTE = {
     }
   },
   close(){
-    $('palette').classList.remove('show');
+    const palette = $('palette');
+    if (!palette) return;
+    palette.classList.remove('show');
+    const input = $('palette-q');
+    if (input) {
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+    }
     if (!document.querySelector('.overlay.show')) document.body.style.overflow = '';
+    const prev = this._prevFocus;
+    this._prevFocus = null;
+    if (prev && typeof prev.focus === 'function') setTimeout(() => prev.focus(), 0);
   },
   _move(d){
     if (!this._filtered.length) return;
-    this._idx = Math.max(0, Math.min(this._filtered.length - 1, this._idx + d));
+    /* Only the first 50 matches are rendered; keyboard focus must not move
+       into a result that does not exist on screen. */
+    const last = Math.min(this._filtered.length, 50) - 1;
+    this._idx = Math.max(0, Math.min(last, this._idx + d));
     this._render();
   },
 
@@ -55,6 +72,8 @@ const PALETTE = {
     goto('Payments','ph-credit-card','payments');
     goto('Admins','ph-shield-check','admins');
     goto('Weekly sets','ph-calendar-check','weeklysets');
+    goto('Study PDFs','ph-file-pdf','studydocs');
+    goto('Q&A splitter','ph-scissors','qna');
     goto('Grading','ph-note-pencil','subjective');
     goto('Reports','ph-flag','qreports');
     goto('Activity','ph-clock-counter-clockwise','logs');
@@ -122,13 +141,18 @@ const PALETTE = {
     box.innerHTML = Object.keys(groups).map(g =>
       '<div class="palette-group">' + esc(g) + '</div>' +
       groups[g].map(({ it, i }) =>
-        '<button class="palette-item' + (i === this._idx ? ' sel' : '') + '" role="option" aria-selected="' + (i === this._idx) + '" data-on-click="PALETTE._pick(' + i + ')">' +
+        '<button class="palette-item' + (i === this._idx ? ' sel' : '') + '" id="palette-opt-' + i + '" role="option" aria-selected="' + (i === this._idx) + '" data-on-click="PALETTE._pick(' + i + ')">' +
           '<i class="ph ' + it.icon + '"></i>' +
           '<span class="p-title">' + esc(it.title) + '</span>' +
           (it.sub ? '<span class="p-sub">' + esc(it.sub) + '</span>' : '') +
         '</button>'
       ).join('')
     ).join('');
+    const input = $('palette-q');
+    if (input) {
+      if (shown.length) input.setAttribute('aria-activedescendant', 'palette-opt-' + this._idx);
+      else input.removeAttribute('aria-activedescendant');
+    }
     const sel = box.querySelector('.palette-item.sel');
     if (sel) sel.scrollIntoView({ block:'nearest' });
   },

@@ -327,14 +327,24 @@ MODAL.confirmReview = async function(username, status){
   try {
     const res = await ADMIN.post('adminReviewPayment', { username, status, rejectionReason: reason });
     if (!res.success) throw new Error(res.error);
+    /* Review and access grant are two writes. Never tell the operator the
+       student has a year of access when the second write failed. */
+    let grantError = '';
     if (status === 'verified' && duration === 'year') {
-      await ADMIN.post('adminGrantAccess', { username, duration: 'year' });
+      try {
+        const grant = await ADMIN.post('adminGrantAccess', { username, duration: 'year' });
+        if (!grant || !grant.success) throw new Error((grant && grant.error) || 'The access grant was refused.');
+      } catch (e) {
+        grantError = e.message || 'The access grant failed.';
+      }
     }
     TOAST.show(
       status === 'verified'
-        ? username + ' now has ' + (duration === 'year' ? 'one year of' : 'permanent') + ' access'
+        ? (grantError
+            ? 'Payment verified, but one-year access could not be granted: ' + grantError + '. Grant it from the student record.'
+            : username + ' now has ' + (duration === 'year' ? 'one year of' : 'permanent') + ' access')
         : 'Payment rejected — ' + username + ' has been told why',
-      'success', 5000
+      grantError ? 'warning' : 'success', grantError ? 8000 : 5000
     );
     MODAL.close('review');
     ADMIN.refresh(['stats','payments','users']);

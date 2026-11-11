@@ -12,6 +12,7 @@ const UI = {
   TITLES: ADMIN_NAV.TITLES,
   FEATURES: ADMIN_NAV.FEATURES,
   _scroll: {},
+  _railPrevFocus: null,
 
   nav(id, opts = {}){
     const tabMap = { 'subj-qotd':'qotd', 'subj-exam':'exam', 'subj-add':'add' };
@@ -79,15 +80,23 @@ const UI = {
   scrollTop(){ window.scrollTo({ top: 0, behavior:'smooth' }); },
 
   railOpen(){
+    this._railPrevFocus = document.activeElement;
     $('rail').classList.add('open');
     $('rail-scrim').classList.add('show');
     document.body.style.overflow = 'hidden';
     setTimeout(() => $('rail').querySelector('.rail-item')?.focus(), 60);
   },
-  railClose(){
-    $('rail').classList.remove('open');
-    $('rail-scrim').classList.remove('show');
+  railClose(restoreFocus){
+    const rail = $('rail'), scrim = $('rail-scrim');
+    if (!rail) return;
+    rail.classList.remove('open');
+    if (scrim) scrim.classList.remove('show');
     if (!document.querySelector('.overlay.show') && !(window.PDFVIEW && PDFVIEW.isOpen())) document.body.style.overflow = '';
+    if (restoreFocus && this._railPrevFocus && document.contains(this._railPrevFocus)) {
+      const prev = this._railPrevFocus;
+      setTimeout(() => prev.focus(), 0);
+    }
+    this._railPrevFocus = null;
   },
 
   toggleMenu(e){
@@ -99,6 +108,22 @@ const UI = {
   closeMenu(){
     $('account-menu').classList.remove('show');
     $('account-btn').setAttribute('aria-expanded', 'false');
+  },
+
+  shortcuts(){
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    const mod = mac ? '\u2318' : 'Ctrl';
+    const row = (keys, what) => '<div class="row"><span class="row-main"><span class="row-title">' + esc(what) + '</span></span><span class="t-cap">' + keys + '</span></div>';
+    MODAL.sheet('Keyboard shortcuts',
+      '<p class="t-callout mb4">These work anywhere in the console except while you are typing in a field.</p>' +
+      '<div class="rows">' +
+        row('<kbd>' + mod + '</kbd> <kbd>K</kbd>', 'Search students, payments and sections') +
+        row('<kbd>/</kbd>', 'Open search') +
+        row('<kbd>' + mod + '</kbd> <kbd>R</kbd>', 'Refresh the current data') +
+        row('<kbd>' + mod + '</kbd> <kbd>1</kbd>\u2013<kbd>9</kbd>', 'Jump to a section') +
+        row('<kbd>?</kbd>', 'Show this list') +
+        row('<kbd>Esc</kbd>', 'Close a dialog or menu') +
+      '</div>', { wide:false });
   }
 };
 
@@ -179,6 +204,11 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !typing) {
     const app = $('app'); if (app && app.classList.contains('on')) { e.preventDefault(); PALETTE.open(); return; }
   }
+  if (e.key === '?' && !typing) {
+    e.preventDefault();
+    const app = $('app'); if (app && app.classList.contains('on')) UI.shortcuts();
+    return;
+  }
   if (e.key === 'Escape') {
     const confirmOv = $('ov-confirm');
     if (confirmOv && confirmOv.classList.contains('show')) { CONFIRM._no(); return; }
@@ -186,7 +216,7 @@ document.addEventListener('keydown', e => {
     if (palette && palette.classList.contains('show')) { PALETTE.close(); return; }
     UI.closeMenu();
     MODAL.closeAll();
-    UI.railClose();
+    UI.railClose(true);
     return;
   }
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
@@ -272,6 +302,76 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ADMI
   window.addEventListener('online', paint);
   window.addEventListener('offline', paint);
   if (pill) pill.classList.toggle('show', !navigator.onLine);
+})();
+
+/* ═══════════════ Small, cross-view usability bindings ═══════════════════
+   These are deliberately DOM-only and idempotent: the console has many
+   independently-rendered lists, and every one of them benefits from the same
+   search reset and keyboard-sort affordances. No module has to opt in.
+   ─────────────────────────────────────────────────────────────────────── */
+(function enhanceAdminUI(){
+  function enhanceSearches(){
+    document.querySelectorAll('input.search').forEach(inp => {
+      if (inp.dataset.uxSearch) return;
+      inp.dataset.uxSearch = '1';
+      const wrap = document.createElement('span');
+      wrap.className = 'search-wrap';
+      inp.parentNode.insertBefore(wrap, inp);
+      wrap.appendChild(inp);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'search-clear';
+      btn.hidden = true;
+      btn.setAttribute('aria-label', 'Clear search');
+      btn.innerHTML = '<i class="ph ph-x"></i>';
+      wrap.appendChild(btn);
+      const sync = () => { btn.hidden = !inp.value; };
+      const clear = () => {
+        if (!inp.value) return;
+        inp.value = '';
+        sync();
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        inp.focus();
+      };
+      inp.addEventListener('input', sync);
+      inp.addEventListener('search', sync);
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && inp.value) {
+          e.preventDefault();
+          e.stopPropagation();
+          clear();
+        }
+      });
+      btn.addEventListener('click', clear);
+      sync();
+    });
+  }
+
+  function enhanceTables(){
+    document.querySelectorAll('th').forEach(th => {
+      if (!th.scope) th.scope = 'col';
+    });
+    document.querySelectorAll('th.sortable').forEach(th => {
+      if (th.dataset.uxSort) return;
+      th.dataset.uxSort = '1';
+      th.tabIndex = 0;
+      th.setAttribute('aria-label', 'Sort by ' + th.textContent.trim());
+      th.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          th.click();
+        }
+      });
+    });
+  }
+
+  function run(){
+    enhanceSearches();
+    enhanceTables();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once:true });
+  else run();
 })();
 
 ADMIN.init();

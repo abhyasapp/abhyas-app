@@ -119,10 +119,20 @@ const SETTINGS = {
 },
 
   onQrFile(evt){
-    const file = evt.target.files[0];
-    if (!file) return;
+    const file = evt.target.files && evt.target.files[0];
     const status = $('set-qr-status');
-    status.textContent = 'Processing…';
+    if (!file) return;
+    if (!/^image\//i.test(file.type || '')) {
+      if (status) status.textContent = 'Choose a PNG, JPEG or WebP image.';
+      evt.target.value = '';
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      if (status) status.textContent = 'That image is ' + (file.size / 1048576).toFixed(1) + ' MB — keep it under 8 MB.';
+      evt.target.value = '';
+      return;
+    }
+    if (status) status.textContent = 'Processing…';
     const LIMIT = 48000;
     const attempts = [
       { max:600, q:.85 }, { max:600, q:.6 }, { max:450, q:.6 },

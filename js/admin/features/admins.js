@@ -58,7 +58,7 @@ const ADMINS = {
           '<div class="admin-perms" id="perms-' + escAttrJs(a.username) + '">' + this._permEditor(a.username, perms, isOwnerRow) + '</div>' +
         '</div>' +
         '<div class="flex g2" style="flex-shrink:0">' +
-          ((!isMe && this._isOwner) ? '<button class="btn btn-quiet btn-sm" data-on-click="ADMINS.togglePerms(\'' + escAttrJs(a.username) + '\')"><i class="ph ph-sliders-horizontal"></i> Access</button>' : '') +
+          ((!isMe && this._isOwner) ? '<button class="btn btn-quiet btn-sm" data-on-click="ADMINS.togglePerms(\'' + escAttrJs(a.username) + '\')" data-perms-for="' + esc(a.username) + '" aria-controls="perms-' + escAttrJs(a.username) + '" aria-expanded="false"><i class="ph ph-sliders-horizontal"></i> Access</button>' : '') +
           ((!isMe && this._isOwner && !isOwnerRow) ? '<button class="icon-btn sm danger" data-on-click="ADMINS.demote(\'' + escAttrJs(a.username) + '\')" aria-label="Remove admin role from ' + esc(a.username) + '"><i class="ph ph-user-minus"></i></button>' : '') +
         '</div>' +
       '</div>';
@@ -81,7 +81,11 @@ const ADMINS = {
 
   togglePerms(username){
     const el = $('perms-' + username);
-    if (el) el.classList.toggle('show');
+    if (!el) return;
+    const open = el.classList.toggle('show');
+    const btn = Array.from(document.querySelectorAll('[data-perms-for]'))
+      .find(b => b.dataset.permsFor === username);
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   },
 
   async savePerms(username){

@@ -12,6 +12,13 @@ const LOGS = {
     ADMIN.state.lPage = 1;
     this.renderPage(this._rows(q, f));
   },
+  clearFilters(){
+    const search = $('l-search'), filt = $('l-filter');
+    if (search) search.value = '';
+    if (filt) filt.value = 'all';
+    ADMIN.state.lPage = 1;
+    this.render();
+  },
   _rows(q, f){
     const search = $('l-search'), filt = $('l-filter');
     q = q != null ? q : (search && search.value || '').toLowerCase();
