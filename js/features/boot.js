@@ -33,16 +33,12 @@ const APP = {
         Object.keys(window.CONTENT_INDEX).forEach(k => { if(S.fcount[k] == null) S.fcount[k] = window.CONTENT_INDEX[k]; });
       }
 
+      /* A version change used to scan every cached question set before Home
+         could render. On a phone with a full offline library that means
+         reading hundreds of large JSON blobs on the launch path. Queue the
+         cleanup after the first screen instead. */
       const _appV = String(typeof APP_VERSION !== 'undefined' ? APP_VERSION : '');
-      const _scanned = _load('abhyas_qscan', '') === _appV;
-      const qKeys = _scanned ? [] : await QDB.keys();
-      _save('abhyas_qscan', _appV);
-      for(const k of qKeys){
-        try{
-          const v = await QDB.get(k);
-          if(v && typeof v==='object' && !Array.isArray(v) && v.success===false) await QDB.del(k);
-        }catch (e) { window.warnCaught && window.warnCaught('js/features/boot.js', e); }
-      }
+      const _needsCacheScan = _load('abhyas_qscan', '') !== _appV;
 
       if(!S.profile.id){
         S.profile.id = 'ha-' + (window.crypto && crypto.randomUUID
@@ -63,7 +59,7 @@ const APP = {
       } catch (e) { window.warnCaught && window.warnCaught('js/features/boot.js', e); }
 
       UI.go('home');
-      CACHE.render();
+      if(_needsCacheScan) APP._cleanQuestionCache(_appV);
       _updateNetBtn();
       _updateOfflineWarn();
       AUTH.startPeriodicRecheck();
@@ -75,6 +71,29 @@ const APP = {
     } catch (err) {
       console.error('[APP.init] Boot sequence failed:', err);
       BOOT_ERROR.show(err);
+    }
+  },
+
+  /* Cache corruption cleanup is useful but not urgent. Run it when the main
+     thread is idle, and only stamp the version after the pass completes so an
+     interrupted launch retries instead of skipping the library forever. */
+  _cleanQuestionCache(version){
+    const run = async () => {
+      try {
+        const qKeys = await QDB.keys();
+        for(const k of qKeys){
+          try{
+            const v = await QDB.get(k);
+            if(v && typeof v==='object' && !Array.isArray(v) && v.success===false) await QDB.del(k);
+          }catch (e) { window.warnCaught && window.warnCaught('js/features/boot.js', e); }
+        }
+        _save('abhyas_qscan', version);
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/boot.js', e); }
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(() => { run(); }, { timeout: 5000 });
+    } else {
+      setTimeout(() => { run(); }, 2000);
     }
   }
 };
