@@ -6,9 +6,12 @@
 
   /* ── Small helpers used by the hooks ── */
   function _updateBottomNav(v) {
-    document.querySelectorAll('.bn-item').forEach(e => e.classList.remove('active'));
+    document.querySelectorAll('.bn-item').forEach(e => {
+      e.classList.remove('active');
+      e.removeAttribute('aria-current');
+    });
     const b = document.getElementById(NAV.tabForView(v));
-    if (b) b.classList.add('active');
+    if (b) { b.classList.add('active'); b.setAttribute('aria-current', 'page'); }
   }
   
   function _setAdminVisible(v) {

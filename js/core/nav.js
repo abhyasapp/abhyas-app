@@ -146,7 +146,7 @@
     if (!box) return;
     const collapsed = loadCollapsed();
     const homeBtn =
-      '<div class="sb-sec"><button type="button" class="sb-item active" id="nav-home" data-on-click="UI.go(\'home\')">' +
+      '<div class="sb-sec"><button type="button" class="sb-item active" id="nav-home" aria-current="page" data-on-click="UI.go(\'home\')">' +
         '<span class="sb-ic"><i class="ph ' + HOME.icon + '"></i></span>' + esc(T(HOME.label)) +
       '</button></div>';
 

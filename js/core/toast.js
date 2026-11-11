@@ -10,8 +10,19 @@
     box.id = 'toast-stack';
     box.setAttribute('role', 'status');
     box.setAttribute('aria-live', 'polite');
+    /* Keep messages above the phone tab bar, and inside landscape notches. */
+    let mobileTabbar = false;
+    try {
+      mobileTabbar = !!document.getElementById('bnav') &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(max-width:960px)').matches;
+    } catch (e) { /* older browser: use the safe fallback below */ }
+    const bottom = mobileTabbar
+      ? 'calc(var(--tabbar-h) + var(--safe-b) + .75rem)'
+      : 'calc(1rem + env(safe-area-inset-bottom,0px))';
     box.style.cssText =
-      'position:fixed;left:1rem;right:1rem;bottom:calc(1rem + env(safe-area-inset-bottom,0px));' +
+      'position:fixed;left:calc(1rem + env(safe-area-inset-left,0px));' +
+      'right:calc(1rem + env(safe-area-inset-right,0px));bottom:' + bottom + ';' +
       'z-index:10030;display:flex;flex-direction:column;gap:.4rem;pointer-events:none;align-items:center';
     document.body.appendChild(box);
     return box;

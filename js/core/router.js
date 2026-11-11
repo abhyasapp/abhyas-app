@@ -37,10 +37,14 @@ const UI = {
     const el = document.getElementById('view-' + v);
     if (el) el.classList.add('on');
     
-    // 3. Update sidebar active state
-    document.querySelectorAll('.sb-item').forEach(e => e.classList.remove('active'));
+    // 3. Update sidebar active state. aria-current is what a screen reader
+    // announces; the colour alone is not enough.
+    document.querySelectorAll('.sb-item').forEach(e => {
+      e.classList.remove('active');
+      e.removeAttribute('aria-current');
+    });
     const ni = document.getElementById('nav-' + v);
-    if (ni) ni.classList.add('active');
+    if (ni) { ni.classList.add('active'); ni.setAttribute('aria-current', 'page'); }
     if (typeof NAV !== 'undefined' && NAV.reveal) NAV.reveal(v);
 
     // 4. Cleanup specific global timers
@@ -56,7 +60,15 @@ const UI = {
     UI.sidebarClose();
     
     const mainEl = document.getElementById('main');
-    if (mainEl) mainEl.scrollTop = 0;
+    if (mainEl) {
+      mainEl.scrollTop = 0;
+      /* A route change should move the reading position too, not leave a
+         keyboard or screen-reader user on the old screen's controls. */
+      if (prev !== v) requestAnimationFrame(() => {
+        try { mainEl.focus({ preventScroll: true }); }
+        catch (e) { window.warnCaught && window.warnCaught('js/core/router.js', e); }
+      });
+    }
     window.scrollTo(0, 0);
 
     // 5. Trigger render functions for the new view
@@ -115,15 +127,32 @@ const UI = {
   sidebarToggle() {
     const sb = document.getElementById('sb');
     const ov = document.getElementById('ov');
-    if (sb) sb.classList.toggle('open');
-    if (ov) ov.classList.toggle('show');
+    if (!sb) return;
+    if (sb.classList.contains('open')) { this.sidebarClose(); return; }
+    sb.classList.add('open');
+    if (ov) ov.classList.add('show');
+    const menu = document.getElementById('tb-menu');
+    if (menu) {
+      menu.setAttribute('aria-expanded', 'true');
+      menu.setAttribute('aria-label', 'Close menu');
+    }
+    const first = sb.querySelector('.sb-item');
+    if (first) first.focus();
   },
   
   sidebarClose() {
     const sb = document.getElementById('sb');
     const ov = document.getElementById('ov');
-    if (sb) sb.classList.remove('open');
+    if (!sb) return;
+    const wasOpen = sb.classList.contains('open');
+    sb.classList.remove('open');
     if (ov) ov.classList.remove('show');
+    const menu = document.getElementById('tb-menu');
+    if (menu) {
+      menu.setAttribute('aria-expanded', 'false');
+      menu.setAttribute('aria-label', 'Open menu');
+      if (wasOpen && sb.contains(document.activeElement)) menu.focus();
+    }
   },
   
   theme() {
