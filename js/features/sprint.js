@@ -67,16 +67,26 @@
     return v === 'gk' ? 'gk' : v === 'level5' ? 'level5' : v === 'level7' ? 'level7' : v;
   }
   function _focusKey(lv, ch) { return _lvKey(lv) + '|' + String(ch == null ? '' : ch); }
+  /* The last subchapter of every chapter is the "Original Questions" bank: source copies of the
+     same questions already classified under the chapter's real subtopics. Counting it would
+     schedule duplicates in different arrangements, so it is never eligible for the plan. */
+  function _isOldQuestionBank(meta) {
+    if (!meta) return false;
+    const label = [meta.book, meta.subchapter, meta.subtopic, meta.name, meta.title]
+      .filter(Boolean).join(' ');
+    return /\boriginal\b/i.test(label) || /\bold\s+questions?\b/i.test(label);
+  }
   function isEligible(meta) {
     if (!meta) return false;
     if (FOCUS_LEVELS.indexOf(_lvKey(meta.level)) === -1) return false;
-    const book = String(meta.book || meta.bookName || meta.title || '');
-    return !/original/i.test(book);
+    return !_isOldQuestionBank(meta);
   }
   function _allTopicRefs() {
     try {
       if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return [];
-      return ChapterData.allFileRefs().filter((r) => isEligible({ level: r.lv, book: r.book }));
+      return ChapterData.allFileRefs().filter((r) => isEligible({
+        level: r.lv, book: r.book, subtopic: r.subtopic, name: r.name
+      }));
     } catch (e) { return []; }
   }
   function _focusSet() {

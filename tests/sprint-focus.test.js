@@ -19,11 +19,12 @@ describe('60-day focus topics', () => {
       localStorage.setItem('abhyas_exam_date', iso(exam));
       localStorage.removeItem('abhyas_sprint_rest');
       localStorage.removeItem('abhyas_sprint_off');
-      S.fcount = { 'l7-a': 10, 'l5-a': 20, 'gk-a': 30 };
+      S.fcount = { 'l7-a': 10, 'l5-a': 20, 'gk-a': 30, 'l7-old': 99 };
       S.cov = {}; S.wr = []; S.prog = { total: 0, correct: 0, sessions: [] };
       window.ChapterData = {
         allFileRefs: () => [
           { fid: 'l7-a', lv: 'Level7', ch: 'L7 Chapter', book: 'Book A', key: 'k1' },
+          { fid: 'l7-old', lv: 'Level7', ch: 'Old Chapter', book: '1.12 Original Questions', key: 'k-old' },
           { fid: 'l5-a', lv: 'Level5', ch: 'L5 Chapter', book: 'Book B', key: 'k2' },
           { fid: 'gk-a', lv: 'GK', ch: 'GK Chapter', book: 'Book C', key: 'k3' }
         ],
@@ -41,12 +42,19 @@ describe('60-day focus topics', () => {
     expect(plan.levelList.map((l) => l.id)).toEqual(['l7', 'gk']);
   });
 
+  it('never schedules the Original Questions duplicate bank', () => {
+    const plan = p.ev('SPRINT_PAGE.plan()');
+    expect(plan.perUnit.some((u) => u.fid === 'l7-old')).toBe(false);
+    expect(plan.schedule.flatMap((d) => d.slices).some((s) => s.fid === 'l7-old')).toBe(false);
+  });
+
   it('offers topics from every level in the focus sheet', async () => {
     p.ev('SPRINT_PAGE.openFocus()');
     await tick();
     const labels = p.ev("[...document.querySelectorAll('#mbody .focus-lv-hd strong')].map((n) => n.textContent)");
     expect(labels).toEqual(['Level 7', 'Level 5', 'General Knowledge']);
     expect(p.ev("document.querySelectorAll('#mbody [data-focus-key]').length")).toBe(3);
+    expect(p.ev("document.getElementById('mbody').textContent")).not.toContain('Old Chapter');
   });
 
   it('saves a Level 5-only focus and rebuilds targets and breakdown', async () => {
