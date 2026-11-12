@@ -1210,6 +1210,7 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
             <option value="open">Open</option><option value="resolved">Resolved</option>
             <option value="dismissed">Dismissed</option><option value="all">All</option>
           </select>
+          <select class="select" id="qreports-level-filter" data-on-change="QREPORTS.setLevelFilter(this.value)" aria-label="Level"><option value="all">All levels</option></select>
           <select class="select" id="qreports-chapter-filter" data-on-change="QREPORTS.setChapterFilter(this.value)" aria-label="Chapter"><option value="all">All chapters</option></select>
           <select class="select" id="qreports-reason-filter" data-on-change="QREPORTS.setReasonFilter(this.value)" aria-label="Reason">
             <option value="all">All reasons</option>

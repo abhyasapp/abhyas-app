@@ -61,25 +61,34 @@ const CHAPTERS = {
   _map: null, _levels: null,
   _build(){
     if (this._map) return;
-    this._map = new Map(); this._levels = new Set();
-    if (typeof ChapterData !== 'undefined') {
-      try {
-        ChapterData.allFileRefs().forEach(ref => {
-          const level = ChapterData.levelLabel(ref.lv);
-          const chapter = ChapterData.chapterName(ref.lv, ref.ch);
-          this._map.set(ref.fid, { level, chapter, label: level + ' — ' + chapter });
-          this._levels.add(level);
-        });
-      } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/dashboard.js', e); }
-    }
+    if (typeof ChapterData === 'undefined' || typeof ChapterData.allFileRefs !== 'function') return;
+    try {
+      const refs = ChapterData.allFileRefs();
+      /* The chapters loader is asynchronous on a cold cache. Do not freeze an
+         empty map before it arrives; the next caller will build the real one. */
+      if (!refs || !refs.length) return;
+      const map = new Map(), levels = new Set();
+      refs.forEach(ref => {
+        const level = ChapterData.levelLabel(ref.lv);
+        const chapter = ChapterData.chapterName(ref.lv, ref.ch);
+        map.set(ref.fid, { level, chapter, label: level + ' — ' + chapter });
+        levels.add(level);
+      });
+      this._map = map;
+      this._levels = levels;
+    } catch (e) { window.warnCaught && window.warnCaught('js/admin/features/dashboard.js', e); }
+  },
+  metaFor(fileId){
+    this._build();
+    return (this._map && this._map.get(fileId)) || null;
   },
   labelFor(fileId){
-    this._build();
-    return (this._map.get(fileId) && this._map.get(fileId).label)
+    const meta = this.metaFor(fileId);
+    return (meta && meta.label)
       || (fileId === 'local' ? 'Local file' : 'Weekly set or unknown');
   },
-  allLevels(){ this._build(); return [...this._levels].sort(); },
-  allChapters(){ this._build(); return [...new Set([...this._map.values()].map(v => v.chapter))].sort(); }
+  allLevels(){ this._build(); return this._levels ? [...this._levels].sort() : []; },
+  allChapters(){ this._build(); return this._map ? [...new Set([...this._map.values()].map(v => v.chapter))].sort() : []; }
 };
 
 /* At most 4 file requests at once: 100 parallel getFile calls exceeded the

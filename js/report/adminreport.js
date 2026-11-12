@@ -83,6 +83,7 @@ window.ADMIN_CORRECTIONS = ADMIN_CORRECTIONS;
 const ADMIN_REPORT = {
   all: [],
   filter: 'open',
+  levelFilter: 'all',
   chapterFilter: 'all',
   reasonFilter: 'all',
   searchTerm: '',
@@ -92,6 +93,7 @@ const ADMIN_REPORT = {
   setFilter(v) { this.filter = v; ADMIN.state.qrPage = 1; this.render(this.all); },
   clearFilters() {
     this.filter = 'open';
+    this.levelFilter = 'all';
     this.chapterFilter = 'all';
     this.reasonFilter = 'all';
     this.searchTerm = '';
@@ -99,8 +101,17 @@ const ADMIN_REPORT = {
     const search = $('qreports-search');
     if (search) search.value = '';
     const status = $('qreports-filter'); if (status) status.value = 'open';
+    const level = $('qreports-level-filter'); if (level) level.value = 'all';
     const chapter = $('qreports-chapter-filter'); if (chapter) chapter.value = 'all';
     const reason = $('qreports-reason-filter'); if (reason) reason.value = 'all';
+    this.render(this.all);
+  },
+  setLevelFilter(v) {
+    this.levelFilter = v;
+    this.chapterFilter = 'all';
+    const chapter = $('qreports-chapter-filter');
+    if (chapter) chapter.value = 'all';
+    ADMIN.state.qrPage = 1;
     this.render(this.all);
   },
   setChapterFilter(v) { this.chapterFilter = v; ADMIN.state.qrPage = 1; this.render(this.all); },
@@ -125,12 +136,38 @@ const ADMIN_REPORT = {
     BUSY.stop();
   },
 
-  chapterFor(fileId) { return CHAPTERS.labelFor(fileId); },
+  metaFor(fileId) {
+    const meta = (typeof CHAPTERS !== 'undefined' && CHAPTERS.metaFor) ? CHAPTERS.metaFor(fileId) : null;
+    if (meta) return meta;
+    const chapter = fileId === 'local' ? 'Local file' : 'Weekly set or unknown';
+    return { level: 'Other', chapter, label: 'Other — ' + chapter };
+  },
+  chapterFor(fileId) { return this.metaFor(fileId).label; },
+
+  _levelOptions() {
+    const sel = $('qreports-level-filter');
+    if (!sel) return;
+    const levels = [...new Set(this.all.map(r => this.metaFor(r.fileId).level))].sort();
+    const cur = this.levelFilter;
+    sel.innerHTML = '<option value="all">All levels</option>' +
+      levels.map(level =>
+        '<option value="' + escAttrJs(level) + '"' + (level === cur ? ' selected' : '') + '>' +
+        esc(level) + '</option>'
+      ).join('');
+    if (cur !== 'all' && !levels.includes(cur)) {
+      this.levelFilter = 'all';
+      this.chapterFilter = 'all';
+      sel.value = 'all';
+    }
+  },
 
   _chapterOptions() {
     const sel = $('qreports-chapter-filter');
     if (!sel) return;
-    const chapters = [...new Set(this.all.map(r => this.chapterFor(r.fileId)))].sort();
+    const level = this.levelFilter;
+    const chapters = [...new Set(this.all
+      .filter(r => level === 'all' || this.metaFor(r.fileId).level === level)
+      .map(r => this.metaFor(r.fileId).chapter))].sort();
     const cur = this.chapterFilter;
     sel.innerHTML = '<option value="all">All chapters</option>' +
       chapters.map(c =>
@@ -150,8 +187,11 @@ const ADMIN_REPORT = {
     } else {
       rows = this.all.filter(r => r.status === this.filter);
     }
+    if (this.levelFilter !== 'all') {
+      rows = rows.filter(r => this.metaFor(r.fileId).level === this.levelFilter);
+    }
     if (this.chapterFilter !== 'all') {
-      rows = rows.filter(r => this.chapterFor(r.fileId) === this.chapterFilter);
+      rows = rows.filter(r => this.metaFor(r.fileId).chapter === this.chapterFilter);
     }
     if (this.reasonFilter !== 'all') {
       rows = rows.filter(r => r.reason === this.reasonFilter);
@@ -206,6 +246,7 @@ const ADMIN_REPORT = {
 
   render(reports) {
     this.all = reports || [];
+    this._levelOptions();
     this._chapterOptions();
     BADGES.update();
 
@@ -224,7 +265,7 @@ const ADMIN_REPORT = {
       box.innerHTML = this.all.length
         ? '<div class="empty"><i class="ph ph-magnifying-glass"></i>' +
           '<div class="t">No reports match</div>' +
-          '<div class="d">Try a different status or chapter.</div>' +
+          '<div class="d">Try a different status, level or chapter.</div>' +
           '<div class="a"><button class="btn btn-quiet" ' +
             'data-on-click="ADMIN_REPORT.setFilter(\'all\')">Show all reports</button></div></div>'
         : '<div class="empty"><i class="ph ph-flag"></i>' +
@@ -585,13 +626,14 @@ const ADMIN_REPORT = {
     const rows = this._visibleRows();
     if (!rows.length) return TOAST.show('Nothing to export', 'warning');
     ADMIN.downloadCSV(ADMIN.toCSV(
-      ['ID', 'Status', 'Reason', 'Chapter', 'Section', 'Question no.', 'Question',
+      ['ID', 'Status', 'Reason', 'Level', 'Chapter', 'Section', 'Question no.', 'Question',
        'Marked correct', 'Student chose', 'Students reporting', 'Note',
        'Reported by', 'Reported at', 'Closed by'],
       rows.map(r => [
         r.id, r.status,
         REPORT_REASON_LABELS[r.reason] || r.reason,
-        this.chapterFor(r.fileId),
+        this.metaFor(r.fileId).level,
+        this.metaFor(r.fileId).chapter,
         REPORT_SECTION_LABELS[r.section] || '',
         r.questionNumber || '',
         r.questionSnapshot || '',
