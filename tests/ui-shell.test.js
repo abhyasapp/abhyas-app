@@ -38,6 +38,20 @@ describe('student app shell', () => {
     expect(p.ev('document.activeElement.id')).toBe('tb-menu');
   });
 
+  it('adds a one-tap clear control to every list search', async () => {
+    const wrap = p.ev("document.getElementById('bk-search').closest('.search-wrap')");
+    expect(wrap).not.toBeNull();
+    p.ev(`
+      const i = document.getElementById('bk-search');
+      i.value = 'structure';
+      i.dispatchEvent(new Event('input', { bubbles: true }));
+    `);
+    expect(p.ev("document.querySelector('#bk-search').closest('.search-wrap').querySelector('.search-clear').hidden")).toBe(false);
+    p.ev("document.querySelector('#bk-search').closest('.search-wrap').querySelector('.search-clear').click()");
+    expect(p.ev("document.getElementById('bk-search').value")).toBe('');
+    expect(p.ev("document.querySelector('#bk-search').closest('.search-wrap').querySelector('.search-clear').hidden")).toBe(true);
+  });
+
   it('keeps toast messages inside safe areas', () => {
     p.ev("toast('safe area check')");
     const stack = p.w.document.getElementById('toast-stack');

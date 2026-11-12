@@ -157,6 +157,7 @@ window.QSEARCH = {
 window.KEYSHEET = {
   ROWS: [
     ['Any view',  ['/', 'Open question search'],
+                  ['Ctrl + K', 'Open quick switch'],
                   ['?', 'Show this sheet'],
                   ['Esc', 'Close any open sheet / leave quiz']],
     ['In a practice quiz', ['A B C D', 'Answer the current question'],

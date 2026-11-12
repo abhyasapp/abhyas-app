@@ -336,3 +336,169 @@ window.HOMEFOCUS = (function () {
   };
   return obj;
 })();
+
+/* ── Quick switch: one searchable command sheet for the whole student app ──
+   It is deliberately built on demand: no extra button in the top bar and no
+   permanent DOM. Ctrl/Cmd+K opens it; the top-bar More menu exposes it too. */
+window.QUICK = {
+  _all: null,
+  _results: [],
+  _active: 0,
+  _tr(s) { return (typeof I18N !== 'undefined' && I18N.t) ? I18N.t(s) : s; },
+  _build() {
+    const out = [];
+    const seen = new Set();
+    const add = (item) => {
+      if (!item || seen.has(item.key)) return;
+      seen.add(item.key);
+      out.push(item);
+    };
+    add({
+      key: 'view:home', label: 'Home', sub: 'Today and your next session', group: 'Go to', icon: 'ph-house',
+      run: () => UI.go('home')
+    });
+    if (typeof NAV !== 'undefined' && Array.isArray(NAV.ALL)) {
+      const groupLabels = {};
+      (NAV.GROUPS || []).forEach(g => { groupLabels[g.key] = g.label; });
+      NAV.ALL.forEach(it => {
+        add({
+          key: 'view:' + it.view,
+          label: this._tr(it.label || it.view),
+          sub: this._tr(it.sub || ''),
+          group: this._tr(groupLabels[it.group] || 'Go to'),
+          icon: it.icon || 'ph-circle',
+          run: () => {
+            if (it.special === 'tutorial' && typeof TUTORIAL !== 'undefined') TUTORIAL.open();
+            else UI.go(it.view);
+          }
+        });
+      });
+    }
+    [
+      { key: 'action:search', label: 'Search questions', sub: 'Find a word in the questions on this device', group: 'Actions', icon: 'ph-magnifying-glass', run: () => QSEARCH.open() },
+      { key: 'action:theme', label: 'Switch light or dark', sub: 'Change the app appearance', group: 'Actions', icon: 'ph-circle-half', run: () => UI.theme() },
+      { key: 'action:focus', label: 'Toggle focus mode', sub: 'Hide streaks and badges while studying', group: 'Actions', icon: 'ph-eye', run: () => FOCUSMODE.toggle() },
+      { key: 'action:font', label: 'Change text size', sub: 'Cycle the reading size on this device', group: 'Actions', icon: 'ph-text-aa', run: () => FONT.cycle() },
+      { key: 'action:backup', label: 'Back up now', sub: 'Save progress to your account', group: 'Actions', icon: 'ph-cloud-arrow-up', run: () => DATA.syncNow() },
+      { key: 'action:keys', label: 'Keyboard shortcuts', sub: 'See every shortcut in the app', group: 'Actions', icon: 'ph-keyboard', run: () => KEYSHEET.open() }
+    ].forEach(a => add(a));
+    return out;
+  },
+  isOpen() {
+    const m = document.getElementById('quick-modal');
+    return !!(m && m.classList.contains('show'));
+  },
+  open() {
+    if (typeof HEADERMENU !== 'undefined') HEADERMENU.close();
+    let modal = document.getElementById('quick-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'quick-modal';
+      modal.className = 'mbg quick-modal';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'quick-title');
+      modal.innerHTML =
+        '<div class="mbox wide" data-on-click="event.stopPropagation()">' +
+          '<div class="mhd"><h3 id="quick-title"><i class="ph ph-command"></i> Quick switch</h3>' +
+            '<button class="mcl" type="button" aria-label="Close" data-on-click="QUICK.close()"><i class="ph ph-x"></i></button></div>' +
+          '<div class="mbody quick-body">' +
+            '<div class="quick-search"><i class="ph ph-magnifying-glass" aria-hidden="true"></i>' +
+              '<input class="input" id="quick-input" type="search" placeholder="Go to a screen or run a command\u2026" autocomplete="off" spellcheck="false" aria-label="Search screens and commands" aria-controls="quick-list" aria-autocomplete="list" role="combobox" aria-expanded="true">' +
+            '</div>' +
+            '<div id="quick-list" class="quick-list" role="listbox" aria-label="Quick switch results"></div>' +
+            '<div class="quick-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move <kbd>Enter</kbd> open</span><span id="quick-count"></span></div>' +
+          '</div>' +
+        '</div>';
+      modal.addEventListener('click', e => { if (e.target === modal) QUICK.close(); });
+      const input = modal.querySelector('#quick-input');
+      input.addEventListener('input', () => QUICK._paint());
+      input.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); QUICK._move(1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); QUICK._move(-1); }
+        else if (e.key === 'Enter') { e.preventDefault(); QUICK.pick(QUICK._active); }
+      });
+      document.body.appendChild(modal);
+    }
+    this._all = this._build();
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    const input = modal.querySelector('#quick-input');
+    input.value = '';
+    input.setAttribute('aria-expanded', 'true');
+    this._active = 0;
+    this._paint();
+    DIALOG.open(modal, { focus: '#quick-input', onEscape: () => QUICK.close() });
+    setTimeout(() => { try { input.focus(); input.select(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); } }, 30);
+  },
+  close() {
+    const modal = document.getElementById('quick-modal');
+    if (!modal || !modal.classList.contains('show')) return;
+    modal.classList.remove('show');
+    const input = document.getElementById('quick-input');
+    if (input) input.setAttribute('aria-expanded', 'false');
+    if (!document.querySelector('.mbg.show')) document.body.style.overflow = '';
+    DIALOG.release(modal);
+  },
+  _paint() {
+    const input = document.getElementById('quick-input');
+    const list = document.getElementById('quick-list');
+    const count = document.getElementById('quick-count');
+    if (!input || !list) return;
+    const q = String(input.value || '').trim().toLowerCase();
+    let items = (this._all || []).filter(it => {
+      if (!q) return true;
+      return (it.label + ' ' + it.sub + ' ' + it.group).toLowerCase().includes(q);
+    });
+    if (q) {
+      items = items.sort((a, b) => {
+        const al = a.label.toLowerCase(), bl = b.label.toLowerCase();
+        const ap = al.startsWith(q) ? 0 : 1, bp = bl.startsWith(q) ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return al.localeCompare(bl);
+      });
+    }
+    this._results = items.slice(0, 40);
+    this._active = Math.min(this._active, Math.max(0, this._results.length - 1));
+    if (!this._results.length) {
+      list.innerHTML = '<div class="quick-empty"><i class="ph ph-magnifying-glass"></i><p>No screen or action matches “' + esc(input.value) + '”.</p></div>';
+      if (count) count.textContent = '0 results';
+      input.removeAttribute('aria-activedescendant');
+      return;
+    }
+    list.innerHTML = this._results.map((it, i) =>
+      '<button type="button" class="quick-item' + (i === this._active ? ' active' : '') + '" id="quick-opt-' + i + '" role="option" aria-selected="' + (i === this._active) + '" data-on-click="QUICK.pick(' + i + ')">' +
+        '<span class="qi-ic"><i class="ph ' + esc(it.icon) + '"></i></span>' +
+        '<span class="qi-main"><span class="qi-name">' + esc(it.label) + '</span>' +
+          (it.sub ? '<span class="qi-sub">' + esc(it.sub) + '</span>' : '') + '</span>' +
+        '<span class="qi-group">' + esc(it.group) + '</span>' +
+        '<i class="ph ph-arrow-right qi-arrow" aria-hidden="true"></i>' +
+      '</button>'
+    ).join('');
+    if (count) count.textContent = this._results.length + (this._results.length === 1 ? ' result' : ' results');
+    this._setActive(this._active, false);
+  },
+  _setActive(i, scroll) {
+    const list = document.getElementById('quick-list');
+    const input = document.getElementById('quick-input');
+    if (!list || !this._results.length) return;
+    this._active = (i + this._results.length) % this._results.length;
+    list.querySelectorAll('.quick-item').forEach((el, n) => {
+      const on = n === this._active;
+      el.classList.toggle('active', on);
+      el.setAttribute('aria-selected', String(on));
+    });
+    const current = list.querySelector('#quick-opt-' + this._active);
+    if (current) {
+      if (input) input.setAttribute('aria-activedescendant', current.id);
+      if (scroll) current.scrollIntoView({ block: 'nearest' });
+    }
+  },
+  _move(delta) { this._setActive(this._active + delta, true); },
+  pick(i) {
+    const item = this._results[i];
+    if (!item) return;
+    this.close();
+    setTimeout(() => { try { item.run(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); } }, 0);
+  }
+};

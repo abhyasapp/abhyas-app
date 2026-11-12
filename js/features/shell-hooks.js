@@ -88,6 +88,11 @@
   /* ── Keyboard: `/` and `?` and Escape ── */
   document.addEventListener('keydown', e => {
     try {
+      if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'k') {
+        e.preventDefault();
+        if (typeof QUICK !== 'undefined') { QUICK.isOpen() ? QUICK.close() : QUICK.open(); }
+        return;
+      }
       const tag = (e.target && e.target.tagName) || '';
       const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable;
       const modOpen = document.querySelector('.mbg.show');
@@ -239,6 +244,48 @@
       const active = bar.querySelector('button.active');
       show((active && active.dataset.tab) || 'accuracy');
     })();
+  })();
+
+  /* ── Search reset: every view search gets one tap back to the full list ── */
+  (function enhanceViewSearches() {
+    function enhance() {
+      document.querySelectorAll('.toolbar input[type="search"]').forEach(inp => {
+        if (inp.dataset.uxSearch || inp.closest('.search-wrap')) return;
+        inp.dataset.uxSearch = '1';
+        const wrap = document.createElement('span');
+        wrap.className = 'search-wrap';
+        inp.parentNode.insertBefore(wrap, inp);
+        wrap.appendChild(inp);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'search-clear';
+        btn.hidden = true;
+        btn.setAttribute('aria-label', 'Clear search');
+        btn.innerHTML = '<i class="ph ph-x"></i>';
+        wrap.appendChild(btn);
+        const sync = () => { btn.hidden = !inp.value; };
+        const clear = () => {
+          if (!inp.value) return;
+          inp.value = '';
+          sync();
+          inp.dispatchEvent(new Event('input', { bubbles: true }));
+          inp.focus();
+        };
+        inp.addEventListener('input', sync);
+        inp.addEventListener('search', sync);
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'Escape' && inp.value) {
+            e.preventDefault();
+            e.stopPropagation();
+            clear();
+          }
+        });
+        btn.addEventListener('click', clear);
+        sync();
+      });
+    }
+    enhance();
+    UI.onEnterAny(() => setTimeout(enhance, 0));
   })();
 
   /* ── Perf coalesce: HOME.render and HOME.updateBadges ── */
