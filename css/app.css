@@ -1818,3 +1818,89 @@ html.reduce-motion *,html.reduce-motion *::before,html.reduce-motion *::after{an
     -webkit-backdrop-filter:none;backdrop-filter:none
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UI/UX REFINEMENT  ·  more signal per screen
+   A compact, task-first rhythm: one clear page title, tighter card heads,
+   fewer stacked utility rows, and wide-screen layouts that use the space
+   instead of stretching a single column. Touch targets stay at 44px.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Page titles lead without taking a whole band of the screen. */
+.pg-head{padding-left:10px;margin-bottom:14px}
+.pg-head::before{top:2px;bottom:2px;width:2px;opacity:.8}
+.pg-head h2{font-size:clamp(1.15rem,2.2vw,1.35rem);letter-spacing:-.02em}
+.pg-head p{font-size:var(--fs-callout);line-height:1.45;margin-top:2px;max-width:70ch}
+
+/* Card heads carry the title, status and actions in one compact band. */
+.card{padding:var(--sp-3) var(--sp-4);border-radius:var(--r-card);margin-bottom:10px}
+.card-hd{gap:8px;margin-bottom:10px;padding-bottom:8px}
+.card-hd h3{font-size:.9rem;font-weight:700;letter-spacing:-.01em}
+.card-hd .bg{gap:6px}
+.section-head{gap:8px;margin-bottom:8px}
+.section-head h2{font-size:var(--fs-cap);letter-spacing:.055em}
+.section-head .hint{font-size:var(--fs-cap)}
+
+/* Lists and settings become scan-friendly rows, not tall stacks. */
+.row{gap:10px;padding:9px 0}
+.set-row{padding:9px 0}
+.set-hint{line-height:1.4}
+.grp{margin-bottom:10px}
+.grp>summary{min-height:48px;padding:6px 12px}
+.grp[open]>summary{margin-bottom:10px}
+
+/* Filters fit more controls on one line, and tabs sit closer to their content. */
+.toolbar{gap:6px;margin-bottom:10px}
+.toolbar input,.toolbar select{min-height:38px;padding:.35rem .65rem}
+.tabbar{gap:16px;margin-bottom:14px}
+.tabbar button{padding:6px 0 9px}
+.mtabs{gap:4px}
+
+/* Empty states still explain themselves without a full screen of blank space. */
+.empty{padding:20px 12px}
+.empty-i{width:40px;height:40px;border-radius:12px;font-size:1.4rem;margin-bottom:8px}
+
+/* Home: the start card is prominent, but the supporting cards stay compact. */
+#home-grid{gap:10px;margin-bottom:10px}
+.home-card{padding:14px;border-radius:var(--r-card)}
+.home-card[data-card="start"]{padding:18px 16px}
+.home-card .greet-line h1,.home-card .greet-line h2{font-size:clamp(1.45rem,2.2vw,1.7rem)}
+.home-card #greeting{margin-bottom:10px}
+.home-card .start-alt{gap:6px;margin-top:6px}
+.home-card .start-alt .btn{min-height:44px}
+.home-card .home-foot{margin-top:10px}
+.btn-start{min-height:52px;border-radius:var(--r-card)}
+
+/* One compact utility row replaces two full-width stacked buttons. */
+.home-tools{display:flex;align-items:stretch;gap:6px;margin-top:10px}
+.home-tools .btn,.home-tools .home-mode{flex:1;min-height:44px;margin:0;border-radius:var(--r-control)}
+.home-tools .home-mode{display:inline-flex;align-items:center;justify-content:center;padding:0 var(--sp-3);border:var(--hairline-w) solid var(--sep);background:var(--bg-sunken);color:var(--ink-2);font-size:var(--fs-foot);font-weight:650;text-decoration:none}
+.home-tools .home-mode:hover{background:var(--sep);color:var(--ink)}
+
+/* A wide screen can hold two Sprint cards at once; phones keep the single column. */
+@media (min-width:1120px){
+  .sprint-page{max-width:var(--content-max);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);align-items:start}
+  .sprint-page > *{min-width:0}
+  .sprint-page > .sprint-back{grid-column:1;align-self:center;padding:0;margin:0}
+  .sprint-page > .phase-row{grid-column:2;justify-content:flex-end;padding:0;margin:0}
+  .sprint-page > .today-card{grid-column:1/-1;margin-bottom:0}
+  .sprint-page > .card{margin-bottom:0}
+}
+
+/* Statistics stay legible while giving each card a little more breathing room. */
+.g4{gap:6px}
+.sc,.scard,.stat-card{padding:10px 6px}
+.sv,.stat-v{font-size:clamp(1.25rem,2.2vw,1.55rem)}
+
+@media (max-width:520px){
+  #main{padding-left:10px;padding-right:10px}
+  .card{padding:12px;margin-bottom:9px;border-radius:14px}
+  .card-hd{gap:6px;margin-bottom:9px;padding-bottom:7px}
+  .home-card{padding:13px}
+  .home-card[data-card="start"]{padding:16px 13px}
+  .pg-head{margin-bottom:12px}
+  .tabbar{gap:14px;margin-bottom:12px}
+  .empty{padding:16px 10px}
+  .toolbar input,.toolbar select{min-height:44px}
+  .home-tools .btn,.home-tools .home-mode{min-height:44px}
+}

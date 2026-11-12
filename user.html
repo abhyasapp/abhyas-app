@@ -191,8 +191,8 @@
         <div id="home-grid"></div>
         <div id="home-detail"></div>
 
-        <div style="display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3)">
-          <button class="btn btn-quiet" type="button" data-on-click="HOME_LAYOUT.openCustomize()">
+        <div class="home-tools" role="group" aria-label="Home layout controls">
+          <button class="btn btn-quiet btn-sm" type="button" data-on-click="HOME_LAYOUT.openCustomize()">
             <i class="ph ph-sliders-horizontal"></i> Customize Home
           </button>
           <button class="home-mode" id="home-mode-btn" type="button" data-on-click="HOMEFOCUS.toggleMode()" aria-pressed="false">Show more on Home</button>

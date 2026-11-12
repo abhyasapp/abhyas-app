@@ -866,6 +866,16 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 .sf{display:flex;flex-direction:column;gap:var(--sp-1);margin-bottom:var(--sp-3)}
 .sf > label{font-size:var(--fs-foot);font-weight:600;color:var(--ink-2)}
 @media (max-width:480px){.fld-row{grid-template-columns:1fr}}
+
+/* Density alignment with the student app: keep the same information in a
+   slightly shorter vertical footprint without shrinking controls below 30px. */
+.page-head{margin-bottom:var(--sp-4)}
+.panel{padding:var(--sp-4);margin-bottom:var(--sp-3)}
+.panel-hd{margin-bottom:var(--sp-3)}
+.panel-hd .acts{gap:6px}
+.toolbar{gap:6px;margin-bottom:10px}
+.rows .row{padding:10px 0}
+@media (max-width:640px){.panel{padding:var(--sp-3)}#content{padding-left:10px;padding-right:10px}}
 </style>
 </head>
 <body>
