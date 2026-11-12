@@ -70,4 +70,32 @@ describe('60-day focus topics', () => {
     expect(p.ev("document.getElementById('sprint-cov-levels').textContent")).not.toContain('Level 7');
     expect(p.ev("JSON.parse(localStorage.getItem('abhyas_sprint_focus'))")).toEqual(['level5|L5 Chapter']);
   });
+
+  it('shows progress and filters topics by search', async () => {
+    p.ev(`
+      localStorage.removeItem('abhyas_sprint_focus');
+      S.cov = { 'l7-a': { p: '1100000000' } };
+      SPRINT_PAGE.renderPage();
+      SPRINT_PAGE.openFocus();
+    `);
+    await tick();
+    expect(p.ev("document.querySelector('[data-focus-key=\"level7|L7 Chapter\"]').closest('.focus-row').textContent")).toContain('2/10');
+    p.ev("document.querySelector('#mbody [data-focus-lv=\"level5\"]').click()");
+    expect(p.ev("document.querySelector('[data-focus-key=\"level5|L5 Chapter\"]').checked")).toBe(true);
+    expect(p.ev("document.getElementById('focus-count').textContent")).toContain('Q');
+    p.ev("const s = document.getElementById('focus-search'); s.value = 'L5'; s.dispatchEvent(new Event('input'));");
+    expect(p.ev("document.querySelectorAll('#mbody .focus-row:not([hidden])').length")).toBe(1);
+    expect(p.ev("document.querySelector('#mbody .focus-lv').hidden")).toBe(true);
+  });
+
+  it('offers a one-tap start-all and pace expectations for the day', async () => {
+    p.ev("document.getElementById('mbg').click();");
+    await tick(60);
+    p.ev("localStorage.removeItem('abhyas_sprint_focus'); S.fcount = { 'l7-a': 100, 'l5-a': 20, 'gk-a': 300, 'l7-old': 99 }; S.cov = {}; SPRINT_PAGE.renderPage();");
+    await tick(60);
+    expect(p.ev("document.getElementById('sprint-start-all').hidden")).toBe(false);
+    expect(p.ev("document.getElementById('sprint-targets-hint').textContent")).toContain('left today');
+    expect(p.ev("document.getElementById('sprint-pace-stats').textContent")).toContain('Expected');
+    expect(p.ev("document.getElementById('sprint-pace-stats').textContent")).toContain('Actual');
+  });
 });

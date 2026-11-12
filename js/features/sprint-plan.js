@@ -75,6 +75,7 @@
     const units = (o.units || []).map((u, i) => ({
       order: i, fid: u.fid, lv: u.lv || '', ch: u.ch || '', book: u.book || '', name: u.name || u.fid,
       n: Math.max(0, Math.floor(Number(u.n)) || 0), seen: Math.max(0, Math.floor(Number(u.seen)) || 0),
+      priority: Number.isFinite(Number(u.priority)) ? Number(u.priority) : 100,
     })).map((u) => Object.assign(u, { seen: Math.min(u.seen, u.n), rem: Math.max(0, u.n - Math.min(u.seen, u.n)) }));
 
     const start = validIso(o.start) ? o.start : o.today;
@@ -99,11 +100,23 @@
     const remaining = totalAll - seenAll;
     const doneToday = Math.max(0, Math.min(Math.floor(Number(o.newDoneToday)) || 0, totalAll));
 
-    // Horizon: normally the last Learn day. If the student is already past it, finish as early as the
-    // remaining Drill days allow (flagged "compressed") and never run into exam day itself.
-    let horizonEnd = learnEnd;
+    // Keep the last two study days of Learn free for consolidation: new questions finish there,
+    // and those days carry reviews/drills instead of fresh material. On a short sprint the buffer
+    // shrinks rather than stealing the only study day.
+    const bufferDays = 2;
+    let contentEnd = learnEnd;
+    for (let i = 0; i < bufferDays; i++) {
+      let d = addDays(contentEnd, -1);
+      while (d >= start && !studyDay(d)) d = addDays(d, -1);
+      if (d < start) break;
+      contentEnd = d;
+    }
+
+    // Horizon: normally the last content day. If the student is already past it, finish as early as
+    // the remaining Drill days allow (flagged "compressed") and never run into exam day itself.
+    let horizonEnd = contentEnd;
     let compressed = false;
-    if (eToday > learnEnd && remaining > 0) {
+    if (eToday > contentEnd && remaining > 0) {
       compressed = true;
       horizonEnd = eToday <= lastNewDay ? lastNewDay : (eToday < exam ? addDays(exam, -1) : eToday);
     }
@@ -131,7 +144,10 @@
     const groups = groupOrder(units);
     const queues = {};
     groups.forEach((g) => { queues[g] = []; });
-    units.filter((u) => u.rem > 0).forEach((u) => queues[groupOf(u)].push({ u, left: u.rem }));
+    units.filter((u) => u.rem > 0)
+      .slice()
+      .sort((a, b) => a.priority - b.priority || a.order - b.order)
+      .forEach((u) => queues[groupOf(u)].push({ u, left: u.rem }));
     const qRem = (q) => q.reduce((a, x) => a + x.left, 0);
     const take = (q, count) => {
       const slices = [];
@@ -181,8 +197,10 @@
     const availElapsed = eToday > start ? sdCount(start, elapsedTo) : 0;
     const baseline = Math.max(0, Math.min(Number(o.baselineSeen) || 0, totalAll));
     const idealAtStart = baseline + (totalAll - baseline) * Math.min(1, availElapsed / availTotal);
+    const expectedPct = totalAll ? Math.round(idealAtStart / totalAll * 100) : 100;
     const seenAtStart = seenAll - doneToday;
     const delta = Math.round(seenAtStart - idealAtStart);                // + ahead, − behind
+    const coveragePct = totalAll ? Math.round(seenAll / totalAll * 100) : 100;
     const ref = Math.max(1, quotaToday || Math.ceil(remaining / Math.max(1, K)));
     let status = 'on-track';
     if (remaining === 0) status = 'complete';
@@ -191,9 +209,9 @@
     else if (delta <= -ref) status = 'behind';
 
     return {
-      start, exam, today: eToday, N, split: sp, learnEnd, mockStart, lastNewDay,
+      start, exam, today: eToday, N, split: sp, learnEnd, contentEnd, bufferDays, mockStart, lastNewDay,
       dayNum, phase, daysToExam, examPassed,
-      totalAll, seenAll, remaining, coveragePct: totalAll ? Math.round(seenAll / totalAll * 100) : 100,
+      totalAll, seenAll, remaining, coveragePct, expectedPct,
       studyDaysLeft: K, noStudyDays, compressed,
       quotaToday, todayRemaining, doneToday, requiredPerDay: K ? Math.ceil(adjTotal / K) : 0,
       todaySlices: schedule.length && todayAvail ? schedule[0].slices : [],

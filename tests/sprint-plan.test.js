@@ -203,6 +203,31 @@ describe('edge cases never throw or produce nonsense', () => {
   });
 });
 
+describe('plan intelligence', () => {
+  it('puts weaker chapters earlier when accuracy is known', () => {
+    const units = [
+      { fid: 'strong', lv: 'level7', ch: '1', name: 'Strong', n: 100, seen: 0, priority: 92 },
+      { fid: 'weak', lv: 'level7', ch: '2', name: 'Weak', n: 100, seen: 0, priority: 48 }
+    ];
+    const plan = P.buildPlan({ units, today: '2026-02-01', start: '2026-02-01', exam: '2026-03-31' });
+    expect(plan.schedule[0].slices[0].fid).toBe('weak');
+  });
+
+  it('keeps the last two study days of Learn free for consolidation', () => {
+    const plan = P.buildPlan({ units: syllabus(rng(19)), today: '2026-02-01', start: '2026-02-01', exam: '2026-03-31' });
+    expect(plan.contentEnd < plan.learnEnd).toBe(true);
+    expect(plan.schedule.every((d) => d.iso <= plan.contentEnd)).toBe(true);
+    expect(plan.schedule[plan.schedule.length - 1].iso).toBe(plan.contentEnd);
+  });
+
+  it('reports where the student should be today as expected coverage', () => {
+    const plan = P.buildPlan({ units: syllabus(rng(21)), today: '2026-02-10', start: '2026-02-01', exam: '2026-03-31' });
+    expect(plan.expectedPct).toBeGreaterThanOrEqual(0);
+    expect(plan.expectedPct).toBeLessThanOrEqual(100);
+    expect(plan.expectedPct).toBeLessThan(plan.coveragePct + 100);
+  });
+});
+
 describe('multi-level focus', () => {
   it('keeps Level 5 as its own queue and reports it separately from Level 7', () => {
     const units = [

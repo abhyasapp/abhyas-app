@@ -118,12 +118,14 @@
       if (!g.chapters[key]) {
         let name = key;
         try { name = ChapterData.chapterName(r.lv, r.ch) || key; } catch (e) { /* fall back to the chapter id */ }
-        g.chapters[key] = { key: _focusKey(r.lv, r.ch), ch: r.ch, name, n: 0, sets: 0 };
+        g.chapters[key] = { key: _focusKey(r.lv, r.ch), ch: r.ch, name, n: 0, seen: 0, sets: 0 };
         g.order.push(key);
       }
       const c = g.chapters[key];
       c.sets++;
-      c.n += Math.max(0, Number((_S().fcount || {})[r.fid]) || 0);
+      const n = Math.max(0, Number((_S().fcount || {})[r.fid]) || 0);
+      c.n += n;
+      c.seen += _seenIn(r.fid, n);
     });
     return FOCUS_LEVELS.filter((lv) => groups[lv]).map((lv) => ({
       lv,
@@ -141,16 +143,41 @@
     return seen;
   }
 
+  /** Per-chapter accuracy from recorded sessions; null until that chapter has enough answers. */
+  function _chapterAccuracy(refs) {
+    const byFid = {};
+    refs.forEach((r) => { byFid[r.fid] = _focusKey(r.lv, r.ch); });
+    const sums = {};
+    ((_S().prog && _S().prog.sessions) || []).forEach((s) => {
+      const key = s && byFid[s.fid], total = Number(s && s.total) || 0;
+      if (!key || total < 1) return;
+      const a = sums[key] || (sums[key] = { c: 0, t: 0 });
+      a.t += total; a.c += Number(s.correct) || 0;
+    });
+    const out = {};
+    Object.keys(sums).forEach((key) => {
+      const a = sums[key];
+      out[key] = a.t >= 10 ? Math.round(a.c / a.t * 100) : null;
+    });
+    return out;
+  }
+
   /** The syllabus as the planner needs it. Files whose size is not known yet are counted separately. */
   function _syllabus() {
     const fcount = _S().fcount || {};
+    const refs = _eligibleRefs();
+    const chapterAcc = _chapterAccuracy(refs);
     const units = [], unknown = [];
-    _eligibleRefs().forEach((r) => {
+    refs.forEach((r) => {
       const n = fcount[r.fid];
       if (n == null) { unknown.push(r); return; }
       let name = r.fid;
       try { name = ChapterData.chapterName(r.lv, r.ch) || r.fid; } catch (e) { window.warnCaught && window.warnCaught('js/features/sprint.js', e); }
-      units.push({ fid: r.fid, lv: r.lv, ch: r.ch, book: r.book, name, n: Number(n) || 0, seen: _seenIn(r.fid, Number(n) || 0) });
+      const acc = chapterAcc[_focusKey(r.lv, r.ch)];
+      units.push({
+        fid: r.fid, lv: r.lv, ch: r.ch, book: r.book, name, n: Number(n) || 0,
+        seen: _seenIn(r.fid, Number(n) || 0), priority: acc == null ? 100 : acc,
+      });
     });
     return { units, unknown };
   }
@@ -191,6 +218,10 @@
     plan.cfg = cfg;
     plan.mastery = _syllabusAccuracy(plan);
     plan.mastered = plan.status === 'complete' && plan.mastery.met;
+    const days = LOG.days();
+    const rate = P.recentRate(days, today, cfg.rest, cfg.off, 7);
+    plan.rate = Math.round(rate * 10) / 10;
+    plan.projectedFinish = plan.remaining === 0 ? today : P.projectFinish(plan.remaining, rate, today, cfg.rest, cfg.off);
     return plan;
   }
 
@@ -214,13 +245,17 @@
 
     const mockDone = (rec.mocks || []).length;
     const minutes = Math.round((newT + reviewT + drillT) * PERMIN + mockT * 75);
+    const leftNew = Math.max(0, newT - (rec.newSeen || 0));
+    const leftReviews = Math.max(0, reviewT - reviewDone);
+    const leftDrill = Math.max(0, (phase === 'Mock' ? mockT : drillT) - (phase === 'Mock' ? mockDone : (kinds.drill || 0)));
+    const minutesLeft = Math.round((leftNew + leftReviews + leftDrill) * PERMIN + (phase === 'Mock' ? Math.max(0, mockT - mockDone) * 75 : 0));
     return {
       phase,
       new:     { done: rec.newSeen || 0, target: newT },
       reviews: { done: reviewDone, target: reviewT },
       drill:   phase === 'Mock' ? { done: mockDone, target: mockT, label: T('Mock test') } : { done: kinds.drill || 0, target: drillT, label: 'Drill' },
       time:    { done: Math.round((rec.sec || 0) / 60), target: Math.max(10, minutes) },
-      due,
+      due, minutesLeft,
     };
   }
 
@@ -346,7 +381,9 @@
       tgt.classList.toggle('done', d.target > 0 && d.done >= d.target);
     });
     const hint = document.getElementById('sprint-targets-hint');
-    if (hint) hint.textContent = T('Resets at midnight');
+    if (hint) hint.textContent = t.minutesLeft > 0
+      ? T('~{m} left today', { m: _fmtMinutes(t.minutesLeft) })
+      : T('All targets done');
 
     // plan status line
     const st = STATUS[plan.status === 'complete' && !plan.mastered ? 'covered' : plan.status] || STATUS['on-track'];
@@ -414,6 +451,8 @@
     }
     if (!rows.length) rows.push(_row('ph-smiley', '', T('Nothing due'), T('You are all caught up for today.'), '', '', true));
     host.innerHTML = rows.join('');
+    const startAll = document.getElementById('sprint-start-all');
+    if (startAll) startAll.hidden = !(plan.todaySlices.length > 1 && plan.todayRemaining > 0);
   }
 
   function _renderCoverage(plan) {
@@ -427,7 +466,7 @@
         (weak ? '<br><span class="t-foot">' + weak + '</span>' : '');
     }
     else if (plan.status === 'complete') cap = T('Every question in your focus has been seen.');
-    else cap = '<strong>' + plan.remaining + '</strong> new questions left \u00b7 scheduled to finish on <strong>' + _esc(_fmtDate(plan.finishesOn || plan.learnEnd)) + '</strong>';
+    else cap = '<strong>' + plan.remaining + '</strong> new questions left \u00b7 new content ends <strong>' + _esc(_fmtDate(plan.contentEnd || plan.learnEnd)) + '</strong>';
     _setHtml('sprint-cov-cap', cap);
     const bar = document.querySelector('#sprint-cov-bar > i');
     if (bar) bar.style.width = plan.coveragePct + '%';
@@ -603,6 +642,13 @@
       const fill = el.querySelector('.bar > i'); if (fill) fill.style.width = progress + '%';
       const b = el.querySelector('.bar'); if (b) b.setAttribute('aria-valuenow', progress);
     });
+
+    const diff = plan.coveragePct - plan.expectedPct;
+    const proj = plan.remaining === 0 ? T('Done') : (plan.projectedFinish ? _fmtDate(plan.projectedFinish) : '\u2014');
+    _setHtml('sprint-pace-stats',
+      '<div><span>' + T('Expected') + '</span><strong>' + plan.expectedPct + '%</strong></div>' +
+      '<div><span>' + T('Actual') + '</span><strong>' + plan.coveragePct + '%</strong><small class="' + (diff >= 0 ? 'ok' : 'warn') + '">' + (diff >= 0 ? '+' : '') + diff + '%</small></div>' +
+      '<div><span>' + T('Projected') + '</span><strong>' + _esc(proj) + '</strong><small>' + (plan.rate > 0 ? plan.rate + ' ' + T('Q/day') : '\u2014') + '</small></div>');
   }
 
   function _focusSummary() {
@@ -631,25 +677,48 @@
       (names.length > 6 ? '<span class="t-foot">+' + (names.length - 6) + ' more</span>' : '');
   }
 
+  function _paintFocusCount() {
+    const box = document.getElementById('mbody');
+    if (!box) return;
+    const boxes = Array.from(box.querySelectorAll('[data-focus-key]'));
+    const on = boxes.filter((x) => x.checked);
+    const q = on.reduce((n, x) => n + (Number(x.getAttribute('data-q')) || 0), 0);
+    const el = document.getElementById('focus-count');
+    if (el) el.textContent = on.length + ' of ' + boxes.length + ' ' + T('topics') + ' \u00b7 ' + q + ' Q';
+  }
+
+  function toggleFocusLevel(btn) {
+    const box = document.getElementById('mbody');
+    if (!box || !btn) return;
+    const prefix = btn.getAttribute('data-focus-lv') + '|';
+    const rows = Array.from(box.querySelectorAll('[data-focus-key]')).filter((x) => x.getAttribute('data-focus-key').indexOf(prefix) === 0);
+    const turnOn = !rows.length || !rows.every((x) => x.checked);
+    rows.forEach((x) => { x.checked = turnOn; });
+    _paintFocusCount();
+  }
+
   function openFocus() {
     const groups = _topicGroups();
     if (!groups.length) { toast(T('No topics are available yet. Open a chapter once while online.')); return; }
     const defaults = _defaultFocusKeys(_allTopicRefs());
     const selected = _focusSet() || defaults;
-    const total = groups.reduce((n, g) => n + g.chapters.length, 0);
-    let html = '<p class="t-foot" style="margin-bottom:12px">' + T('Choose the topics you want the plan to cover. You can mix Level 7, Level 5 and GK.') + '</p>' +
+    let html = '<p class="t-foot" style="margin-bottom:10px">' + T('Choose the topics you want the plan to cover. You can mix Level 7, Level 5 and GK.') + '</p>' +
+      '<input class="input focus-search" id="focus-search" type="search" placeholder="' + T('Search topics…') + '" aria-label="' + T('Search topics…') + '">' +
       '<div class="bg" style="margin-bottom:10px">' +
         '<button class="btn btn-sm btn-quiet" type="button" data-focus-set="all">' + T('All levels') + '</button>' +
         '<button class="btn btn-sm btn-quiet" type="button" data-focus-set="default">' + T('Level 7 + GK') + '</button>' +
         '<button class="btn btn-sm btn-quiet" type="button" data-focus-set="none">' + T('Clear') + '</button>' +
       '</div>';
     groups.forEach((g) => {
-      html += '<div class="focus-lv"><div class="focus-lv-hd"><strong>' + _esc(g.label) + '</strong><span>' + g.chapters.length + ' ' + T('topics') + '</span></div>';
+      html += '<div class="focus-lv"><div class="focus-lv-hd"><strong>' + _esc(g.label) + '</strong><span>' + g.chapters.length + ' ' + T('topics') + '</span>' +
+        '<button class="focus-all" type="button" data-focus-lv="' + g.lv + '" data-on-click="SPRINT_PAGE.toggleFocusLevel(this)" aria-label="' + T('Select all topics in this level') + '">' + T('All') + '</button></div>';
       g.chapters.forEach((c) => {
         const checked = selected.has(c.key) ? ' checked' : '';
-        html += '<label class="focus-row"><input type="checkbox" data-focus-key="' + _esc(c.key) + '"' + checked + '>' +
-          '<span class="grow">' + _esc(c.name) + '</span>' +
-          '<span class="t-foot">' + (c.n ? c.n + ' Q' : c.sets + (c.sets === 1 ? ' set' : ' sets')) + '</span></label>';
+        const pct = c.n ? Math.round(c.seen / c.n * 100) : 0;
+        const progress = c.n ? c.seen + '/' + c.n + ' \u00b7 ' + pct + '%' : c.sets + (c.sets === 1 ? ' set' : ' sets');
+        html += '<label class="focus-row" data-search="' + _esc((c.name + ' ' + c.key).toLowerCase()) + '"><input type="checkbox" data-focus-key="' + _esc(c.key) + '" data-q="' + (c.n || 0) + '"' + checked + '>' +
+          '<span class="grow"><span>' + _esc(c.name) + '</span><small>' + _esc(progress) + '</small></span>' +
+          '<span class="t-foot">' + (c.n ? c.n + ' Q' : '') + '</span></label>';
       });
       html += '</div>';
     });
@@ -658,7 +727,7 @@
     openMod(T('Focus topics'), html, { wide: true });
     const box = document.getElementById('mbody');
     const boxes = () => Array.from(box.querySelectorAll('[data-focus-key]'));
-    const paintCount = () => { const n = boxes().filter((x) => x.checked).length; const el = document.getElementById('focus-count'); if (el) el.textContent = n + ' of ' + total + ' ' + T('topics selected'); };
+    const paintCount = _paintFocusCount;
     box.querySelectorAll('[data-focus-set]').forEach((btn) => {
       btn.onclick = () => {
         const mode = btn.getAttribute('data-focus-set');
@@ -666,6 +735,14 @@
         paintCount();
       };
     });
+    const search = document.getElementById('focus-search');
+    if (search) search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      boxes().forEach((x) => { const row = x.closest('.focus-row'); if (row) row.hidden = !!q && row.getAttribute('data-search').indexOf(q) === -1; });
+      Array.from(box.querySelectorAll('.focus-lv')).forEach((sec) => {
+        sec.hidden = !Array.from(sec.querySelectorAll('.focus-row')).some((r) => !r.hidden);
+      });
+    };
     boxes().forEach((x) => { x.onchange = paintCount; });
     paintCount();
     document.getElementById('focus-save').onclick = () => {
@@ -733,30 +810,40 @@
       QUIZ._doStart(picked, 'flashcard', name, false, { lv: ref.lv, ch: ref.ch, book: ref.book, sub: ref.subtopic, fid: ref.fid, sprint: 'new' });
     },
 
-    async startCatchUp() {
-      const plan = _plan();
-      const slices = Array.isArray(plan.todaySlices) ? plan.todaySlices : [];
-      if (!slices.length || !plan.todayRemaining) { toast(T('Nothing new left to catch up on today.')); return; }
+    async _startSlices(slices, total, title, tag, meta) {
+      if (!slices.length || !total) { toast(T('Nothing new left to catch up on today.')); return; }
       QUIZ._showLoader(T('Building your catch-up block…'));
       const picked = [];
       for (const slice of slices) {
         const ref = RUN._ref(slice.fid);
         if (!ref) continue;
-        const need = Math.min(Math.max(0, Number(slice.count) || 0), plan.todayRemaining - picked.length);
+        const need = Math.min(Math.max(0, Number(slice.count) || 0), total - picked.length);
         if (!need) continue;
         try {
           const qs = await RUN._load(ref);
           let taken = 0;
           for (const q of qs) {
-            if (taken >= need || picked.length >= plan.todayRemaining) break;
+            if (taken >= need || picked.length >= total) break;
             if (!RUN._seenQ(q)) { picked.push(q); taken++; }
           }
         } catch (e) { /* skip this chapter and keep the rest */ }
-        if (picked.length >= plan.todayRemaining) break;
+        if (picked.length >= total) break;
       }
       QUIZ._hideLoader();
       if (!picked.length) { toast(T('Could not load today’s chapters. Try again.'), 4500); return; }
-      QUIZ._doStart(picked, 'flashcard', T('Sprint catch-up'), false, { sprint: 'catchup', catchupChapters: plan.todaySlices.length });
+      QUIZ._doStart(picked, 'flashcard', title, false, Object.assign({ sprint: tag }, meta || {}));
+    },
+
+    async startAllNew() {
+      const plan = _plan();
+      const slices = Array.isArray(plan.todaySlices) ? plan.todaySlices : [];
+      await RUN._startSlices(slices, plan.todayRemaining, T('Today’s new questions'), 'new', { todayChapters: slices.length });
+    },
+
+    async startCatchUp() {
+      const plan = _plan();
+      const slices = Array.isArray(plan.todaySlices) ? plan.todaySlices : [];
+      await RUN._startSlices(slices, plan.todayRemaining, T('Sprint catch-up'), 'catchup', { catchupChapters: slices.length });
     },
 
     startReview() {
@@ -883,6 +970,7 @@
     if (!el) return;
     const act = el.getAttribute('data-sprint');
     if (act === 'new') RUN.startNew(el.getAttribute('data-fid'), Number(el.getAttribute('data-count')) || 0);
+    else if (act === 'all-new') RUN.startAllNew();
     else if (act === 'catchup') RUN.startCatchUp();
     else if (act === 'review') RUN.startReview();
     else if (act === 'drill') RUN.startDrill();
@@ -975,7 +1063,7 @@
       renderHomeStrip(); renderPage();
     },
     render() { renderHomeStrip(); renderPage(); },
-    renderHomeStrip, renderPage, isEligible, openFocus,
+    renderHomeStrip, renderPage, isEligible, openFocus, toggleFocusLevel,
     focusKeys: () => _eligibleRefs().map((r) => _focusKey(r.lv, r.ch)),
     takeTodayOff, setExamDate, addRestDay, removeRestDay,
     run: RUN, plan: _plan, targets: () => _targets(_plan()),

@@ -259,7 +259,10 @@
               <div class="target" data-target="drill"><div class="target-lbl" data-i18n>Drill</div><div class="target-val"><span class="v">0</span> <span class="of">/ 0</span></div><div class="bar thin"><i style="width:0%"></i></div></div>
               <div class="target" data-target="time"><div class="target-lbl" data-i18n>Time</div><div class="target-val"><span class="v">0m</span> <span class="of">/ 0</span></div><div class="bar thin"><i style="width:0%"></i></div></div>
             </div>
-            <div class="section-head" style="margin-top:6px;margin-bottom:6px"><h2 data-i18n>Today's list</h2><span class="hint">Tap Start to begin</span></div>
+            <div class="section-head list-head" style="margin-top:6px;margin-bottom:6px"><h2 data-i18n>Today's list</h2>
+              <button class="row-btn ghost" id="sprint-start-all" type="button" data-sprint="all-new" hidden><i class="ph ph-play"></i> <span data-i18n>Start all</span></button>
+              <span class="hint">Tap Start to begin</span>
+            </div>
             <div class="list" id="sprint-today-list"></div>
           </section>
           <section class="card" id="sprint-cov-card" aria-labelledby="sprint-cov-h">
@@ -305,6 +308,7 @@
               <div class="phase-hd"><span class="phase-name" data-i18n>Mock</span><span class="phase-range">Day 53–60</span><span class="phase-state">Upcoming</span></div>
               <div class="bar" role="progressbar" aria-label="Mock phase progress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
             </div>
+            <div class="pace-stats" id="sprint-pace-stats"></div>
             <div class="pace">
               <span class="pace-item ok" id="sprint-pace-verdict"><i class="ph ph-check-circle"></i> <strong>On track</strong> for exam day</span>
               <span class="pace-item" id="sprint-exam-date"><i class="ph ph-calendar"></i> Exam <strong>—</strong></span>
