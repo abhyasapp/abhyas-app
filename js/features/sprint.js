@@ -20,6 +20,11 @@
   const KEY_EXAM  = 'abhyas_exam_date';           // the ONE exam date (Home countdown, Today plan and the sprint share it)
   const KEY_REST  = 'abhyas_sprint_rest';
   const KEY_OFF   = 'abhyas_sprint_off';
+  const KEY_FOCUS = 'abhyas_sprint_focus';
+  const FOCUS_DEFAULT_LEVELS = ['level7', 'gk'];
+  const FOCUS_LEVELS = ['level7', 'level5', 'gk'];
+  const FOCUS_LABELS = { level7: 'Level 7', level5: 'Level 5', gk: 'General Knowledge' };
+  const PLAN_LEVEL_LABELS = { l7: 'Level 7', level5: 'Level 5', gk: 'General Knowledge' };
 
   const PERMIN = 0.9;                    // minutes per practice question (unchanged from v1)
   let _inited = false;
@@ -56,19 +61,65 @@
     } catch (e) { /* storage full / private mode */ }
   }
 
-  // ── eligible pool: Level 7 + GK, excluding "original" books ─────────────────────────────
+  // ── eligible pool: every exam level, excluding "original" books ──────────────────────────
+  function _lvKey(lv) {
+    const v = String(lv || '').toLowerCase();
+    return v === 'gk' ? 'gk' : v === 'level5' ? 'level5' : v === 'level7' ? 'level7' : v;
+  }
+  function _focusKey(lv, ch) { return _lvKey(lv) + '|' + String(ch == null ? '' : ch); }
   function isEligible(meta) {
     if (!meta) return false;
-    const lvl = String(meta.level || '').toLowerCase();
-    if (lvl !== 'level7' && lvl !== 'gk') return false;
+    if (FOCUS_LEVELS.indexOf(_lvKey(meta.level)) === -1) return false;
     const book = String(meta.book || meta.bookName || meta.title || '');
     return !/original/i.test(book);
   }
-  function _eligibleRefs() {
+  function _allTopicRefs() {
     try {
       if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return [];
       return ChapterData.allFileRefs().filter((r) => isEligible({ level: r.lv, book: r.book }));
     } catch (e) { return []; }
+  }
+  function _focusSet() {
+    try {
+      const raw = localStorage.getItem(KEY_FOCUS);
+      if (!raw) return null;
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) && arr.length ? new Set(arr.filter((x) => typeof x === 'string')) : null;
+    } catch (e) { return null; }
+  }
+  function _defaultFocusKeys(refs) {
+    return new Set((refs || []).filter((r) => FOCUS_DEFAULT_LEVELS.indexOf(_lvKey(r.lv)) !== -1).map((r) => _focusKey(r.lv, r.ch)));
+  }
+  function _eligibleRefs() {
+    const refs = _allTopicRefs();
+    const focus = _focusSet();
+    if (focus) return refs.filter((r) => focus.has(_focusKey(r.lv, r.ch)));
+    return refs.filter((r) => FOCUS_DEFAULT_LEVELS.indexOf(_lvKey(r.lv)) !== -1);
+  }
+  /* All chapters a student can focus on, grouped by level. Level 5 is offered here even though
+     the default plan stays Level 7 + GK, so choosing it is an explicit student decision. */
+  function _topicGroups() {
+    const groups = {}, order = [];
+    _allTopicRefs().forEach((r) => {
+      const lv = _lvKey(r.lv);
+      if (FOCUS_LEVELS.indexOf(lv) === -1) return;
+      if (!groups[lv]) { groups[lv] = { lv, chapters: {}, order: [] }; order.push(lv); }
+      const g = groups[lv], key = String(r.ch == null ? '' : r.ch);
+      if (!g.chapters[key]) {
+        let name = key;
+        try { name = ChapterData.chapterName(r.lv, r.ch) || key; } catch (e) { /* fall back to the chapter id */ }
+        g.chapters[key] = { key: _focusKey(r.lv, r.ch), ch: r.ch, name, n: 0, sets: 0 };
+        g.order.push(key);
+      }
+      const c = g.chapters[key];
+      c.sets++;
+      c.n += Math.max(0, Number((_S().fcount || {})[r.fid]) || 0);
+    });
+    return FOCUS_LEVELS.filter((lv) => groups[lv]).map((lv) => ({
+      lv,
+      label: FOCUS_LABELS[lv],
+      chapters: groups[lv].order.map((k) => groups[lv].chapters[k])
+    }));
   }
   const _S = () => (typeof S !== 'undefined' ? S : {});
 
@@ -94,10 +145,20 @@
     return { units, unknown };
   }
 
+  function _fidOfQ(q) {
+    if (!q) return '';
+    if (q.fileId) return String(q.fileId);
+    const uid = String(q.uid || ''), i = uid.lastIndexOf('_');
+    return i > 0 ? uid.slice(0, i) : '';
+  }
+  function _focusFids() { return new Set(_eligibleRefs().map((r) => r.fid)); }
   function _dueReviews() {
-    try { if (typeof REV !== 'undefined' && REV.dueWrong) return REV.dueWrong().length; } catch (e) { window.warnCaught && window.warnCaught('js/features/sprint.js', e); }
+    const fids = _focusFids();
+    try {
+      if (typeof REV !== 'undefined' && REV.dueWrong) return REV.dueWrong().filter((q) => fids.has(_fidOfQ(q))).length;
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/sprint.js', e); }
     const now = Date.now();
-    return ((_S().wr) || []).filter((q) => q && !q._withdrawn && (q._nextDue == null || Number(q._nextDue) <= now)).length;
+    return ((_S().wr) || []).filter((q) => q && !q._withdrawn && fids.has(_fidOfQ(q)) && (q._nextDue == null || Number(q._nextDue) <= now)).length;
   }
 
   function _streak() {
@@ -135,7 +196,8 @@
     if (!plan.unknownFiles.length && plan.quotaToday) LOG.setPlanned(today, plan.quotaToday);
 
     const reviewT = Math.min(30, due + reviewDone);                               // only what actually exists
-    const wrongCount = ((_S().wr) || []).filter((q) => q && !q._withdrawn).length;
+    const focusFids = _focusFids();
+    const wrongCount = ((_S().wr) || []).filter((q) => q && !q._withdrawn && focusFids.has(_fidOfQ(q))).length;
     const drillT = phase === 'Learn' ? (wrongCount ? Math.min(15, wrongCount + (kinds.drill || 0)) : 0)
                  : phase === 'Drill' ? 40 : (wrongCount ? 20 : 0);
     const mockT = phase === 'Mock' ? 1 : 0;
@@ -167,7 +229,10 @@
     return '<div class="bar thin ' + (cls || '') + '" role="progressbar" aria-label="' + _esc(label) + '" aria-valuenow="' + p + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + p + '%"></i></div>';
   }
   function _pill(text, tone) { return '<span class="sp-pill ' + (tone || '') + '">' + _esc(text) + '</span>'; }
-  function _lvLabel(lv) { return String(lv).toLowerCase() === 'gk' ? 'GK' : 'Level 7'; }
+  function _lvLabel(lv) {
+    const v = _lvKey(lv);
+    return v === 'gk' ? 'GK' : v === 'level5' ? 'Level 5' : 'Level 7';
+  }
 
   /* "Complete" means two things: every question has been seen AND accuracy on the syllabus is at least
      MASTERY_GOAL%. Accuracy comes from practice sessions that belong to a syllabus chapter (session.fid). */
@@ -319,7 +384,7 @@
     } else if (onRest) {
       rows.push(_row('ph-moon', '', T('Rest day'), T('No new questions today. The plan has spread them over the other days.'), '', '', true));
     } else if (plan.remaining === 0 && !plan.unknownFiles.length) {
-      rows.push(_row('ph-seal-check', '', T('Syllabus complete'), T('Every Level 7 and GK question has been seen. Time to sharpen.'), '', '', true));
+      rows.push(_row('ph-seal-check', '', T('Syllabus complete'), T('Every question in your focus has been seen. Time to sharpen.'), '', '', true));
     }
 
     if ((plan.status === 'behind' || plan.status === 'compressed') && plan.todayRemaining > 0 && plan.todaySlices.length > 1) {
@@ -347,11 +412,11 @@
     let cap;
     if (plan.status === 'complete' && !plan.mastered) {
       const m = plan.mastery, weak = m.below.slice(0, 3).map((x) => _esc(x.name) + ' ' + x.acc + '%').join(' \u00b7 ');
-      cap = T('Every Level 7 and GK question has been seen.') + ' ' +
+      cap = T('Every question in your focus has been seen.') + ' ' +
         (m.overall === null ? T('No accuracy data yet') : T('Accuracy is {a}%. Bring every chapter to {g}% to finish.', { a: m.overall, g: MASTERY_GOAL })) +
         (weak ? '<br><span class="t-foot">' + weak + '</span>' : '');
     }
-    else if (plan.status === 'complete') cap = T('Every Level 7 and GK question has been seen.');
+    else if (plan.status === 'complete') cap = T('Every question in your focus has been seen.');
     else cap = '<strong>' + plan.remaining + '</strong> new questions left \u00b7 scheduled to finish on <strong>' + _esc(_fmtDate(plan.finishesOn || plan.learnEnd)) + '</strong>';
     _setHtml('sprint-cov-cap', cap);
     const bar = document.querySelector('#sprint-cov-bar > i');
@@ -359,9 +424,14 @@
     const barHost = document.getElementById('sprint-cov-bar');
     if (barHost) barHost.setAttribute('aria-valuenow', plan.coveragePct);
 
-    _setHtml('sprint-cov-levels',
-      '<div class="cov-lv"><span>Level 7</span><strong>' + plan.levels.l7.pct + '%</strong>' + _bar('Level 7 covered', plan.levels.l7.pct) + '</div>' +
-      '<div class="cov-lv"><span>General Knowledge</span><strong>' + plan.levels.gk.pct + '%</strong>' + _bar('General Knowledge covered', plan.levels.gk.pct) + '</div>' +
+    const levelRows = (plan.levelList && plan.levelList.length)
+      ? plan.levelList
+      : [{ id: 'l7', pct: plan.levels.l7.pct }, { id: 'gk', pct: plan.levels.gk.pct }];
+    const lvRows = levelRows.map((l) => {
+      const label = PLAN_LEVEL_LABELS[l.id] || l.id;
+      return '<div class="cov-lv"><span>' + _esc(label) + '</span><strong>' + l.pct + '%</strong>' + _bar(label + ' covered', l.pct) + '</div>';
+    }).join('');
+    _setHtml('sprint-cov-levels', lvRows +
       '<div class="cov-lv"><span>' + T('Accuracy goal') + ' ' + MASTERY_GOAL + '%</span><strong>' + (plan.mastery.overall === null ? '\u2014' : plan.mastery.overall + '%') + '</strong>' +
         _bar('Accuracy on the syllabus', plan.mastery.overall === null ? 0 : plan.mastery.overall, plan.mastery.met ? 'ok' : '') + '</div>');
 
@@ -525,7 +595,93 @@
     });
   }
 
+  function _focusSummary() {
+    if (!_focusSet()) return T('All Level 7 + GK topics');
+    const refs = _eligibleRefs();
+    const chapters = new Set(refs.map((r) => _focusKey(r.lv, r.ch)));
+    const levels = FOCUS_LEVELS.filter((lv) => refs.some((r) => _lvKey(r.lv) === lv)).map((lv) => FOCUS_LABELS[lv]);
+    if (!chapters.size) return T('No topics selected');
+    return chapters.size + ' ' + (chapters.size === 1 ? 'topic' : 'topics') +
+      (levels.length ? ' · ' + levels.join(', ') : '');
+  }
+
+  function _renderFocus() {
+    const summary = document.getElementById('sprint-focus-summary');
+    if (summary) summary.textContent = _focusSummary();
+    const chips = document.getElementById('sprint-focus-chips');
+    if (!chips) return;
+    if (!_focusSet()) { chips.innerHTML = ''; return; }
+    const names = [];
+    _eligibleRefs().forEach((r) => {
+      let name = String(r.ch == null ? '' : r.ch);
+      try { name = ChapterData.chapterName(r.lv, r.ch) || name; } catch (e) { /* keep the id */ }
+      if (names.indexOf(name) === -1) names.push(name);
+    });
+    chips.innerHTML = names.slice(0, 6).map((n) => '<span class="rest-chip">' + _esc(n) + '</span>').join('') +
+      (names.length > 6 ? '<span class="t-foot">+' + (names.length - 6) + ' more</span>' : '');
+  }
+
+  function openFocus() {
+    const groups = _topicGroups();
+    if (!groups.length) { toast(T('No topics are available yet. Open a chapter once while online.')); return; }
+    const defaults = _defaultFocusKeys(_allTopicRefs());
+    const selected = _focusSet() || defaults;
+    const total = groups.reduce((n, g) => n + g.chapters.length, 0);
+    let html = '<p class="t-foot" style="margin-bottom:12px">' + T('Choose the topics you want the plan to cover. You can mix Level 7, Level 5 and GK.') + '</p>' +
+      '<div class="bg" style="margin-bottom:10px">' +
+        '<button class="btn btn-sm btn-quiet" type="button" data-focus-set="all">' + T('All levels') + '</button>' +
+        '<button class="btn btn-sm btn-quiet" type="button" data-focus-set="default">' + T('Level 7 + GK') + '</button>' +
+        '<button class="btn btn-sm btn-quiet" type="button" data-focus-set="none">' + T('Clear') + '</button>' +
+      '</div>';
+    groups.forEach((g) => {
+      html += '<div class="focus-lv"><div class="focus-lv-hd"><strong>' + _esc(g.label) + '</strong><span>' + g.chapters.length + ' ' + T('topics') + '</span></div>';
+      g.chapters.forEach((c) => {
+        const checked = selected.has(c.key) ? ' checked' : '';
+        html += '<label class="focus-row"><input type="checkbox" data-focus-key="' + _esc(c.key) + '"' + checked + '>' +
+          '<span class="grow">' + _esc(c.name) + '</span>' +
+          '<span class="t-foot">' + (c.n ? c.n + ' Q' : c.sets + (c.sets === 1 ? ' set' : ' sets')) + '</span></label>';
+      });
+      html += '</div>';
+    });
+    html += '<div class="set-row" style="margin-top:12px"><span class="t-foot" id="focus-count"></span>' +
+      '<button class="btn btn-solid" type="button" id="focus-save">' + T('Use these topics') + '</button></div>';
+    openMod(T('Focus topics'), html, { wide: true });
+    const box = document.getElementById('mbody');
+    const boxes = () => Array.from(box.querySelectorAll('[data-focus-key]'));
+    const paintCount = () => { const n = boxes().filter((x) => x.checked).length; const el = document.getElementById('focus-count'); if (el) el.textContent = n + ' of ' + total + ' ' + T('topics selected'); };
+    box.querySelectorAll('[data-focus-set]').forEach((btn) => {
+      btn.onclick = () => {
+        const mode = btn.getAttribute('data-focus-set');
+        boxes().forEach((x) => { x.checked = mode === 'all' || (mode === 'default' && defaults.has(x.getAttribute('data-focus-key'))); });
+        paintCount();
+      };
+    });
+    boxes().forEach((x) => { x.onchange = paintCount; });
+    paintCount();
+    document.getElementById('focus-save').onclick = () => {
+      const keys = boxes().filter((x) => x.checked).map((x) => x.getAttribute('data-focus-key'));
+      if (!keys.length) { toast(T('Choose at least one topic.')); return; }
+      const same = keys.length === defaults.size && keys.every((k) => defaults.has(k));
+      try {
+        if (same) localStorage.removeItem(KEY_FOCUS);
+        else localStorage.setItem(KEY_FOCUS, JSON.stringify(keys));
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/sprint.js', e); }
+      const today = _todayIso();
+      const units = _syllabus().units;
+      const seenAll = units.reduce((a, u) => a + u.seen, 0);
+      const cfg = _read();
+      LOG.setBaseline(cfg.start, Math.max(0, seenAll - (LOG.dayRec(today).newSeen || 0)), true);
+      const fresh = _plan();
+      if (!fresh.unknownFiles.length) LOG.setPlanned(today, fresh.quotaToday, true);
+      closeMod();
+      renderPage(); renderHomeStrip();
+      toast(T('Focus saved. Daily targets now cover only these topics.'), 4500);
+    };
+    DIALOG.open(document.getElementById('mbg'), { focus: '[data-focus-key]' });
+  }
+
   function _renderSettings(plan) {
+    _renderFocus();
     const ex = document.getElementById('sprint-exam-input');
     if (ex && document.activeElement !== ex) { ex.value = plan.cfg.examDate || ''; ex.min = P.addDays(_todayIso(), 1); }
     const restIn = document.getElementById('sprint-rest-input');
@@ -594,8 +750,10 @@
     },
 
     startReview() {
+      const fids = _focusFids();
       let arr;
       try { arr = REV.dueWrong(); } catch (e) { arr = []; }
+      arr = (arr || []).filter((q) => fids.has(_fidOfQ(q)));
       if (!arr.length) { toast(T('Nothing due for review right now 🎉')); return; }
       QUIZ._doStart(shuf(arr.slice()).slice(0, 30), 'flashcard', '\uD83D\uDD01 Wrong Bank (Due Today)', true, { sprint: 'review' });
     },
@@ -720,6 +878,7 @@
     else if (act === 'drill') RUN.startDrill();
     else if (act === 'mock') RUN.startMock(50);
     else if (act === 'count') RUN.count();
+    else if (act === 'focus') openFocus();
     else if (act === 'copy-report') _copyReport();
     else if (act === 'save-exam') { const i = document.getElementById('sprint-exam-input'); if (i) setExamDate(i.value); }
     else if (act === 'add-rest') {
@@ -806,7 +965,8 @@
       renderHomeStrip(); renderPage();
     },
     render() { renderHomeStrip(); renderPage(); },
-    renderHomeStrip, renderPage, isEligible,
+    renderHomeStrip, renderPage, isEligible, openFocus,
+    focusKeys: () => _eligibleRefs().map((r) => _focusKey(r.lv, r.ch)),
     takeTodayOff, setExamDate, addRestDay, removeRestDay,
     run: RUN, plan: _plan, targets: () => _targets(_plan()),
   };

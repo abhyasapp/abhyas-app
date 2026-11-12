@@ -7,6 +7,11 @@
   'use strict';
 
   const P = window.SPRINT_PLAN;
+  const LEVEL_LABEL = { l7: 'Level 7', level5: 'Level 5', gk: 'GK' };
+  const levelBits = (plan) => (plan.levelList && plan.levelList.length)
+    ? plan.levelList.map((l) => (LEVEL_LABEL[l.id] || l.id) + ' ' + l.pct + '%').join(' \u00b7 ')
+    : 'Level 7 ' + plan.levels.l7.pct + '% \u00b7 GK ' + plan.levels.gk.pct + '%';
+  const onlyDefaultLevels = (plan) => !plan.levelList || plan.levelList.every((l) => l.id === 'l7' || l.id === 'gk');
   const pct = (c, n) => (n > 0 ? Math.round(c / n * 100) : 0);
   const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
@@ -128,7 +133,9 @@
     const finish = plan ? P.projectFinish(plan.remaining, rate, o.today, o.rest, o.off) : null;
     let projection = null;
     if (plan) {
-      if (plan.remaining === 0) projection = 'The whole Level 7 and GK syllabus has been covered.';
+      if (plan.remaining === 0) projection = onlyDefaultLevels(plan)
+        ? 'The whole Level 7 and GK syllabus has been covered.'
+        : 'The whole selected syllabus has been covered.';
       else if (!finish) projection = 'No new questions were covered in the last week, so a finish date cannot be projected yet. Today\u2019s target is ' + plan.quotaToday + '.';
       else {
         const gap = P.diffDays(finish, plan.learnEnd);
@@ -160,7 +167,7 @@
     L.push('Day ' + plan.dayNum + ' of ' + plan.N + ' (' + plan.phase + ' phase) \u00b7 exam ' + plan.exam);
     L.push('');
     L.push('Grade: ' + sum.grade + ' (overall ' + sum.scores.overall + '/100)');
-    L.push('Syllabus covered: ' + plan.coveragePct + '% \u00b7 Level 7 ' + plan.levels.l7.pct + '% \u00b7 GK ' + plan.levels.gk.pct + '%');
+    L.push('Syllabus covered: ' + plan.coveragePct + '% \u00b7 ' + levelBits(plan));
     L.push('Remaining new questions: ' + plan.remaining);
     L.push('Questions answered: ' + sum.totalQ + ' \u00b7 accuracy ' + sum.accOverall + '% (last 14 days ' + sum.acc14 + '%)');
     L.push('Active days: ' + sum.activeDays + ' of ' + sum.studyDaysElapsed + ' study days \u00b7 streak ' + sum.streak);

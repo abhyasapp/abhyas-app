@@ -54,7 +54,11 @@
     return out;
   }
 
-  const groupOf = (u) => (String(u.lv || '').toLowerCase() === 'gk' ? 'gk' : 'l7');
+  const groupOf = (u) => {
+    const lv = String(u.lv || '').toLowerCase();
+    return lv === 'gk' ? 'gk' : lv === 'level5' ? 'level5' : 'l7';
+  };
+  const groupOrder = (units) => ['l7', 'level5', 'gk'].filter((g) => units.some((u) => groupOf(u) === g));
 
   /**
    * @param {Object} o
@@ -121,9 +125,12 @@
     const quotaToday = todayAvail && K ? shares[0] : 0;
     const todayRemaining = todayAvail ? Math.max(0, quotaToday - doneToday) : 0;
 
-    // Two queues (Level 7 and GK) are consumed in proportion to what each has left, so BOTH finish
-    // on the same final day instead of GK being left for the end. Inside a queue, chapters go in order.
-    const queues = { l7: [], gk: [] };
+    // One queue per selected level (Level 7, Level 5 and GK). They are consumed in proportion to
+    // what each has left, so every level finishes on the same final day instead of one being left
+    // for the end. Inside a queue, chapters go in order.
+    const groups = groupOrder(units);
+    const queues = {};
+    groups.forEach((g) => { queues[g] = []; });
     units.filter((u) => u.rem > 0).forEach((u) => queues[groupOf(u)].push({ u, left: u.rem }));
     const qRem = (q) => q.reduce((a, x) => a + x.left, 0);
     const take = (q, count) => {
@@ -141,8 +148,8 @@
     const schedule = [];
     for (let k = 0; k < K; k++) {
       const amount = k === 0 && todayAvail ? todayRemaining : shares[k];
-      const [a, b] = splitBy(amount, [qRem(queues.l7), qRem(queues.gk)]);
-      const slices = take(queues.l7, a).concat(take(queues.gk, b));
+      const amounts = splitBy(amount, groups.map((g) => qRem(queues[g])));
+      const slices = groups.reduce((out, g, i) => out.concat(take(queues[g], amounts[i])), []);
       const iso = availDays[k];
       schedule.push({
         iso, dayNum: diffDays(start, iso) + 1, phase: phaseOf(Math.max(1, Math.min(N, diffDays(start, iso) + 1)), N),
@@ -161,6 +168,11 @@
       const n = us.reduce((a, u) => a + u.n, 0), s = us.reduce((a, u) => a + u.seen, 0);
       return { total: n, seen: s, pct: n ? Math.round(s / n * 100) : 100 };
     };
+    const levelList = groups.map((g) => Object.assign({ id: g }, level(g)));
+    const emptyLevel = { total: 0, seen: 0, pct: 100 };
+    const levels = { l7: level('l7'), gk: level('gk') };
+    if (groups.indexOf('level5') !== -1) levels.level5 = level('level5');
+    if (!levelList.length) { levels.l7 = emptyLevel; levels.gk = emptyLevel; }
 
     // Honest pace: where should the student be at the START of today, and where are they?
     const sdCount = (from, to) => { let c = 0; for (let d = from; d <= to; d = addDays(d, 1)) if (studyDay(d)) c++; return c; };
@@ -185,7 +197,7 @@
       studyDaysLeft: K, noStudyDays, compressed,
       quotaToday, todayRemaining, doneToday, requiredPerDay: K ? Math.ceil(adjTotal / K) : 0,
       todaySlices: schedule.length && todayAvail ? schedule[0].slices : [],
-      schedule, perUnit, levels: { l7: level('l7'), gk: level('gk') },
+      schedule, perUnit, levels, levelList,
       status, behindBy: Math.max(0, -delta), aheadBy: Math.max(0, delta),
       finishesOn: schedule.length ? schedule[schedule.length - 1].iso : null,
     };

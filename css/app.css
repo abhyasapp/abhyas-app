@@ -979,6 +979,13 @@ body{
 .rest-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 4px 4px 10px;border-radius:var(--r-full);background:var(--bg-sunken);font-size:12.5px;color:var(--ink)}
 .rest-chip button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:var(--ink-2);cursor:pointer}
 .rest-chip button:hover{background:var(--sep)}
+.focus-lv{border:var(--hairline-w) solid var(--sep);border-radius:var(--r-input);padding:10px 12px;margin-top:10px}
+.focus-lv-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;font-size:12.5px;color:var(--ink-2)}
+.focus-lv-hd strong{color:var(--ink);font-weight:700}
+.focus-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:var(--hairline-w) solid var(--sep);font-size:13px;color:var(--ink);cursor:pointer}
+.focus-row:first-of-type{border-top:0}
+.focus-row input{width:17px;height:17px;accent-color:var(--neon);flex:none}
+.focus-row .grow{min-width:0}
 @media (max-width:380px){.stat-grid{grid-template-columns:repeat(2,1fr)}.cov-levels{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.cov-chapters>summary::after,.rep-head>i{transition:none}}
 

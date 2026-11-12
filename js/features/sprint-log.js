@@ -92,15 +92,17 @@
   }
 
   /** Freeze the day's fixed target the first time we know it (so the report can say "planned vs done"). */
-  function setPlanned(iso, newTarget) {
+  function setPlanned(iso, newTarget, force) {
     if (!iso) return;
     const r = dayRec(iso);
-    if (!r.planned || !r.planned.new) { r.planned = { new: num(newTarget) }; _write(); }
+    if (force || !r.planned || !r.planned.new) { r.planned = { new: num(newTarget) }; _write(); }
   }
 
-  function setBaseline(startIso, seen) {
+  /* `force` is used when the student changes the topics in their 60-day plan:
+     the old baseline/target belonged to the previous topic set. */
+  function setBaseline(startIso, seen, force) {
     const d = _read();
-    if (!d.base || d.base.start !== startIso) { d.base = { start: startIso, seen: num(seen) }; _write(); }
+    if (force || !d.base || d.base.start !== startIso) { d.base = { start: startIso, seen: num(seen) }; _write(); }
     return d.base;
   }
 

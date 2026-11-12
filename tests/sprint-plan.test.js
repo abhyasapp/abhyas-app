@@ -203,6 +203,30 @@ describe('edge cases never throw or produce nonsense', () => {
   });
 });
 
+describe('multi-level focus', () => {
+  it('keeps Level 5 as its own queue and reports it separately from Level 7', () => {
+    const units = [
+      { fid: 'L7', lv: 'level7', ch: 'a', name: 'L7 chapter', n: 100, seen: 0 },
+      { fid: 'L5', lv: 'level5', ch: 'b', name: 'L5 chapter', n: 60, seen: 0 },
+      { fid: 'GK', lv: 'gk', ch: 'c', name: 'GK chapter', n: 30, seen: 0 }
+    ];
+    const plan = P.buildPlan({ units, today: '2026-02-01', start: '2026-02-01', exam: '2026-03-31' });
+    expect(plan.levelList.map((l) => l.id)).toEqual(['l7', 'level5', 'gk']);
+    expect(plan.levels.level5).toMatchObject({ total: 60, seen: 0, pct: 0 });
+    const used = plan.schedule.flatMap((d) => d.slices);
+    expect(used.some((s) => s.lv === 'level5')).toBe(true);
+    expect(used.reduce((n, s) => n + s.count, 0)).toBe(190);
+  });
+
+  it('a focus with only Level 5 produces a Level 5-only plan', () => {
+    const units = [{ fid: 'L5', lv: 'level5', ch: 'b', name: 'L5 chapter', n: 60, seen: 0 }];
+    const plan = P.buildPlan({ units, today: '2026-02-01', start: '2026-02-01', exam: '2026-03-31' });
+    expect(plan.levelList.map((l) => l.id)).toEqual(['level5']);
+    expect(plan.perUnit.every((u) => u.fid === 'L5')).toBe(true);
+    expect(plan.schedule.flatMap((d) => d.slices).every((s) => s.fid === 'L5')).toBe(true);
+  });
+});
+
 describe('pace and projection', () => {
   it('recentRate counts missed study days as zero and ignores rest days', () => {
     const days = { '2026-02-10': { newSeen: 30 }, '2026-02-09': { newSeen: 10 } };
