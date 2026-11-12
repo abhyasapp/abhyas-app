@@ -88,7 +88,24 @@ try { setTimeout(() => { try { STORE_GUARD.maybeCheck(true); } catch (e) { windo
 const QDB = (() => {
   const DB_NAME = 'abhyas_question_cache';
   const STORE = 'sets';
+  const MEM_MAX = 8;
+  const mem = new Map();
   let dbPromise = null;
+
+  /* Keep the most recently used sets in memory as well as IndexedDB. Opening
+     the same chapter again (or reopening it from Results) then skips the
+     IndexedDB round-trip entirely. Writes and deletes keep this in step. */
+  function memGet(key){
+    if(!mem.has(key)) return undefined;
+    const value = mem.get(key);
+    mem.delete(key); mem.set(key, value);
+    return value;
+  }
+  function memSet(key, value){
+    if(value === undefined) return;
+    mem.delete(key); mem.set(key, value);
+    while(mem.size > MEM_MAX) mem.delete(mem.keys().next().value);
+  }
 
   function open() {
     if (dbPromise) return dbPromise;
@@ -104,13 +121,17 @@ const QDB = (() => {
     return dbPromise;
   }
   async function get(key) {
+    const hit = memGet(key);
+    if(hit !== undefined) return hit;
     try {
       const db = await open();
-      return await new Promise((resolve, reject) => {
+      const value = await new Promise((resolve, reject) => {
         const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(key);
         req.onsuccess = () => resolve(req.result !== undefined ? req.result : null);
         req.onerror = () => reject(req.error);
       });
+      if(value !== null) memSet(key, value);
+      return value;
     } catch (e) { return null; }
   }
   async function set(key, value) {
@@ -122,10 +143,12 @@ const QDB = (() => {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
+      memSet(key, value);
       return true;
     } catch (e) { return false; }
   }
   async function del(key) {
+    mem.delete(key);
     try {
       const db = await open();
       await new Promise((resolve, reject) => {
@@ -147,6 +170,7 @@ const QDB = (() => {
     } catch (e) { return []; }
   }
   async function clear() {
+    mem.clear();
     try {
       const db = await open();
       await new Promise((resolve, reject) => {

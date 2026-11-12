@@ -86,23 +86,26 @@ async function _submit() {
     if (!q) { closeMod(); return; }
     const reason = ($('qr-reason') && $('qr-reason').value) || 'other';
     const note = (($('qr-note') && $('qr-note').value) || '').trim().slice(0, 500);
-    if (!S.user || !S.user.username || !S.user.token) {
-      toast('Please sign in again to report a question.'); return;
+
+    /* Offline-first: the report is committed to this device before any
+       network call. A failed request, a closed tab, or a dead connection can
+       no longer lose it; _flush sends it now or on the next online/visible
+       moment. Keep the sheet open if even the local write fails. */
+    if (!_queue(rep, reason, note, true)) {
+      toast('\u274c Could not save this report on the device. Free some storage and try again.');
+      return;
     }
     closeMod();
-    if (!S.online || S.forcedOffline) { _queue(rep, reason, note); return; }
-    toast('Sending report\u2026');
-    try {
-      const r = await netFetch(APPS, {
-        method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(_body(rep, reason, note))
-      }, 15000);
-      const res = await r.json();
-      if (res && res.success) toast('\u2705 ' + (res.message || 'Thanks, report sent.'));
-      else toast('\u274c ' + ((res && res.error) || 'Could not send report.'));
-    } catch (e) {
-      _queue(rep, reason, note);
+    if (!S.user || !S.user.username || !S.user.token) {
+      toast('Saved on this device. Sign in and your report will be sent.', 5000);
+      return;
     }
+    if (!S.online || S.forcedOffline) {
+      toast('Saved on this device. It will be sent when you are back online.', 5000);
+      return;
+    }
+    toast('Report saved. Sending\u2026');
+    _flush();
   } finally {
     _submitting = false;
   }
@@ -117,10 +120,11 @@ function _rqLoad() {
   } catch (e) { return []; }
 }
 function _rqSave(list) {
-  try { localStorage.setItem(REPORT_QUEUE_KEY, JSON.stringify(list)); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+  try { localStorage.setItem(REPORT_QUEUE_KEY, JSON.stringify(list)); return true; }
+  catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); return false; }
 }
 
-function _queue(rep, reason, note) {
+function _queue(rep, reason, note, quiet) {
   const q = rep.q;
   const item = {
     uid: q.uid, reason: reason, note: note,
@@ -129,12 +133,13 @@ function _queue(rep, reason, note) {
     options: (q.options || []).slice(0, 6),
     correct: (isNaN(Number(q.correct)) ? '' : Number(q.correct))
   };
-  _rqSave(reportQueueAdd(_rqLoad(), item, Date.now()));
-  toast('Saved. Your report will be sent when you are back online.', 5000);
+  const saved = _rqSave(reportQueueAdd(_rqLoad(), item, Date.now()));
+  if (saved && !quiet) toast('Saved. Your report will be sent when you are back online.', 5000);
+  return saved;
 }
 
 let _flushBusy = false;
-async function _flush() {
+async function _flush(quiet) {
   if (_flushBusy) return;
   if (!S.user || !S.user.username || !S.user.token) return;
   if (!S.online || S.forcedOffline) return;
@@ -142,6 +147,7 @@ async function _flush() {
   if (!list.length) return;
   _flushBusy = true;
   let sent = 0;
+  let failed = 0;
   try {
     for (const it of list.slice()) {
       const rep = {
@@ -155,13 +161,15 @@ async function _flush() {
         }, 15000);
         const res = await r.json();
         if (res.success || /invalid|already|missing/i.test(String((res && res.error) || ''))) {
-          list = reportQueueRemove(list, it);
-          _rqSave(list);
+          /* Reload the queue before removing, so a report submitted while
+             this flush was in flight is not overwritten by an older copy. */
+          _rqSave(reportQueueRemove(_rqLoad(), it));
           if (res.success) sent++;
-        } else if (/too many/i.test(String((res && res.error) || ''))) {
-          break;
+        } else {
+          failed++;
+          if (/too many/i.test(String((res && res.error) || ''))) break;
         }
-      } catch (e) { break; }
+      } catch (e) { failed++; break; }
     }
   } finally {
     _flushBusy = false;
@@ -170,6 +178,10 @@ async function _flush() {
     toast('\u2705 ' + sent + ' queued report' +
       (sent === 1 ? '' : 's') + ' sent. Thank you.');
   }
+  if (failed && !quiet) {
+    toast('Report saved on this device \u2014 it will retry automatically.', 5000);
+  }
+  return { sent, failed };
 }
 
 /* ── corrections polling ─────────────────────────────────────────────
@@ -424,10 +436,12 @@ if (typeof UI !== 'undefined' && UI.onEnter) {
   });
 }
 
-/* 2. Periodic timer. Fires every 3 minutes while the tab is visible. */
+/* 2. Periodic timer. Fires every 3 minutes while the tab is visible, and
+   quietly retries any report that is still waiting. */
 setInterval(() => {
   if (document.visibilityState !== 'hidden') {
     try { _checkCorrections(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+    try { _flush(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
   }
 }, 3 * 60 * 1000);
 
@@ -435,12 +449,16 @@ setInterval(() => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     try { _checkCorrections(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+    setTimeout(() => { try { _flush(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 600);
   }
 });
 
 /* 4. Back online. */
 window.addEventListener('online', () => {
-  setTimeout(() => { try { _checkCorrections(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 2500);
+  setTimeout(() => {
+    try { _checkCorrections(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+    try { _flush(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+  }, 2500);
 });
 
 /* 5. As soon as the session is restored, so the first paint is on fresh
@@ -450,7 +468,10 @@ if (typeof AUTH !== 'undefined' && AUTH._enter && !AUTH._enter._reportWrapped) {
   const _origEnter = AUTH._enter.bind(AUTH);
   AUTH._enter = function (u) {
     const r = _origEnter(u);
-    setTimeout(() => { try { _checkCorrections(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 800);
+    setTimeout(() => {
+      try { _checkCorrections(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+      try { _flush(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+    }, 800);
     return r;
   };
   AUTH._enter._reportWrapped = true;
@@ -459,7 +480,8 @@ if (typeof AUTH !== 'undefined' && AUTH._enter && !AUTH._enter._reportWrapped) {
 /* 6. First boot, after everything else has settled. */
 setTimeout(() => { try { _checkCorrections(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 6000);
 
-/* 7. Flush any queued offline reports shortly after boot. */
-setTimeout(() => { try { _flush(); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 8000);
+/* 7. Flush any queued offline reports shortly after boot; an explicit submit
+   calls _flush immediately, so this is only the restart/reconnect path. */
+setTimeout(() => { try { _flush(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } }, 3000);
 
 })();

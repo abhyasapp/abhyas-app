@@ -21,7 +21,10 @@ const QUIZ = {
     }
     try{
       if(kind !== 'fresh') try{
-        const cdnData = await QUIZ._fetchFromCDN(fileId, attempt === 1 ? 12000 : 8000);
+        /* 12s was long enough to feel like a freeze when jsDelivr is blocked.
+           A healthy CDN answers far inside this; if it doesn't, Apps Script
+           is tried sooner instead of leaving the loader up. */
+        const cdnData = await QUIZ._fetchFromCDN(fileId, attempt === 1 ? 7000 : 6000);
         if(_validCache(cdnData)) await QDB.set(cacheKey, cdnData);
         return cdnData;
       }catch(cdnErr){ /* 404 / timeout / offline / non-JSON — try Apps Script */ }
@@ -230,13 +233,35 @@ const QUIZ = {
   _cacheWarned: false,
 
   async load(fileId, cacheKey, mode, chapterName, scope=null){
-    if(!S.online || S.forcedOffline){
-      const cached = await QDB.get(cacheKey);
-      const isValid = cached && !(typeof cached === 'object' && !Array.isArray(cached) && cached.success === false);
-      if(!isValid){
-        QUIZ._showError('You are offline and this set is not cached yet. Go to the Offline Cache tab while online to download it.', null);
+    const validCache = v => !!v && !(typeof v === 'object' && !Array.isArray(v) && v.success === false);
+
+    /* Cache-first, before the loader: a downloaded/recently opened set opens
+       on the next frame. The background revalidation still refreshes it, but
+       the student never waits behind a "Connecting…" overlay for data that is
+       already on the device. */
+    const cached = await QDB.get(cacheKey);
+    if(validCache(cached)){
+      const cachedQs = normQ(cached, fileId);
+      if(cachedQs.length){
+        QUIZ._hideLoader();
+        QUIZ.startWith(cachedQs, mode, chapterName, scope);
+        QUIZ._maybeRevalidate(fileId, cacheKey);
+        setTimeout(()=>{ try{ CACHE.prefetchNext(fileId); }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } }, 2000);
         return;
       }
+      if(!S.online || S.forcedOffline){
+        QUIZ._hideLoader();
+        toast('❌ No valid questions found in this file. Check the file format.');
+        return;
+      }
+      /* A cached copy we cannot parse must not be handed straight back to us
+         by _fetch; drop it and let the network replace it. */
+      await QDB.del(cacheKey);
+    }
+
+    if(!S.online || S.forcedOffline){
+      QUIZ._showError('You are offline and this set is not cached yet. Go to the Offline Cache tab while online to download it.', null);
+      return;
     }
     QUIZ._showLoader('Connecting to server…');
     const msgTimer = setTimeout(()=>{ QUIZ._showLoader('Still loading… (Apps Script may be warming up)'); }, 5000);
@@ -248,7 +273,7 @@ const QUIZ = {
       QUIZ._hideLoader();
       if(!qsArr.length){ toast('❌ No valid questions found in this file. Check the file format.'); return; }
       QUIZ.startWith(qsArr, mode, chapterName, scope);
-      setTimeout(()=>{ try{ CACHE.prefetchNext(fileId); }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } }, 4000);
+      setTimeout(()=>{ try{ CACHE.prefetchNext(fileId); }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } }, 2000);
     } catch(err){
       clearTimeout(msgTimer); clearTimeout(msgTimer2);
       QUIZ._hideLoader();

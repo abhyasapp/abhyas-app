@@ -98,7 +98,17 @@ document.addEventListener('click', function(e) {
 });
 
 // ── QUESTION PARSER ──
+/* A set is parsed once per raw object. QDB keeps recently used sets in memory,
+   so reopening a chapter reuses this result instead of re-normalising every
+   question. The returned array is still a fresh copy; callers are free to
+   sort or filter it without touching the cached one. */
+const NORM_CACHE = typeof WeakMap === 'function' ? new WeakMap() : null;
+
 function normQ(raw, fid) {
+  if (NORM_CACHE && raw && typeof raw === 'object') {
+    const hit = NORM_CACHE.get(raw);
+    if (hit && hit.fid === fid) return hit.list.slice();
+  }
   if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.success === false) {
     console.warn('[normQ] Server error for', fid, '—', raw.error);
     return [];
@@ -146,5 +156,6 @@ function normQ(raw, fid) {
   });
   if (skipped > 0) console.warn(`[normQ] ${skipped}/${a.length} questions skipped in ${fid}`);
   if (!result.length) console.warn('[normQ] Zero valid questions from', fid, '— raw sample:', JSON.stringify(a[0]).slice(0, 200));
+  if (NORM_CACHE && result.length) NORM_CACHE.set(raw, { fid, list: result.slice() });
   return result;
 }
