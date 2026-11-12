@@ -35,6 +35,7 @@ window.MASTERY = {
 window.CH_GRID = {
   lv: '',
   mf: 'all',            // mastery filter: all | not-started | practising | strong
+  q: '',                // chapter-name search
   LEVELS: [['level7', 'Level 7'], ['level5', 'Level 5'], ['gk', 'General Knowledge']],
   MFILTERS: ['all', 'not-started', 'practising', 'strong'],
   STATE_TAG: { 'not-started': '', practising: 'tw', strong: 'tg' },
@@ -88,6 +89,8 @@ window.CH_GRID = {
   render(){
     const box = $('chgrid');
     if (!box || typeof ChapterData === 'undefined') return;
+    const keepSearch = document.activeElement && document.activeElement.id === 'chg-q';
+    const caret = keepSearch ? document.activeElement.selectionStart : null;
     
     try {
       const last = this._last();
@@ -130,6 +133,8 @@ window.CH_GRID = {
         const counts = { 'not-started': 0, practising: 0, strong: 0 };
         items.forEach(it => { if (it.has && counts[it.state] != null) counts[it.state]++; });
         const shown = items.filter(it => this.mf === 'all' ? true : (it.has && it.state === this.mf));
+        const needle = String(this.q || '').trim().toLowerCase();
+        const searched = shown.filter(it => !needle || String(chs[it.ch] || '').toLowerCase().indexOf(needle) !== -1);
 
         const filterRow = '<div class="chg-mfilter" role="group" aria-label="' + esc(T('Filter chapters by mastery')) + '">' +
           this.MFILTERS.map(id => {
@@ -141,7 +146,7 @@ window.CH_GRID = {
               '<span class="n">' + n + '</span></button>';
           }).join('') + '</div>';
 
-        const cards = shown.map(it => {
+        const cards = searched.map(it => {
           if (!it.has) {
             return '<button type="button" class="chg-card" disabled>' +
               '<span class="chg-name">' + esc(chs[it.ch]) + '</span>' +
@@ -163,12 +168,20 @@ window.CH_GRID = {
             '<span class="chg-meta">' + esc(meta) + '</span></button>';
         }).join('');
 
-        const empty = cards ? '' :
-          '<div class="chg-empty"><p>' + esc(this.EMPTY_COPY[this.mf] || T('No chapters in this list yet.')) + '</p>' +
-          '<button type="button" class="btn btn-quiet" data-on-click="CH_GRID.setFilter(\'all\')">' + esc(T('Show all chapters')) + '</button></div>';
+        const empty = cards ? '' : (needle
+          ? '<div class="chg-empty"><p>' + esc(T('No chapters match your search.')) + '</p>' +
+            '<button type="button" class="btn btn-quiet" data-on-click="CH_GRID.setQuery(\'\')">' + esc(T('Clear search')) + '</button></div>'
+          : '<div class="chg-empty"><p>' + esc(this.EMPTY_COPY[this.mf] || T('No chapters in this list yet.')) + '</p>' +
+            '<button type="button" class="btn btn-quiet" data-on-click="CH_GRID.setFilter(\'all\')">' + esc(T('Show all chapters')) + '</button></div>');
 
-        box.innerHTML = html + '<div class="chg-tabs">' + tabs + '</div>' + filterRow +
+        box.innerHTML = html +
+          '<div class="chg-search"><i class="ph ph-magnifying-glass"></i><input class="input" type="search" id="chg-q" value="' + esc(this.q) + '" placeholder="' + esc(T('Search chapters')) + '" aria-label="' + esc(T('Search chapters')) + '" data-on-input="CH_GRID.setQuery(this.value)"></div>' +
+          '<div class="chg-tabs">' + tabs + '</div>' + filterRow +
           '<div class="chg-grid">' + cards + '</div>' + empty;
+        if (keepSearch) {
+          const input = box.querySelector('#chg-q');
+          if (input) { input.focus(); try { input.setSelectionRange(caret, caret); } catch (e) { /* type=search */ } }
+        }
       });
     } catch (err) {
       console.error('[CH_GRID.render] failed:', err);
@@ -187,6 +200,11 @@ window.CH_GRID = {
   setFilter(id){
     if (navigator.vibrate) navigator.vibrate(5);
     this.mf = this.MFILTERS.includes(id) ? id : 'all';
+    this.render();
+  },
+
+  setQuery(value){
+    this.q = String(value == null ? '' : value);
     this.render();
   },
 

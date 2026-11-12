@@ -97,5 +97,6 @@ describe('60-day focus topics', () => {
     expect(p.ev("document.getElementById('sprint-targets-hint').textContent")).toContain('left today');
     expect(p.ev("document.getElementById('sprint-pace-stats').textContent")).toContain('Expected');
     expect(p.ev("document.getElementById('sprint-pace-stats').textContent")).toContain('Actual');
+    expect(p.ev("document.getElementById('sprint-upcoming').textContent")).toContain('Revision');
   });
 });

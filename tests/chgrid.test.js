@@ -172,6 +172,21 @@ describe('chapter grid mastery states and filter', () => {
     await tick();
   });
 
+  it('searches chapter names and clears the search', async () => {
+    p.ev(`CH_GRID.lv = 'level7'; CH_GRID.mf = 'all'; CH_GRID.setQuery('sur');`);
+    await tick();
+    expect(names()).toEqual(['Surveying']);
+    expect(p.w.document.querySelector('#chgrid #chg-q').value).toBe('sur');
+
+    p.ev(`CH_GRID.setQuery('nothing-matches');`);
+    await tick();
+    expect(p.w.document.querySelector('#chgrid .chg-empty p').textContent).toContain('No chapters match');
+
+    p.ev(`CH_GRID.setQuery('');`);
+    await tick();
+    expect(names()).toEqual(['Soil Mechanics', 'Surveying', 'Hydraulics']);
+  });
+
   it('translates the states and the filter into Nepali at runtime', async () => {
     p.ev(`I18N.setLang('ne', { silent: true }); CH_GRID.lv = 'level7'; CH_GRID.mf = 'all'; CH_GRID.render();`);
     await tick();

@@ -322,8 +322,40 @@ window.DAILY10 = {
     return Object.keys(cov).filter(f => cov[f] && (cov[f].a || 0) > 0);
   },
   _doneKey(){ return 'abhyas_daily10_done'; },
+  _streakKey(){ return 'abhyas_daily10_streak'; },
+  _yesterdayKey(){
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+  },
   isDone(){ try { return localStorage.getItem(this._doneKey()) === this._dateKey(); } catch(e){ return false; } },
-  markDone(){ try { localStorage.setItem(this._doneKey(), this._dateKey()); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); } },
+  _streakData(){ try { return JSON.parse(localStorage.getItem(this._streakKey()) || 'null') || { last: '', count: 0 }; } catch(e){ return { last: '', count: 0 }; } },
+  streak(){
+    const s = this._streakData();
+    return (s.last === this._dateKey() || s.last === this._yesterdayKey()) ? (Number(s.count) || 0) : 0;
+  },
+  markDone(){
+    const today = this._dateKey();
+    try { localStorage.setItem(this._doneKey(), today); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
+    const s = this._streakData();
+    if (s.last !== today) {
+      const next = { last: today, count: s.last === this._yesterdayKey() ? (Number(s.count) || 0) + 1 : 1 };
+      try { localStorage.setItem(this._streakKey(), JSON.stringify(next)); } catch (e) { window.warnCaught && window.warnCaught('js/features/today-plan.js', e); }
+    }
+  },
+  _weakCount(){
+    const fids = new Set(this._openedFids());
+    let n = 0;
+    ((S.wr) || []).forEach(q => {
+      if (!q || q._withdrawn) return;
+      const uid = String(q.uid || ''), i = uid.lastIndexOf('_');
+      if (i > 0 && fids.has(uid.slice(0, i))) n++;
+    });
+    return n;
+  },
+  _prioritize(list, weak){
+    return list.slice().sort((a, b) => (weak.has(b.uid) ? 1 : 0) - (weak.has(a.uid) ? 1 : 0));
+  },
   async build(){
     const fids = this._openedFids();
     if (!fids.length) return [];
@@ -346,7 +378,8 @@ window.DAILY10 = {
       if (all.length >= 200) break;
     }
     for (let i = all.length - 1; i > 0; i--){ const j = Math.floor(rng() * (i + 1)); const t = all[i]; all[i] = all[j]; all[j] = t; }
-    return all.slice(0, this.COUNT);
+    const weak = new Set(((S.wr) || []).filter(q => q && !q._withdrawn).map(q => q.uid));
+    return this._prioritize(all, weak).slice(0, this.COUNT);
   },
   async start(){
     QUIZ._showLoader('Building today\u2019s 10\u2026');
@@ -360,14 +393,28 @@ window.DAILY10 = {
   render(){
     const box = document.getElementById('daily10-slot');
     if (!box) return;
-    if (this.isDone()){ box.innerHTML = ''; return; }
     const fids = this._openedFids();
     if (!fids.length){ box.innerHTML = ''; return; }
+    const streak = this.streak();
+    if (this.isDone()){
+      box.innerHTML =
+        '<section class="card daily10-done">' +
+          '<div class="card-hd"><h3><i class="ph ph-sun"></i> Daily 10</h3>' +
+            '<span class="ctag tg"><i class="ph ph-check"></i> Done today</span></div>' +
+          '<p class="t-foot">Today\u2019s set is complete' + (streak ? ' \u00b7 ' + streak + '-day streak' : '') + '. A fresh set arrives tomorrow.</p>' +
+        '</section>';
+      return;
+    }
+    const weak = this._weakCount();
     box.innerHTML =
       '<section class="card" style="border-color:var(--accent-line)">' +
         '<div class="card-hd"><h3><i class="ph ph-sun"></i> Daily 10</h3>' +
           '<span class="ctag ta">' + this.COUNT + ' questions</span></div>' +
-        '<p class="t-foot" style="margin-bottom:var(--sp-3);line-height:1.5">A fresh set of ' + this.COUNT + ' questions from your opened chapters. Same for you all day, new one tomorrow.</p>' +
+        '<p class="t-foot" style="margin-bottom:var(--sp-2);line-height:1.5">A fresh set of ' + this.COUNT + ' questions from your opened chapters. Same for you all day, new one tomorrow.</p>' +
+        '<div class="daily10-meta">' +
+          (streak ? '<span class="daily10-streak"><i class="ph ph-flame"></i> ' + streak + '-day streak</span>' : '') +
+          (weak ? '<span><i class="ph ph-target"></i> ' + Math.min(weak, this.COUNT) + ' missed questions included</span>' : '') +
+        '</div>' +
         '<button class="btn btn-solid btn-blk" data-on-click="DAILY10.start()">' +
           '<i class="ph ph-play-circle"></i> Start today\u2019s ' + this.COUNT + '</button>' +
       '</section>';

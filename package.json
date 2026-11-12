@@ -1,6 +1,6 @@
 {
   "name": "abhyas",
-  "version": "2.26",
+  "version": "2.27",
   "private": true,
   "description": "Abhyas: Loksewa Civil Engineering exam prep (static PWA; backend in ../backend)",
   "scripts": {

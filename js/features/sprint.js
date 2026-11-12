@@ -521,12 +521,18 @@
     if (!host) return;
     const startIdx = plan.schedule.length && plan.schedule[0].iso === plan.today ? 1 : 0;
     const next = plan.schedule.slice(startIdx, startIdx + 5).filter((d) => d.slices.length);
-    host.innerHTML = next.length ? next.map((d) => {
+    const rows = next.map((d) => {
       const parts = {};
       d.slices.forEach((s) => { parts[s.name] = (parts[s.name] || 0) + s.count; });
       const text = Object.keys(parts).slice(0, 3).map((n) => n + ' (' + parts[n] + ')').join(' \u00b7 ') + (Object.keys(parts).length > 3 ? ' \u00b7 \u2026' : '');
       return '<div class="up-row"><div class="up-date"><strong>' + _esc(_fmtDate(d.iso)) + '</strong><span>Day ' + d.dayNum + '</span></div><div class="up-text">' + _esc(text) + '</div><div class="up-n">' + d.newTarget + '</div></div>';
-    }).join('') : '<p class="t-foot">' + (plan.remaining === 0 ? 'No more new questions to schedule.' : T('Nothing scheduled yet.')) + '</p>';
+    });
+    if (plan.contentEnd && plan.contentEnd < plan.learnEnd) {
+      rows.push('<div class="up-row up-buffer"><div class="up-date"><strong>Revision</strong><span>after new content</span></div>' +
+        '<div class="up-text">The last ' + plan.bufferDays + ' Learn days stay free of new questions for reviews, drills and weak chapters.</div>' +
+        '<div class="up-n">' + plan.bufferDays + 'd</div></div>');
+    }
+    host.innerHTML = rows.length ? rows.join('') : '<p class="t-foot">' + (plan.remaining === 0 ? 'No more new questions to schedule.' : T('Nothing scheduled yet.')) + '</p>';
   }
 
   function _renderWeek(plan) {

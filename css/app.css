@@ -668,6 +668,12 @@ body{
 .home-card .start-alt .btn{flex:1}
 .home-card .home-foot{margin-top:var(--sp-3);margin-bottom:0}
 
+.daily10-meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin:0 0 var(--sp-3);font-size:var(--fs-cap);color:var(--ink-3);font-weight:600}
+.daily10-meta>span{display:inline-flex;align-items:center;gap:4px}
+.daily10-streak{color:var(--warning)}
+.daily10-done{border-color:var(--success-line);background:var(--success-soft)}
+.daily10-done .t-foot{margin:2px 0 0;color:var(--success)}
+
 /* Sprint compact strip (Home) */
 .sprint-strip{
   display:flex;align-items:center;gap:var(--sp-3);
@@ -922,6 +928,9 @@ body{
 .up-date span{font-size:11.5px;color:var(--ink-3)}
 .up-text{font-size:12.5px;color:var(--ink-2);line-height:1.4;min-width:0}
 .up-n{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent)}
+.up-buffer{margin-top:4px;padding:10px 12px;border:var(--hairline-w) solid var(--accent-line);border-radius:12px;background:var(--accent-soft)}
+.up-buffer .up-date strong,.up-buffer .up-n{color:var(--accent)}
+.up-buffer .up-text{color:var(--ink-2)}
 .rep-tone{padding:14px 16px;border-radius:16px;background:var(--surface-alt);border:var(--hairline-w) solid var(--sep);border-left:4px solid var(--ink-3)}
 .rep-tone.great{border-left-color:var(--success);background:var(--success-soft)}
 .rep-tone.good{border-left-color:var(--accent)}
@@ -1337,6 +1346,9 @@ body{
 .expl .expl-copy{float:right;margin-left:.5rem}
 .fast-guess-line{text-align:center;color:var(--warning);margin:-1rem 0 var(--sp-3);font-size:var(--fs-foot)}
 
+.chg-search{position:relative;margin-bottom:var(--sp-3)}
+.chg-search>i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:.95rem;pointer-events:none}
+.chg-search .input{padding-left:36px;height:40px}
 .chg-tabs{display:flex;gap:2px;padding:3px;margin-bottom:var(--sp-3);background:var(--bg-sunken);border-radius:var(--r-input);overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .chg-tabs::-webkit-scrollbar{display:none}
 .chg-tabs button{flex:1 0 auto;min-height:38px;padding:0 var(--sp-2);white-space:nowrap;border-radius:calc(var(--r-input) - 3px);font-size:var(--fs-callout);font-weight:600;color:var(--ink-2)}

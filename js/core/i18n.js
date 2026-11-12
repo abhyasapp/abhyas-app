@@ -194,6 +194,9 @@
     'Coming soon': 'छिट्टै आउँदै',
     'Filter chapters by mastery': 'दक्षता अनुसार अध्याय छान्नुहोस्',
     'Show all chapters': 'सबै अध्याय देखाउनुहोस्',
+    'Search chapters': 'अध्याय खोज्नुहोस्',
+    'No chapters match your search.': 'तपाईंको खोजसँग मिल्ने अध्याय छैन।',
+    'Clear search': 'खोज खाली गर्नुहोस्',
     'No chapters in this list yet.': 'यो सूचीमा अहिलेसम्म कुनै अध्याय छैन।',
     'Every chapter here is untouched. Pick one and start — your first answer moves it to Practising.':
       'यहाँका सबै अध्याय अझै सुरु भएका छैनन्। एउटा छानेर सुरु गर्नुहोस् — पहिलो उत्तरले यसलाई अभ्यास भइरहेको बनाउँछ।',
