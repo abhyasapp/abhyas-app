@@ -3,6 +3,21 @@
 // core/text.js (esc). subj-public.js supplies _emptyCard and _retryBtn at
 // RUNTIME only — the order that file loads does not matter.
 
+function _populateYearSelect(filter) {
+  const sel = document.getElementById('subj-list-year');
+  if (!sel) return;
+  const years = Array.from(new Set(_allQuestions().map(q => _sourceYear(q.source)).filter(Boolean))).sort().reverse();
+  const signature = years.join('|');
+  if (sel.dataset.years !== signature) {
+    const current = filter.year || sel.value || '';
+    sel.innerHTML = '<option value="">All exam years</option>' +
+      years.map(y => `<option value="${y}">${y}</option>`).join('');
+    sel.value = years.includes(current) ? current : '';
+    sel.dataset.years = signature;
+  }
+  filter.year = sel.value;
+}
+
 function _renderList(){
   const body = document.getElementById('subj-list-body');
   if(!body) return;
@@ -18,13 +33,19 @@ function _renderList(){
     return;
   }
 
-  const f = (window.SUBJ && SUBJ._listFilter) || { query: '', chapter: '' };
+  const f = Object.assign({ query: '', chapter: '', year: '', status: '', marks: '' },
+    (window.SUBJ && SUBJ._listFilter) || {});
+  _populateYearSelect(f);
   const chapters = window.SUBJECTIVE_CHAPTERS || [];
   const tree = chapters
     .filter(ch => !f.chapter || ch.id === f.chapter)
     .map(ch => {
       let qs = _questionsByChapter(ch.id);
       if(f.query) qs = qs.filter(q => (q.q || '').toLowerCase().includes(f.query));
+      if(f.year) qs = qs.filter(q => _sourceYear(q.source) === f.year);
+      if(f.marks) qs = qs.filter(q => Number(q.marks) === Number(f.marks));
+      if(f.status === 'unseen') qs = qs.filter(q => !_isSubjAttempted(q.id));
+      if(f.status === 'attempted') qs = qs.filter(q => _isSubjAttempted(q.id));
       if(!qs.length) return '';
 
       const byTopic = {};
@@ -43,7 +64,7 @@ function _renderList(){
           tQs.map((q, i) => `<div class="subj-q-row">` +
             `<span class="qn">${i+1}.</span>` +
             `<span class="qt">${esc(q.q)}${q.source ? `<span class="qsrc">${esc(q.source)}</span>` : ''}</span>` +
-            `<span class="qm ${q.marks===10?'m10':'m5'}">${q.marks}M</span>` +
+            `<span class="qm ${_markClass(q.marks)}">${q.marks}M</span>` +
           `</div>`).join('') +
         `</div>`;
       }).join('');
@@ -59,7 +80,16 @@ function _renderList(){
       `</div>`;
     }).filter(Boolean).join('');
 
-  body.innerHTML = tree || _emptyCard('ph-list-dashes','No matching questions','Try clearing the search or picking a different chapter.');
+  const active = !!(f.query || f.chapter || f.year || f.status || f.marks);
+  const summary = active
+    ? `<div class="t-cap" style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin:0 0 var(--sp-2)">` +
+        `<span>Filters are on — only matching questions are shown.</span>` +
+        `<button class="btn btn-quiet btn-sm" data-on-click="SUBJ._clearListFilters()">Clear filters</button>` +
+      `</div>`
+    : '';
+  body.innerHTML = summary + (tree || _emptyCard('ph-list-dashes','No matching questions',
+    active ? 'Try clearing the filters or choosing a different chapter.' : 'Once questions are added, this becomes a chapter-by-chapter index.',
+    active ? `<button class="btn btn-a" style="margin-top:.9rem" data-on-click="SUBJ._clearListFilters()"><i class="ph ph-x-circle"></i> Clear filters</button>` : ''));
 }
 
 window._renderList = _renderList;

@@ -1343,6 +1343,30 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
           <div class="panel">
             <div class="panel-hd">
               <div>
+                <h2>Bundled Public Health questions</h2>
+                <div class="sub">The 67 Water Supply, Sanitation and Environment questions transcribed from the Old Subjective Questions pages. Importing writes them to the server bank; duplicates are skipped, so it is safe to run again.</div>
+              </div>
+            </div>
+            <div class="flex g2 wrap center">
+              <button class="btn btn-primary" data-on-click="SUBJADMIN.importSeed()"><i class="ph ph-cloud-arrow-up"></i> Import 67 questions</button>
+            </div>
+            <div id="subj-seed-result" class="mt3"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd">
+              <div>
+                <h2>Bank coverage</h2>
+                <div class="sub">Checks each configured chapter file on the server: question count, empty topics and the exam years stored. It reads only; nothing is changed.</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary" data-on-click="SUBJ_COVERAGE.run()"><i class="ph ph-chart-bar"></i> Run coverage audit</button>
+            <div id="subj-coverage" class="mt3"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd">
+              <div>
                 <h2>Upload a new chapter file</h2>
                 <div class="sub">Shape: <span class="mono" style="font-size:var(--fs-cap)">{ "group":"…", "sections":[ {"section":"…","questions":[{"q":"…","marks":5}] } ] }</span>. Paste the returned file ID into <span class="mono">subjective-data.js</span>.</div>
               </div>
@@ -1612,6 +1636,7 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 <script src="js/data/chapters-loader.js"></script>
 <script src="js/data/subjective_chapters.js"></script>
 <script src="js/data/subjective-data.js"></script>
+<script src="js/data/subjective-seed.js"></script>
 
 <!-- PDF engine (before pdf-viewer and admin foundation) -->
 <script src="tools/vendor/pdfjs/pdf.min.js"></script>
@@ -1640,6 +1665,7 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 <script src="js/admin/features/subjective-hourly.js"></script>
 <script src="js/admin/features/subjective-pdf.js"></script>
 <script src="js/admin/features/subjective-import.js"></script>
+<script src="js/admin/features/subjective-coverage.js"></script>
 <script src="js/admin/features/data.js"></script>
 <script src="js/admin/features/settings.js"></script>
 

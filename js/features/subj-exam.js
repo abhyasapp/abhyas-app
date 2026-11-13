@@ -39,7 +39,7 @@ function _questionsByGroup(gKey){
 function _generateExam(){
   const sections = [];
   for(const [key, meta] of Object.entries(EXAM_GROUPS)){
-    const pool = _questionsByGroup(key).map(q => ({ ...q, marks: (q.marks === 5 || q.marks === 10) ? q.marks : 10 }));
+    const pool = _questionsByGroup(key).map(q => ({ ...q, marks: _validMarks(q.marks) }));
     const picked = [];
     const used = new Set();
     let remaining = meta.marks;
@@ -64,6 +64,9 @@ function _generateExam(){
     sections.push({ group: key, name: meta.name, targetMarks: meta.marks, questions: picked });
   }
   const now = Date.now();
+  if (typeof _markSubjAttempted === 'function') {
+    _markSubjAttempted(sections.flatMap(s => s.questions.map(q => q.id)));
+  }
   return {
     generatedAt: now,
     deadlineAt: now + TIMERS.examSeconds * 1000,
@@ -192,8 +195,8 @@ function _renderExam(){
           ? sec.questions.map((q,i) => `
               <div class="subj-q-row">
                 <span class="qn">${i+1}.</span>
-                <span class="qt">${esc(q.q)}</span>
-                <span class="qm ${q.marks===10?'m10':'m5'}">${q.marks}M</span>
+                <span class="qt">${esc(q.q)}${q.source ? `<span class="qsrc">${esc(q.source)}</span>` : ''}</span>
+                <span class="qm ${_markClass(q.marks)}">${q.marks}M</span>
               </div>`).join('')
           : '<p style="font-size:.72rem;color:var(--t3);padding:.4rem .3rem">No questions available for this group yet.</p>'}
       </div>`);

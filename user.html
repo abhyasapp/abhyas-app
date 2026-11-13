@@ -452,7 +452,7 @@
           </div>
           <div class="fld-row mb3">
             <div class="sf" style="margin-bottom:0"><label for="exam-builder-marks">Total marks</label><input type="number" id="exam-builder-marks" value="100" min="20" max="150" step="5" inputmode="numeric"></div>
-            <div class="sf" style="margin-bottom:0"><label for="exam-builder-mode">Question size</label><select id="exam-builder-mode"><option value="both">5 and 10 mark</option><option value="5">5 mark only</option><option value="10">10 mark only</option></select></div>
+            <div class="sf" style="margin-bottom:0"><label for="exam-builder-mode">Question size</label><select id="exam-builder-mode"><option value="both">Any size (2.5, 5 and 10)</option><option value="2.5">2.5 mark only</option><option value="5">5 mark only</option><option value="10">10 mark only</option></select></div>
           </div>
           <button class="btn btn-solid btn-lg btn-blk" id="exam-builder-go" data-on-click="SUBJ_BUILDER.generate()"><i class="ph ph-shuffle"></i> Build the paper</button>
           <p class="t-cap text-center" id="exam-builder-note" style="margin-top:var(--sp-2)"></p>
@@ -465,6 +465,18 @@
         <div class="toolbar">
           <input type="search" id="subj-list-search" placeholder="Search the question text" data-on-input="SUBJ._filterList(this.value)" aria-label="Search questions">
           <select id="subj-list-chapter" data-on-change="SUBJ._filterList()" aria-label="Filter by chapter"><option value="">All chapters</option></select>
+          <select id="subj-list-year" data-on-change="SUBJ._filterList()" aria-label="Filter by exam year"><option value="">All exam years</option></select>
+          <select id="subj-list-status" data-on-change="SUBJ._filterList()" aria-label="Filter by attempt status">
+            <option value="">Any status</option>
+            <option value="unseen">Not attempted</option>
+            <option value="attempted">Attempted</option>
+          </select>
+          <select id="subj-list-marks" data-on-change="SUBJ._filterList()" aria-label="Filter by marks">
+            <option value="">Any marks</option>
+            <option value="2.5">2.5 marks</option>
+            <option value="5">5 marks</option>
+            <option value="10">10 marks</option>
+          </select>
         </div>
         <div id="subj-list-body"><div class="card" style="padding:var(--sp-4)"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w80"></div><div class="skel w40"></div></div></div>
       </div>

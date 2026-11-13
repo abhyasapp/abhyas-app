@@ -8,6 +8,7 @@
 /* ── Constants ── */
 const TIMERS = {
   solveSecondsFor5:  10 * 60,
+  solveSecondsFor2_5: 5 * 60,
   solveSecondsFor10: 20 * 60,
   solveSecondsFallback: 15 * 60,
   uploadSeconds: 10 * 60,
@@ -17,6 +18,7 @@ const TIMERS = {
 
 const LS_QOTD = 'abhyas_subj_qotd_v1';
 const LS_EXAM = 'abhyas_subj_exam_v1';
+const LS_SUBJ_ATTEMPTED = 'abhyas_subj_attempted_v1';
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
 const FETCH_CONCURRENCY = 4;
 const SUBJ_FILE_REFS = window.SUBJECTIVE_FILE_REFS || [];
@@ -67,29 +69,59 @@ function _shuffle(a) {
 let BANK = { byChapter: {}, loaded: false, loading: false, error: null };
 const _fetchPromises = {};
 
+function _validMarks(n) {
+  return (n === 2.5 || n === 5 || n === 10) ? n : 10;
+}
+
 function _parseMarks(raw) {
-  if (typeof raw === 'number' && isFinite(raw)) return (raw === 5 || raw === 10) ? raw : 10;
+  if (typeof raw === 'number' && isFinite(raw)) return _validMarks(raw);
   const s = String(raw == null ? '' : raw).trim();
   if (!s) return 10;
   const eq = s.lastIndexOf('=');
   if (eq > -1) {
     const m = s.slice(eq + 1).match(/\d+(?:\.\d+)?/);
-    if (m) {
-      const n = Math.round(parseFloat(m[0]));
-      return (n === 5 || n === 10) ? n : 10;
-    }
+    if (m) return _validMarks(parseFloat(m[0]));
   }
   if (s.includes('+')) {
     const parts = s.split('+').map(x => parseFloat(x)).filter(x => isFinite(x));
-    if (parts.length) {
-      const sum = Math.round(parts.reduce((a, b) => a + b, 0));
-      return (sum === 5 || sum === 10) ? sum : 10;
-    }
+    if (parts.length) return _validMarks(parts.reduce((a, b) => a + b, 0));
   }
   const m = s.match(/\d+(?:\.\d+)?/);
   if (!m) return 10;
-  const n = Math.round(parseFloat(m[0]));
-  return (n === 5 || n === 10) ? n : 10;
+  return _validMarks(parseFloat(m[0]));
+}
+
+function _markClass(marks) {
+  if (marks === 10) return 'm10';
+  if (marks === 2.5) return 'mhalf';
+  return 'm5';
+}
+
+/* Exam source is written as "PSC–2080/10/20" or "Koshi–2080/10/27";
+   the four-digit year is the only part needed for a browse filter. */
+function _sourceYear(source) {
+  const m = String(source || '').match(/(?:^|\D)(20\d{2})(?:\D|$)/);
+  return m ? m[1] : '';
+}
+
+function _attemptedSubjIds() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_SUBJ_ATTEMPTED) || '[]');
+    return new Set(Array.isArray(raw) ? raw.map(String) : []);
+  } catch (e) { return new Set(); }
+}
+function _isSubjAttempted(id) {
+  return !!id && _attemptedSubjIds().has(String(id));
+}
+function _markSubjAttempted(ids) {
+  const add = (Array.isArray(ids) ? ids : [ids]).filter(Boolean).map(String);
+  if (!add.length) return;
+  try {
+    const seen = _attemptedSubjIds();
+    add.forEach(id => seen.add(id));
+    const kept = Array.from(seen).slice(-3000);
+    localStorage.setItem(LS_SUBJ_ATTEMPTED, JSON.stringify(kept));
+  } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-bank.js', e); }
 }
 
 function _questionKey(text) {
@@ -103,13 +135,21 @@ function _mergeSeedQuestions(byChapter) {
   const seed = (typeof window !== 'undefined' && window.SUBJECTIVE_SEED) || {};
   Object.keys(seed).forEach(chapterId => {
     const list = byChapter[chapterId] = byChapter[chapterId] || [];
-    const seen = new Set(list.map(q => _questionKey(q.q)));
+    const seen = new Map();
+    list.forEach((q, idx) => seen.set(_questionKey(q.q), idx));
     (Array.isArray(seed[chapterId]) ? seed[chapterId] : []).forEach((q, i) => {
       const text = String(q && q.q || '').trim();
       if (!text) return;
       const key = _questionKey(text);
-      if (seen.has(key)) return;
-      seen.add(key);
+      /* A server copy wins on identity, but the seed can still fill in the
+         metadata the Storage file does not carry (exam source, topic). */
+      if (seen.has(key)) {
+        const existing = list[seen.get(key)];
+        if (existing && !existing.source) existing.source = String(q.source || '').trim();
+        if (existing && (!existing.topic || existing.topic === 'General')) existing.topic = String(q.topic || 'General').trim();
+        return;
+      }
+      seen.set(key, list.length);
       list.push({
         id: q.id || ('seed_' + chapterId + '_' + i),
         chapterId,

@@ -37,7 +37,7 @@ function gradeCard(s, ns, defaultMarks, showQuestion){
           '<span class="t-cap">by ' + esc(s.gradedBy || 'admin') + '</span>' +
           '<button class="btn btn-quiet btn-sm" style="margin-left:auto" data-on-click="' + ns + '.regrade(\'' + id + '\')"><i class="ph ph-pencil-simple"></i> Change score</button>'
         : '<label class="sr-only" for="' + ns + '-score-' + id + '">Score out of ' + marks + '</label>' +
-          '<input class="input grade-input" type="number" inputmode="numeric" min="0" max="' + marks + '" placeholder="0–' + marks + '" id="' + ns + '-score-' + id + '">' +
+          '<input class="input grade-input" type="number" inputmode="decimal" step="0.5" min="0" max="' + marks + '" placeholder="0–' + marks + '" id="' + ns + '-score-' + id + '">' +
           '<label class="sr-only" for="' + ns + '-fb-' + id + '">Feedback</label>' +
           '<input class="input feedback-input" type="text" placeholder="Feedback for the student (optional)" id="' + ns + '-fb-' + id + '">' +
           '<button class="btn btn-primary btn-sm" data-on-click="' + ns + '.save(\'' + id + '\',' + marks + ')">Save score</button>') +
@@ -49,8 +49,8 @@ function gradeCard(s, ns, defaultMarks, showQuestion){
 async function saveGrade(ns, id, maxMarks, rerender){
   const scoreEl = $(ns + '-score-' + id);
   const fbEl = $(ns + '-fb-' + id);
-  const score = parseInt(scoreEl?.value, 10);
-  if (isNaN(score) || score < 0 || score > maxMarks) {
+  const score = parseFloat(scoreEl?.value);
+  if (!isFinite(score) || score < 0 || score > maxMarks) {
     if (scoreEl) { scoreEl.classList.add('invalid'); scoreEl.focus(); }
     return TOAST.show('Enter a score between 0 and ' + maxMarks, 'error');
   }
@@ -71,7 +71,7 @@ function regradeSheet(ns, id, defaultMarks, rerender){
   const marks = s.questionMarks || defaultMarks;
   MODAL.sheet('Change score — ' + s.username,
     '<div class="field"><label for="rg-score">Score out of ' + marks + '</label>' +
-    '<input class="input mono" type="number" id="rg-score" min="0" max="' + marks + '" value="' + (s.score ?? '') + '"></div>' +
+    '<input class="input mono" type="number" inputmode="decimal" step="0.5" id="rg-score" min="0" max="' + marks + '" value="' + (s.score ?? '') + '"></div>' +
     '<div class="field"><label for="rg-fb">Feedback</label>' +
     '<textarea class="textarea" id="rg-fb" placeholder="Optional note for the student">' + esc(s.feedback || '') + '</textarea></div>' +
     '<div class="flex g2 mt4"><button class="btn btn-quiet" style="flex:1" data-on-click="MODAL.close(\'sheet\')">Cancel</button>' +
@@ -80,8 +80,8 @@ function regradeSheet(ns, id, defaultMarks, rerender){
   window._regradeAfter = rerender;
 }
 async function _regradeCommit(id, marks){
-  const n = parseInt($('rg-score').value, 10);
-  if (isNaN(n) || n < 0 || n > marks) { $('rg-score').classList.add('invalid'); return TOAST.show('Enter a score between 0 and ' + marks, 'error'); }
+  const n = parseFloat($('rg-score').value);
+  if (!isFinite(n) || n < 0 || n > marks) { $('rg-score').classList.add('invalid'); return TOAST.show('Enter a score between 0 and ' + marks, 'error'); }
   const btn = $('rg-save');
   btn.classList.add('loading');
   try {

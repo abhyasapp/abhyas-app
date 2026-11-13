@@ -32,7 +32,7 @@ const SUBJADMIN = {
           '<div class="n">' + (i + 1) + '</div>' +
           '<div class="q">' + esc(it.question) + '</div>' +
           '<select class="select" aria-label="Chapter for question ' + (i + 1) + '" data-on-change="SUBJADMIN._setChapter(' + i + ', this.value)">' + opts + '</select>' +
-          '<input class="input" type="number" min="1" max="40" value="' + it.marks + '" aria-label="Marks for question ' + (i + 1) + '" data-on-change="SUBJADMIN._setMarks(' + i + ', this.value)">' +
+          '<input class="input" type="number" min="1" max="40" step="0.5" value="' + it.marks + '" aria-label="Marks for question ' + (i + 1) + '" data-on-change="SUBJADMIN._setMarks(' + i + ', this.value)">' +
           '<button class="icon-btn sm ' + (it.keep ? 'danger' : '') + '" data-on-click="SUBJADMIN._drop(' + i + ')" aria-label="' + (it.keep ? 'Skip' : 'Include') + ' question ' + (i + 1) + '"><i class="ph ' + (it.keep ? 'ph-x' : 'ph-arrow-counter-clockwise') + '"></i></button>' +
         '</div>';
       }).join('');
@@ -42,7 +42,62 @@ const SUBJADMIN = {
     const g = { structure:'A', geotech:'A', irrigationAndCo:'B', transportAndCo:'C', publicHealth:'D', miscellaneous:'D' };
     this._preview[i].groupKey = g[v] || 'A';
   },
-  _setMarks(i, v){ this._preview[i].marks = Math.max(1, Math.min(40, parseInt(v, 10) || 10)); },
+  _setMarks(i, v){ this._preview[i].marks = Math.max(1, Math.min(40, parseFloat(v) || 10)); },
+
+  /* One-click import of the questions bundled in subjective-seed.js. The
+     Storage commit endpoint remains the source of truth; this only saves the
+     admin from re-pasting text that already ships with the app. */
+  seedItems(){
+    const seed = (window.SUBJECTIVE_SEED && Array.isArray(window.SUBJECTIVE_SEED.publicHealth))
+      ? window.SUBJECTIVE_SEED.publicHealth : [];
+    return seed.map(q => ({
+      chapterId: 'publicHealth',
+      groupKey: 'D',
+      question: String(q.q || '').trim(),
+      marks: Number(q.marks) || 10,
+      topic: String(q.topic || '').trim(),
+      source: String(q.source || '').trim()
+    })).filter(q => q.question);
+  },
+  seedSections(){
+    const items = this.seedItems();
+    const topics = Array.from(new Set(items.map(q => q.topic).filter(Boolean)));
+    return topics.map(topic => ({ topic, items: items.filter(q => q.topic === topic) }));
+  },
+  async importSeed(){
+    const items = this.seedItems();
+    if (!items.length) return TOAST.show('The bundled Public Health questions are not loaded on this page.', 'warning');
+    const ref = (window.SUBJECTIVE_FILE_REFS || []).find(r => r.chapterId === 'publicHealth');
+    if (!ref) return TOAST.show('The Public Health chapter file is not configured.', 'error');
+    const ok = await ASK.confirm({
+      title: 'Import ' + items.length + ' Public Health questions?',
+      body: 'They will be added to ' + ref.fileId + '. Questions already in the file are skipped, so it is safe to run again.',
+      ok: 'Import questions'
+    });
+    if (!ok) return;
+    BUSY.start();
+    try {
+      let inserted = 0, skipped = 0;
+      for (const group of this.seedSections()) {
+        if (!group.items.length) continue;
+        const r = await ADMIN.post('adminCommitSubjectiveImport', {
+          fileId: ref.fileId,
+          section: group.topic,
+          items: JSON.stringify(group.items)
+        });
+        if (!r.success) throw new Error(r.error || ('Could not import ' + group.topic + '.'));
+        inserted += (r.inserted || 0);
+        skipped += (r.skipped || 0);
+      }
+      TOAST.show(inserted + ' added' + (skipped ? ', ' + skipped + ' already present' : ''), 'success', 6000);
+      const result = $('subj-seed-result');
+      if (result) result.innerHTML = '<div class="banner banner-accent"><i class="ph ph-check-circle"></i><span>' +
+        esc(inserted) + ' questions added to the server bank' +
+        (skipped ? '; ' + esc(skipped) + ' were already there' : '') + '.</span></div>';
+      if (typeof SUBJ_COVERAGE !== 'undefined') SUBJ_COVERAGE.run();
+    } catch(e){ TOAST.show(e.message, 'error', 7000); }
+    BUSY.stop();
+  },
   _drop(i){ this._preview[i].keep = !this._preview[i].keep; this._render(); },
   _restoreAll(){ this._preview.forEach(p => { p.keep = true; }); this._render(); },
 

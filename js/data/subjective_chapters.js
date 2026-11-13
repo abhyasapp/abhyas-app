@@ -34,6 +34,6 @@ window.SUBJECTIVE_GROUPS = {
 };
 
 window.SUBJECTIVE_TIMERS = {
-  solveSeconds: { 5: 10*60, 10: 20*60, default: 15*60 },
+  solveSeconds: { 2.5: 5*60, 5: 10*60, 10: 20*60, default: 15*60 },
   uploadSeconds: 5*60
 };

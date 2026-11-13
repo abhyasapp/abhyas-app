@@ -123,6 +123,7 @@ const AUTH = {
       'abhyas_exam_date', 'abhyas_resets', 'abhyas_pre_reset_snapshot',
       'abhyas_presync_backup', 'abhyas_progress_rev', 'abhyas_last_sync',
       'abhyas_report_queue', 'abhyas_subj_exam_v', 'abhyas_subj_qotd_v',
+      'abhyas_subj_attempted_v1',
       'abhyas_weekly_last_retake', 'abhyas_weekly_papers',
       'abhyas_corr_seen', 'abhyas_corr_checked', 'abhyas_daily',
       'abhyas_daily10_done', 'abhyas_daily10_streak', 'abhyas_wr_mastered',

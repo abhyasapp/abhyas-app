@@ -15,6 +15,7 @@ function _buildCustomExam(chapterIds, targetMarks, markFilter) {
     : all;
   if (markFilter === '5')  pool = pool.filter(q => q.marks === 5);
   if (markFilter === '10') pool = pool.filter(q => q.marks === 10);
+  if (markFilter === '2.5') pool = pool.filter(q => q.marks === 2.5);
   if (!pool.length) { toast('No questions match those filters'); return; }
 
   const shuffled = _shuffle(pool);
@@ -47,6 +48,7 @@ function _buildCustomExam(chapterIds, targetMarks, markFilter) {
   };
 
   _persistExam();
+  if (typeof _markSubjAttempted === 'function') _markSubjAttempted(picked.map(q => q.id));
   _markCustomExamUsed();
   
   if (typeof _renderExam === 'function') {

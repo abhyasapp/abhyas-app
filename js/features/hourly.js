@@ -126,20 +126,20 @@ window.HOURLY = {
     return out;
   },
   _parseMarks(raw){
-    if (typeof raw === 'number') return (raw === 5 || raw === 10) ? raw : 10;
+    if (typeof raw === 'number') return (raw === 2.5 || raw === 5 || raw === 10) ? raw : 10;
     const s = String(raw || '').trim();
     if (!s) return 10;
     const eq = s.lastIndexOf('=');
     if (eq > -1){
       const m = s.slice(eq+1).match(/\d+(?:\.\d+)?/);
-      if (m){ const n = Math.round(parseFloat(m[0])); return (n===5||n===10)?n:10; }
+      if (m){ const n = parseFloat(m[0]); return (n===2.5||n===5||n===10)?n:10; }
     }
     if (s.includes('+')){
       const p = s.split('+').map(parseFloat).filter(isFinite);
-      if (p.length){ const n = Math.round(p.reduce((a,b)=>a+b,0)); return (n===5||n===10)?n:10; }
+      if (p.length){ const n = p.reduce((a,b)=>a+b,0); return (n===2.5||n===5||n===10)?n:10; }
     }
     const m = s.match(/\d+/); if (!m) return 10;
-    const n = parseInt(m[0],10); return (n===5||n===10)?n:10;
+    const n = parseFloat(m[0]); return (n===2.5||n===5||n===10)?n:10;
   },
 
   // ── mount / unmount ──────────────────────────────────────────────────
@@ -295,6 +295,7 @@ window.HOURLY = {
       endsAt:     Date.now() + this.SUBJ_SECONDS * 1000,
       submitted:  false
     });
+    if (typeof _markSubjAttempted === 'function') _markSubjAttempted(q.id);
     this._pendingFile = null;
     toast('Write on paper, then upload. ' + Math.round(this.SUBJ_SECONDS/60) + ' minutes on the clock.', 4000);
     this.render();

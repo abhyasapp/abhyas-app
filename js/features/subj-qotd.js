@@ -45,6 +45,7 @@ function _clearQotd() {
 }
 
 function _solveSecFor(marks) {
+  if (marks === 2.5) return TIMERS.solveSecondsFor2_5;
   if (marks === 5)  return TIMERS.solveSecondsFor5;
   if (marks === 10) return TIMERS.solveSecondsFor10;
   return TIMERS.solveSecondsFallback;
@@ -122,9 +123,9 @@ function _renderQotd(){
           <div>
             <div class="qotd-meta">Today's Question</div>
             <div style="font-size:.9rem;font-weight:700;color:var(--t1);margin-top:.15rem">${esc(_chapterNameOf(q.chapterId))}</div>
-            <div style="font-size:.66rem;color:var(--t3);margin-top:.1rem">${esc(q.topic || '')}</div>
+            <div style="font-size:.66rem;color:var(--t3);margin-top:.1rem">${esc(q.topic || '')}${q.source ? ' · ' + esc(q.source) : ''}</div>
           </div>
-          <div class="qotd-marks ${q.marks===10?'m10':''}">${q.marks} marks</div>
+          <div class="qotd-marks ${_markClass(q.marks)}">${q.marks} marks</div>
         </div>
         <p style="font-size:.78rem;color:var(--t3);line-height:1.55;margin-bottom:.85rem">
           You get <b>${_fmtMins(_solveSecFor(q.marks))}</b> to write, then <b>${TIMERS.uploadSeconds/60} minutes</b>
@@ -181,9 +182,9 @@ function _renderQotd(){
           <div>
             <div class="qotd-meta">Now Solving</div>
             <div style="font-size:.9rem;font-weight:700;color:var(--t1);margin-top:.15rem">${esc(_chapterNameOf(q.chapterId))}</div>
-            <div style="font-size:.66rem;color:var(--t3);margin-top:.1rem">${esc(q.topic || '')}</div>
+            <div style="font-size:.66rem;color:var(--t3);margin-top:.1rem">${esc(q.topic || '')}${q.source ? ' · ' + esc(q.source) : ''}</div>
           </div>
-          <div class="qotd-marks ${q.marks===10?'m10':''}">${q.marks} marks</div>
+          <div class="qotd-marks ${_markClass(q.marks)}">${q.marks} marks</div>
         </div>
         <div class="qotd-q">${esc(q.q)}</div>
         ${q.hint ? `<div style="font-size:.72rem;color:var(--t3);font-style:italic;margin-top:-.4rem;margin-bottom:.85rem">${esc(q.hint)}</div>` : ''}
@@ -208,7 +209,7 @@ function _renderQotd(){
             <div class="qotd-meta">Upload Window</div>
             <div style="font-size:.9rem;font-weight:700;color:var(--sky);margin-top:.15rem">Send your answer now</div>
           </div>
-          <div class="qotd-marks ${q.marks===10?'m10':''}">${q.marks} marks</div>
+          <div class="qotd-marks ${_markClass(q.marks)}">${q.marks} marks</div>
         </div>
         <div class="qotd-timer upload ${left < 60 ? 'urgent' : ''}" id="qotd-tmr">${formatTime(left)}</div>
         <div class="qotd-timer-lbl">Upload closes in</div>
@@ -302,6 +303,7 @@ function _qotdBegin(){
     submitted: false,
     queued: false
   };
+  if (typeof _markSubjAttempted === 'function') _markSubjAttempted(q.id);
   _persistQotd();
   _renderQotd();
   if(typeof window.SB_HINTS !== 'undefined') window.SB_HINTS.refresh();

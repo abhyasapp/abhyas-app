@@ -112,7 +112,7 @@ function _extractMarks(text){
   if(raw.includes('+')){
     return Math.round(raw.split('+').reduce((a,b) => a + (parseFloat(b) || 0), 0));
   }
-  const n = parseInt(raw, 10);
+  const n = parseFloat(raw);
   return (n >= 1 && n <= 40) ? n : 10;
 }
 

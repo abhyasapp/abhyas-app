@@ -81,11 +81,26 @@ const SUBJ = {
     return ms > 0 ? _fmtCooldown(ms) : '';
   },
 
-  _listFilter: { query: '', chapter: '' },
+  _listFilter: { query: '', chapter: '', year: '', status: '', marks: '' },
   _filterList(query) {
     if (typeof query === 'string') this._listFilter.query = query.toLowerCase();
     const sel = document.getElementById('subj-list-chapter');
     if (sel) this._listFilter.chapter = sel.value;
+    const year = document.getElementById('subj-list-year');
+    if (year) this._listFilter.year = year.value;
+    const status = document.getElementById('subj-list-status');
+    if (status) this._listFilter.status = status.value;
+    const marks = document.getElementById('subj-list-marks');
+    if (marks) this._listFilter.marks = marks.value;
+    _renderList();
+  },
+
+  _clearListFilters() {
+    this._listFilter = { query: '', chapter: '', year: '', status: '', marks: '' };
+    ['subj-list-search', 'subj-list-chapter', 'subj-list-year', 'subj-list-status', 'subj-list-marks'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
     _renderList();
   },
 
