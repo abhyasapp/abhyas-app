@@ -580,6 +580,15 @@ body{
 .step-n{font-family:var(--mono);font-size:var(--fs-cap);font-weight:700;color:var(--accent);letter-spacing:.04em;padding-top:2px}
 .step h3{font-size:var(--fs-t3);margin-bottom:var(--sp-1)}
 .step p{font-size:var(--fs-callout);line-height:1.6;color:var(--ink-2)}
+.price-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:var(--sp-5);align-items:center;padding:var(--sp-6);border-radius:var(--r-sheet);background:var(--surface);border:var(--hairline-w) solid var(--accent-line);box-shadow:0 14px 36px rgba(18,28,22,.07)}
+@media (max-width:680px){.price-card{grid-template-columns:1fr;padding:var(--sp-5)}}
+.price-line{display:flex;align-items:baseline;gap:var(--sp-2);flex-wrap:wrap}
+.price-line strong{font-size:clamp(2rem,7vw,2.8rem);line-height:1;letter-spacing:-.04em;color:var(--ink);font-variant-numeric:tabular-nums}
+.price-line span{font-size:var(--fs-callout);font-weight:650;color:var(--ink-3)}
+.price-note{font-size:var(--fs-foot);color:var(--ink-2);line-height:1.55;margin-top:var(--sp-3);max-width:42ch}
+.price-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-2)}
+.price-list li{display:flex;align-items:flex-start;gap:var(--sp-2);font-size:var(--fs-callout);color:var(--ink-2);line-height:1.5}
+.price-list i{color:var(--accent);margin-top:2px;flex-shrink:0}
 .cta-band{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-5);margin-top:var(--sp-12);padding:var(--sp-6) var(--sp-5);border-radius:var(--r-sheet);background:var(--accent);color:var(--on-accent);box-shadow:0 16px 40px rgba(var(--accent-rgb),.20)}
 .cta-band h2{font-size:var(--fs-t1);color:var(--on-accent);letter-spacing:-.02em}
 .cta-band p{font-size:var(--fs-callout);color:var(--on-accent);opacity:.82;line-height:1.55;max-width:46ch;margin-top:var(--sp-1)}
@@ -888,6 +897,26 @@ details.faq p{padding-top:var(--sp-1)}
       <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-3);flex-wrap:wrap">
         <button class="btn btn-sec btn-sm" type="button" id="try-next" data-on-click="TRY_Q.next()" hidden style="margin-top:0" data-i18n>Another question</button>
         <button class="btn btn-sm" type="button" data-on-click="APP.setMode('signup');document.getElementById('main-card').scrollIntoView({behavior:'smooth'})" data-i18n>Create a free account</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="pricing" aria-labelledby="pricing-h">
+    <div class="section-head"><h2 id="pricing-h" data-i18n>Simple pricing</h2></div>
+    <p class="lede" data-i18n>Start with the full trial. If it helps, pay once and keep access.</p>
+    <div class="price-card">
+      <div>
+        <div class="price-line"><strong id="public-price">Rs 100</strong><span data-i18n>one-time</span></div>
+        <p class="price-note" data-i18n>No subscription and no automatic renewal. The amount shown here is the same amount on the payment screen.</p>
+      </div>
+      <div>
+        <ul class="price-list">
+          <li><i class="ph ph-check-circle" aria-hidden="true"></i><span data-i18n>Full access during the free trial</span></li>
+          <li><i class="ph ph-check-circle" aria-hidden="true"></i><span data-i18n>One payment, no subscription</span></li>
+          <li><i class="ph ph-check-circle" aria-hidden="true"></i><span data-i18n>Written answers marked by a person</span></li>
+          <li><i class="ph ph-check-circle" aria-hidden="true"></i><span data-i18n>Downloaded chapters keep working offline</span></li>
+        </ul>
+        <button class="btn" type="button" style="margin-top:var(--sp-4)" data-on-click="APP.setMode('signup');document.getElementById('main-card').scrollIntoView({behavior:'smooth'})" data-i18n>Create a free account</button>
       </div>
     </div>
   </section>

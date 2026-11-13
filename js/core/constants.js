@@ -9,7 +9,7 @@ const BK_TAGS = ['Need Check','Interesting','Debating','Confusing','Formulae'];
 const SR_INTERVALS = [1, 3, 7, 14];
 const WR_GRADUATE_AT = 5;   // consecutive correct answers that master a missed question
 const WEEKLY_EXAM_WINDOW_HOURS = 12;
-const APP_NAME = 'Abhyas V1';
+const APP_NAME = 'Abhyas';
 
 const LS = {
   USER:'abhyas_session',

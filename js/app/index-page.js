@@ -407,7 +407,18 @@
     var price = _get('faq-price');
     if (price) price.textContent = s.paymentAmount ? ('Rs ' + s.paymentAmount) : _tr('a small amount');
 
+    _paintPublicPrice();
+
     _maybeShowMobilePrompt();
+  }
+
+  /* The landing page and the payment screen must never quote different
+     prices. Both read the same public setting. */
+  function _paintPublicPrice() {
+    var el = _get('public-price');
+    if (!el) return;
+    var s = _publicInfo || {};
+    el.textContent = 'Rs ' + (s.paymentAmount || 100);
   }
 
   /* ================================================================ */
@@ -827,6 +838,7 @@
     });
 
     await _loadPublicInfo();
+    _paintPublicPrice();
 
     var existing = _readSession();
     if (existing) {

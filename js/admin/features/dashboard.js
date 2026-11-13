@@ -94,12 +94,14 @@ const CHAPTERS = {
 /* At most 4 file requests at once: 100 parallel getFile calls exceeded the
    Apps Script concurrency limit and the global rate limit. */
 const TRENDS = {
+  last: null,
   async load(){
     const box = $('trend-panel');
     if (!box) return;
     try {
       const r = await ADMIN.post('adminTrends', { days: 30 });
       if (!r.success) throw new Error(r.error || 'Could not load.');
+      this.last = r;
       const t = r.totals || {};
       const series = Array.isArray(r.series) ? r.series : [];
       const max = Math.max(1, ...series.map(d => Math.max(d.signups || 0, d.paid || 0)));
@@ -126,6 +128,31 @@ const TRENDS = {
       box.innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>' + esc(e.message) +
         ' <button class="btn btn-sm btn-quiet" style="margin-left:.5rem" data-on-click="TRENDS.load()">Try again</button></span></div>';
     }
+  },
+
+  /* A single file an owner can hand to a buyer or adviser. It contains the
+     figures already shown on this screen, with the export time and version. */
+  async exportReport(){
+    if (!this.last) await this.load();
+    if (!this.last) return TOAST.show('Load the growth figures first', 'warning');
+    const t = this.last.totals || {};
+    const num = id => Number(($(id) || {}).textContent) || 0;
+    const rows = [
+      ['Generated at', new Date().toISOString()],
+      ['App version', (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '')],
+      ['All students', num('st-users')],
+      ['On trial', num('st-trial')],
+      ['Paid students', num('st-active')],
+      ['Expired students', num('st-expired')],
+      ['Payments waiting', t.awaiting || 0],
+      ['Paid rate (%)', t.paidRate || 0],
+      ['Revenue estimate (NPR)', t.revenueEstimate || 0],
+      ['Price per student (NPR)', t.amount || 0],
+      ['Signups in last 30 days', t.periodSignups || 0],
+      ['Payments approved in last 30 days', t.periodPaid || 0]
+    ];
+    ADMIN.downloadCSV(ADMIN.toCSV(['Metric', 'Value'], rows), 'abhyas_business_report.csv');
+    TOAST.show('Business report downloaded', 'success');
   }
 };
 

@@ -6,6 +6,11 @@ grading, progress/streak tracking, reports, and an admin console.
 
 Live: https://app.mku.name.np/
 
+Evaluating Abhyas as an acquisition? See
+[`docs/ACQUISITION-READINESS.md`](docs/ACQUISITION-READINESS.md) for the honest
+transfer checklist and the blockers that need owner action. The code is
+proprietary; see [`LICENSE`](LICENSE).
+
 ## Quick start
 
 ```bash
@@ -116,4 +121,5 @@ feature with it — so this is the check that catches it.
 3. ~~Remove `document.write` shims in `js/app/`~~ (done in 1.48.0).
 4. Move inline CSS/JS out of `user.html` / `admin.html`; then drop `'unsafe-inline'` from the CSP.
 5. Replace the `new Function` dispatcher with `addEventListener`-based delegation; then drop `'unsafe-eval'`.
-6. Add a licence once you decide how the code may be used.
+6. ~~Add a licence~~ (done: proprietary, all rights reserved; a buyer needs a
+   written assignment).

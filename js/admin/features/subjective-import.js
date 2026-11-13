@@ -85,7 +85,7 @@ const SUBJADMIN = {
           section: group.topic,
           items: JSON.stringify(group.items)
         });
-        if (!r.success) throw new Error(r.error || ('Could not import ' + group.topic + '.'));
+        if (!r.success) throw new Error(r.error || ('Could not add ' + group.topic + '.'));
         inserted += (r.inserted || 0);
         skipped += (r.skipped || 0);
       }

@@ -277,7 +277,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ADMI
 (function paintVersion(){
   try {
     const el = $('rail-version');
-    if (el) el.textContent = 'Abhyas V1' + (typeof APP_VERSION !== 'undefined' ? ' · v' + APP_VERSION : '');
+    if (el) el.textContent = (typeof APP_NAME !== 'undefined' ? APP_NAME : 'Abhyas') + (typeof APP_VERSION !== 'undefined' ? ' · v' + APP_VERSION : '');
   } catch (e) { window.warnCaught && window.warnCaught('js/admin/router.js', e); }
 })();
 

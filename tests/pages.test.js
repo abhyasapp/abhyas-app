@@ -40,3 +40,19 @@ describe('admin.html grading module', () => {
     }
   });
 });
+
+describe('landing pricing', () => {
+  let p;
+  beforeAll(async () => {
+    p = await bootPage(ROOT, 'index.html', {
+      fetchReply: () => ({ success: true, paymentAmount: 250, trialHours: 24 }),
+      waitMs: 900
+    });
+  }, 120000);
+  afterAll(() => p && p.close());
+
+  it('shows the same public amount as the payment setting', () => {
+    const price = p.ev(`document.getElementById('public-price').textContent`);
+    expect(price).toBe('Rs 250');
+  });
+});
