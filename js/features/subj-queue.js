@@ -124,6 +124,12 @@ const SUBJ_QUEUE = {
   async process() {
     if (this._running) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    /* Respect the app's own connection state too. A forced-offline student
+       must not have saved answer PDFs uploaded by the 60-second background
+       retry while they are trying to save data. */
+    try {
+      if (typeof S !== 'undefined' && S && (S.forcedOffline || !S.online)) return;
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
     let user = null;
     try { user = (typeof S !== 'undefined' && S && S.user) ? S.user : null; } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-queue.js', e); }
     if (!user || !user.token) return;

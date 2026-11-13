@@ -11,16 +11,22 @@
 // these buttons work but do not snapshot until progress-reset.js lands.
 
 const DATA = {
-  exportAll(){
-    const payload = {
+  /* One payload for the downloaded file and for tests. It deliberately uses
+     PSYNC's full-local shape so notes, the sprint log and reset history travel
+     with the backup instead of silently staying on the device. */
+  _backupPayload(){
+    const full = (typeof PSYNC !== 'undefined' && PSYNC._fullLocal) ? PSYNC._fullLocal() : {};
+    return {
       exportedAt: new Date().toISOString(),
       version: (typeof APP_VERSION!=='undefined' ? APP_VERSION : 1),
-      prog: S.prog,
-      chapStats: S.chapStats,
-      cov: S.cov,
-      bk: S.bk, fl: S.fl, wr: S.wr, stk: S.stk, tt: S.tt,
+      ...full,
+      tt: S.tt,
       weeklyAttempts: S.weeklyAttempts
     };
+  },
+
+  exportAll(){
+    const payload = this._backupPayload();
     const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -112,7 +118,16 @@ const DATA = {
     if(!(await ASK.confirm({title:'Reset this device?', body:'This deletes ALL progress, bookmarks, flags, wrong answers and study plan on this device. Your cloud backup is not touched.', ok:'Continue', danger:true}))) return;
     if(!(await ASK.confirm({title:'Are you absolutely sure?', body:'This cannot be undone.', ok:'Yes, reset', danger:true}))) return;
     RESET_SNAPSHOT.save('reset');
-    [LS.PROG,LS.BK,LS.FL,LS.WR,LS.TT,LS.STK,LS.CHAPSTATS,LS.EXAM_SNAP,LS.TT_NOTIFIED,LS.FCOUNT,LS.COV,'abhyas_practice_snap'].forEach(k=>localStorage.removeItem(k));
+    /* Keep the just-made recovery copy, but clear every user-scoped key —
+       notes, sprint history, weekly attempts, queued reports and sync state
+       were previously left behind even though this dialog promises all data. */
+    let recovery = null;
+    try { recovery = localStorage.getItem('abhyas_pre_reset_snapshot'); } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
+    if (typeof AUTH !== 'undefined' && AUTH._clearUserScopedData) AUTH._clearUserScopedData();
+    else [LS.PROG,LS.BK,LS.FL,LS.WR,LS.TT,LS.STK,LS.CHAPSTATS,LS.EXAM_SNAP,LS.TT_NOTIFIED,LS.FCOUNT,LS.COV,'abhyas_practice_snap'].forEach(k=>localStorage.removeItem(k));
+    if (recovery) { try { localStorage.setItem('abhyas_pre_reset_snapshot', recovery); } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); } }
+    S.fcount = {};
+    try { localStorage.removeItem(LS.FCOUNT); } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
     toast('All data reset');
     location.reload();
   },

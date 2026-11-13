@@ -109,21 +109,73 @@ const AUTH = {
     } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
   },
 
+  _clearUserScopedData() {
+    /* Every localStorage key that belongs to the signed-in student. Display and
+       download preferences (theme, language, downloaded groups) are deliberately
+       absent: those follow the device, not the account. Built inside the method
+       so this file can still be loaded alone by unit tests. */
+    const keys = [
+      LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.TT, LS.COV,
+      LS.WK_ATTEMPTS, LS.EXAM_SNAP, LS.TT_NOTIFIED, LS.PROFILE, LS.CLOUD,
+      'abhyas_last_active', 'abhyas_practice_snap', 'abhyas_qnotes',
+      'abhyas_sprint_start', 'abhyas_sprint_log', 'abhyas_sprint_rest',
+      'abhyas_sprint_off', 'abhyas_sprint_focus', 'abhyas_sprint_exam',
+      'abhyas_exam_date', 'abhyas_resets', 'abhyas_pre_reset_snapshot',
+      'abhyas_presync_backup', 'abhyas_progress_rev', 'abhyas_last_sync',
+      'abhyas_report_queue', 'abhyas_subj_exam_v', 'abhyas_subj_qotd_v',
+      'abhyas_weekly_last_retake', 'abhyas_weekly_papers',
+      'abhyas_corr_seen', 'abhyas_corr_checked', 'abhyas_daily',
+      'abhyas_daily10_done', 'abhyas_daily10_streak', 'abhyas_wr_mastered',
+      'abhyas_hardq', 'abhyas_qts', 'abhyas_tut_seen', 'abhyas_studydocs_seen'
+    ];
+    const prefixes = ['abhyas_notes_', 'abhyas_subj_custom_last_', 'abhyas_backup_'];
+    const drop = (k) => { try { localStorage.removeItem(k); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); } };
+    keys.forEach(drop);
+    prefixes.forEach((prefix) => {
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf(prefix) === 0) drop(k);
+        }
+      } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
+    });
+
+    /* Reset the in-memory copies too. A full page reload would do this, but an
+       account switch can also happen inside an already-open app. */
+    try {
+      if (S.quiz && S.quiz.timer) clearInterval(S.quiz.timer);
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
+    S.prog = { total: 0, correct: 0, sessions: [], bestRun: 0 };
+    S.bk = []; S.fl = []; S.wr = [];
+    S.stk = { days: [], last: '' };
+    S.cov = {};
+    S.chapStats = {};
+    S.tt = { sessions: [], reminders: { enabled: false, leadMinutes: 5 } };
+    S.weeklyAttempts = {};
+    S.cloud = { fid: '' };
+    S.profile = { ver: 1, id: '' };
+    S.quiz = { qs: [], ans: [], mode: '', idx: 0, timer: null, elapsed: 0, left: 0, active: false, ch: '', scope: null };
+
+    try { if (typeof QNOTE !== 'undefined') QNOTE._cache = null; } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
+    try { if (typeof SPRINT_LOG !== 'undefined') SPRINT_LOG.clear(); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
+    try { if (typeof MY_SUBJ !== 'undefined') { MY_SUBJ._loaded = false; MY_SUBJ._items = []; } } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
+    try { if (typeof WEEKLY !== 'undefined') WEEKLY.attempts = S.weeklyAttempts; } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
+    try {
+      if (typeof PSYNC !== 'undefined') {
+        if (PSYNC._timer) clearTimeout(PSYNC._timer);
+        PSYNC._timer = null;
+        PSYNC._state = 'idle';
+      }
+    } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
+  },
+
   _resetUserScopedLocalDataIfDifferentUser(username) {
     try { if (typeof CONTENT_CRYPTO !== 'undefined') CONTENT_CRYPTO.clear(); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
     const lastUser = _load(LS.LAST_USER, '');
     const norm = v => String(v || '').trim().toLowerCase();
     if (lastUser && norm(lastUser) !== norm(username)) {
       try { const keepUser = S.user; S.user = { username: lastUser }; PSYNC._snapshot('before-account-switch'); S.user = keepUser; } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
-      [LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.TT, LS.COV, 'abhyas_practice_snap'].forEach(k => {
-        try { localStorage.removeItem(k); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
-      });
-      S.prog = { total: 0, correct: 0, sessions: [], bestRun: 0 };
-      S.bk = []; S.fl = []; S.wr = [];
-      S.stk = { days: [], last: '' };
-      S.cov = {};
-      S.chapStats = {};
-      S.tt = { sessions: [], reminders: { enabled: false, leadMinutes: 5 } };
+      this._clearUserScopedData();
     }
     _save(LS.LAST_USER, username);
   },

@@ -71,6 +71,23 @@ describe('offline written-answer queue', () => {
     expect(left).toEqual([]);
   });
 
+  it('does not upload while the student has forced offline mode on', async () => {
+    const out = await p.ev(`(async () => {
+      localStorage.setItem('abhyas_subj_queue_v1', JSON.stringify([
+        Object.assign({}, ${JSON.stringify(ITEM)}, { attempts: 0, failed: false })
+      ]));
+      let n = 0;
+      SUBJ_QUEUE._send = async () => { n++; return { success: true }; };
+      S.online = true; S.forcedOffline = true;
+      await SUBJ_QUEUE.process();
+      const item = JSON.parse(localStorage.getItem('abhyas_subj_queue_v1'))[0];
+      S.forcedOffline = false;
+      return { calls: n, attempts: item.attempts };
+    })()`);
+    expect(out.calls).toBe(0);
+    expect(out.attempts).toBe(0);
+  });
+
   it('does not run two send loops at the same time', async () => {
     const calls = await p.ev(`(async () => {
       localStorage.setItem('abhyas_subj_queue_v1', JSON.stringify([
