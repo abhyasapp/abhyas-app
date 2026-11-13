@@ -31,6 +31,8 @@
     'Switch theme': 'रङ बदल्नुहोस्',
     'Your path to mastery': 'तपाईंको सफलताको बाटो',
     'Loksewa Civil Engineering practice — online or offline': 'लोकसेवा सिभिल इन्जिनियरिङ अभ्यास — अनलाइन वा अफलाइन',
+    'The Abhyas Loksewa app for Civil Engineering': 'सिभिल इन्जिनियरिङका लागि अभ्यास लोकसेवा एप',
+    'Level 7 chapter practice, written answers and offline study — online or offline': 'लेभल ७ अध्याय अभ्यास, लिखित उत्तर र अफलाइन अध्ययन — अनलाइन वा अफलाइन',
     'Nepal · Level 7 Civil Engineering': 'नेपाल · तह ७ सिभिल इन्जिनियरिङ',
     'Offline first': 'अफलाइन पहिले',
     'Human marked': 'मानिसद्वारा जाँचिएको',
@@ -384,7 +386,8 @@
     'I forgot my password.': 'मैले पासवर्ड बिर्सें।',
     'Use "Forgot your password?" on the sign-in form. If the username or email matches an account, a reset code goes to that account\'s email address.': 'साइन इन फारमको "पासवर्ड बिर्सनुभयो?" प्रयोग गर्नुहोस्। प्रयोगकर्ता नाम वा इमेल कुनै खातासँग मिल्यो भने त्यो खाताको इमेल ठेगानामा रिसेट कोड जान्छ।',
     'Abhyas — Civil Loksewa practice for Nepal': 'अभ्यास — नेपालका लागि सिभिल लोकसेवा अभ्यास',
-    'Updated 4 November 2026': 'अद्यावधिक ४ नोभेम्बर २०२६'
+    'Updated 4 November 2026': 'अद्यावधिक ४ नोभेम्बर २०२६',
+    'Updated 13 November 2026': 'अद्यावधिक १३ नोभेम्बर २०२६'
   };
 
   const DICTS = { en: null, ne: NE };

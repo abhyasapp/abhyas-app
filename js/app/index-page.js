@@ -857,8 +857,27 @@
   /* Public API                                                        */
   /* ================================================================ */
 
+  async function _shareApp() {
+    var url = 'https://app.mku.name.np/';
+    var data = {
+      title: 'Abhyas Loksewa App',
+      text: 'Civil Engineering Loksewa practice for Level 7 — chapter questions, offline study and human-marked written answers.',
+      url: url
+    };
+    if (navigator.share) {
+      try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      if (typeof toast === 'function') toast('Link copied. Send it to a friend preparing for Loksewa.', 4500);
+    } catch (e) {
+      if (typeof toast === 'function') toast('Share this link: ' + url, 6000);
+    }
+  }
+
   window.APP = {
     setMode: _setMode,
+    share: _shareApp,
     logout: function () {
       _stopTrialTimer();
       _clearSession();

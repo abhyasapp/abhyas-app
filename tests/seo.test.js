@@ -33,6 +33,7 @@ describe('SEO audit', () => {
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     expect(locs.sort()).toEqual([
       `${SITE}/`,
+      `${SITE}/civil-engineering-loksewa.html`,
       `${SITE}/privacy.html`,
       `${SITE}/terms.html`,
     ].sort());
@@ -76,7 +77,7 @@ describe('SEO audit', () => {
       .matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
       .map((m) => JSON.parse(m[1]));
     const types = blocks.map((b) => b['@type']);
-    expect(types).toEqual(expect.arrayContaining(['WebApplication', 'Organization', 'WebSite', 'FAQPage']));
+    expect(types).toEqual(expect.arrayContaining(['WebApplication', 'Organization', 'WebSite', 'Course', 'FAQPage']));
     const faq = blocks.find((b) => b['@type'] === 'FAQPage');
     expect(faq.mainEntity.length).toBeGreaterThanOrEqual(5);
     for (const q of faq.mainEntity) {
@@ -85,10 +86,18 @@ describe('SEO audit', () => {
     }
   });
 
-  it('targets the Abhyas Civil Loksewa query in metadata and visible copy', () => {
+  it('targets the Abhyas Loksewa app query in metadata and visible copy', () => {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-    expect(html).toMatch(/<title>[^<]*Civil Loksewa[^<]*<\/title>/);
-    expect(html).toMatch(/<meta name="description" content="[^"]*Civil Loksewa/);
+    expect(html).toMatch(/<title>[^<]*Abhyas Loksewa App[^<]*<\/title>/);
+    expect(html).toMatch(/<meta name="description" content="[^"]*Abhyas Loksewa app/);
     expect(html).toMatch(/<summary[^>]*>What is Abhyas Civil Loksewa\?<\/summary>/);
+  });
+
+  it('ships a crawlable Civil Engineering Loksewa guide with its own schema', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'civil-engineering-loksewa.html'), 'utf8');
+    expect(html).toMatch(/<h1[^>]*>Civil Engineering Loksewa/);
+    expect(html).toMatch(/<title>[^<]*Civil Engineering Loksewa[^<]*<\/title>/);
+    expect(html).toContain('Abhya Loksewa');
+    expect(html).toContain('"@type": "BreadcrumbList"');
   });
 });

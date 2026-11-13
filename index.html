@@ -19,8 +19,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 
-<title>Abhyas — Civil Loksewa practice for Level 7 Engineering</title>
-<meta name="description" content="Abhyas Civil Loksewa practice for Nepal: Level 7 Civil Engineering questions, offline study, and written answers marked by a person. Free trial.">
+<title>Abhyas Loksewa App — Civil Engineering Practice for Level 7</title>
+<meta name="description" content="Abhyas Loksewa app for Nepal: Level 7 Civil Engineering chapter practice, offline study, spaced review and human-marked written answers. Free trial.">
 <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
 <meta name="application-name" content="Abhyas">
 <meta name="author" content="Abhyas">
@@ -28,8 +28,8 @@
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Abhyas">
-<meta property="og:title" content="Abhyas — Civil Loksewa practice for Level 7 Engineering">
-<meta property="og:description" content="Civil Loksewa practice for Nepal: Level 7 Civil Engineering questions, offline study, and written answers marked by a person. Free trial.">
+<meta property="og:title" content="Abhyas Loksewa App — Civil Engineering Practice for Level 7">
+<meta property="og:description" content="Abhyas Loksewa app for Nepal: Level 7 Civil Engineering chapter practice, offline study, spaced review and human-marked written answers. Free trial.">
 <meta property="og:url" content="https://app.mku.name.np/">
 <meta property="og:image" content="https://app.mku.name.np/og-cover.png">
 <meta property="og:image:type" content="image/png">
@@ -39,8 +39,8 @@
 <meta property="og:locale" content="en_NP">
 <meta property="og:locale:alternate" content="ne_NP">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Abhyas — Civil Loksewa practice for Level 7 Engineering">
-<meta name="twitter:description" content="Civil Loksewa practice for Nepal: Level 7 Civil Engineering questions, offline study, and written answers marked by a person. Free trial.">
+<meta name="twitter:title" content="Abhyas Loksewa App — Civil Engineering Practice for Level 7">
+<meta name="twitter:description" content="Abhyas Loksewa app for Nepal: Level 7 Civil Engineering chapter practice, offline study, spaced review and human-marked written answers. Free trial.">
 <meta name="twitter:image" content="https://app.mku.name.np/og-cover.png">
 <meta name="twitter:image:alt" content="Abhyas: practice that works with the power out">
 
@@ -50,8 +50,8 @@
   "@type": "WebApplication",
   "@id": "https://app.mku.name.np/#app",
   "name": "Abhyas",
-  "alternateName": "Abhyas Civil Loksewa",
-  "description": "Abhyas Civil Loksewa practice for Nepal — Level 7 Civil Engineering and General Knowledge questions, online or fully offline.",
+  "alternateName": ["Abhyas Civil Loksewa", "Abhyas Loksewa App", "Abhya Loksewa"],
+  "description": "Abhyas Loksewa app for Nepal — Level 7 Civil Engineering and General Knowledge practice, online or fully offline.",
   "url": "https://app.mku.name.np/",
   "applicationCategory": "EducationalApplication",
   "applicationSubCategory": "Exam preparation",
@@ -98,9 +98,40 @@
   "@id": "https://app.mku.name.np/#website",
   "url": "https://app.mku.name.np/",
   "name": "Abhyas",
-  "alternateName": "Abhyas Civil Loksewa",
+  "alternateName": ["Abhyas Civil Loksewa", "Abhyas Loksewa App", "Abhya Loksewa"],
   "inLanguage": ["en-NP", "ne-NP"],
   "publisher": { "@id": "https://app.mku.name.np/#org" }
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Course",
+  "name": "Loksewa Level 7 Civil Engineering preparation",
+  "description": "Chapter-wise Civil Engineering and General Knowledge practice for Nepal's Lok Sewa Aayog Level 7 exam, with offline study, spaced review and human-marked written answers.",
+  "provider": { "@id": "https://app.mku.name.np/#org" },
+  "educationalLevel": "Level 7 (Civil Engineering)",
+  "inLanguage": ["en", "ne"],
+  "teaches": [
+    "Structural Engineering",
+    "Geotechnical Engineering",
+    "Water Resources and Irrigation",
+    "Transportation Engineering",
+    "Public Health and Construction Management",
+    "General Knowledge"
+  ],
+  "hasCourseInstance": {
+    "@type": "CourseInstance",
+    "courseMode": "online",
+    "courseWorkload": "PT1H"
+  },
+  "offers": {
+    "@type": "Offer",
+    "category": "Free trial",
+    "priceCurrency": "NPR",
+    "availability": "https://schema.org/InStock"
+  }
 }
 </script>
 
@@ -612,8 +643,8 @@ details.faq p{padding-top:var(--sp-1)}
     <p class="hero-eyebrow" data-i18n>Nepal · Level 7 Civil Engineering</p>
     <img src="icon-192.png" width="192" height="192" alt="">
     <h1>Abhyas</h1>
-    <p class="tag" data-i18n>Your path to mastery</p>
-    <p class="what" data-i18n>Loksewa Civil Engineering practice — online or offline</p>
+    <p class="tag" data-i18n>The Abhyas Loksewa app for Civil Engineering</p>
+    <p class="what" data-i18n>Level 7 chapter practice, written answers and offline study — online or offline</p>
     <div class="net" role="status" aria-live="polite"><span class="ndot" id="ndot" aria-hidden="true"></span><span id="nstat">Online</span></div>
     <div class="hero-proof" aria-label="Why students choose Abhyas" data-i18n-aria="Why students choose Abhyas">
       <span><i class="ph ph-wifi-slash" aria-hidden="true"></i> <b data-i18n>Offline first</b></span>
@@ -986,10 +1017,11 @@ details.faq p{padding-top:var(--sp-1)}
     <div class="cta-actions">
       <button class="btn" type="button" data-on-click="APP.setMode('signup');document.getElementById('main-card').scrollIntoView({behavior:'smooth'})" data-i18n>Create a free account</button>
       <a class="btn btn-sec" href="#try" data-i18n>Try a question</a>
+      <button class="btn btn-sec" type="button" data-on-click="APP.share()"><i class="ph ph-share-network"></i> Share Abhyas</button>
     </div>
   </section>
 
-  <footer class="foot"><span data-i18n>Abhyas — Civil Loksewa practice for Nepal</span><br><span data-i18n>Updated 4 November 2026</span> · <a href="privacy.html" data-i18n>Privacy</a> · <a href="terms.html" data-i18n>Terms</a></footer>
+  <footer class="foot"><span data-i18n>Abhyas — Civil Loksewa practice for Nepal</span><br><a href="civil-engineering-loksewa.html">Civil Engineering Loksewa guide</a> · <span data-i18n>Updated 13 November 2026</span> · <a href="privacy.html" data-i18n>Privacy</a> · <a href="terms.html" data-i18n>Terms</a></footer>
 </div>
 
 <script type="application/ld+json">
