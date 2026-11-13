@@ -327,11 +327,19 @@ window.SERVER_PROG = {
         this._loaded = true; this._loading = false;
         return;
       }
-      this._compute(JSON.parse(res.data));
+      /* Large progress records are gzipped by syncEncode; small ones are
+         still plain JSON. Always use the shared decoder here — JSON.parse
+         alone fails on the gz1: payload and prints the compressed bytes. */
+      const payload = (typeof res.data === 'string')
+        ? (typeof syncDecode === 'function' ? await syncDecode(res.data) : JSON.parse(res.data))
+        : res.data;
+      this._compute(payload);
       this._loaded = true;
     } catch(e){
       listEl.innerHTML = '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i><span>' +
-        esc(e.message || 'Could not load your coverage.') +
+        esc(/JSON|token|Unexpected/i.test(e.message || '')
+          ? 'Your server progress could not be decoded. Your local progress is still safe; try again.'
+          : (e.message || 'Could not load your coverage.')) +
         ' <button class="btn btn-sm btn-quiet" data-on-click="SERVER_PROG.load(true)">Try again</button></span></div>';
       this._loading = false;
       return;
