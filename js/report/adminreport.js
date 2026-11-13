@@ -86,16 +86,54 @@ const ADMIN_REPORT = {
   levelFilter: 'all',
   chapterFilter: 'all',
   reasonFilter: 'all',
+  sortMode: 'newest',
+  multiOnly: false,
   searchTerm: '',
   _t: null,
   _historyCache: null,
 
-  setFilter(v) { this.filter = v; ADMIN.state.qrPage = 1; this.render(this.all); },
+  setFilter(v) { this.filter = v; this.multiOnly = false; ADMIN.state.qrPage = 1; this.render(this.all); },
+  setSort(v) {
+    this.sortMode = ['newest', 'oldest', 'reported'].includes(v) ? v : 'newest';
+    ADMIN.state.qrPage = 1;
+    this.render(this.all);
+  },
+  setMulti(v) {
+    this.multiOnly = !!v;
+    ADMIN.state.qrPage = 1;
+    this.render(this.all);
+  },
+  showWrong() {
+    this.filter = 'open';
+    this.multiOnly = false;
+    this.reasonFilter = 'wrong_answer';
+    ADMIN.state.qrPage = 1;
+    const status = $('qreports-filter'); if (status) status.value = 'open';
+    const reason = $('qreports-reason-filter'); if (reason) reason.value = 'wrong_answer';
+    this.render(this.all);
+  },
+  nextOpen() {
+    this.filter = 'open';
+    this.multiOnly = false;
+    this.sortMode = 'reported';
+    this.levelFilter = 'all';
+    this.chapterFilter = 'all';
+    this.reasonFilter = 'all';
+    this.searchTerm = '';
+    ADMIN.state.qrPage = 1;
+    const status = $('qreports-filter'); if (status) status.value = 'open';
+    const sort = $('qreports-sort'); if (sort) sort.value = 'reported';
+    const reason = $('qreports-reason-filter'); if (reason) reason.value = 'all';
+    this.render(this.all);
+    try { UI.scrollTop(); } catch (e) { /* not on screen */ }
+  },
   clearFilters() {
     this.filter = 'open';
     this.levelFilter = 'all';
     this.chapterFilter = 'all';
     this.reasonFilter = 'all';
+    this.sortMode = 'newest';
+    this.multiOnly = false;
     this.searchTerm = '';
     ADMIN.state.qrPage = 1;
     const search = $('qreports-search');
@@ -104,6 +142,7 @@ const ADMIN_REPORT = {
     const level = $('qreports-level-filter'); if (level) level.value = 'all';
     const chapter = $('qreports-chapter-filter'); if (chapter) chapter.value = 'all';
     const reason = $('qreports-reason-filter'); if (reason) reason.value = 'all';
+    const sort = $('qreports-sort'); if (sort) sort.value = 'newest';
     this.render(this.all);
   },
   setLevelFilter(v) {
@@ -130,8 +169,13 @@ const ADMIN_REPORT = {
     BUSY.start();
     try {
       const res = await ADMIN.post('adminListQuestionReports');
-      if (res.success) this.render(res.reports);
-      else TOAST.show(res.error || 'Could not load reports', 'error');
+      if (res.success) {
+        this.all = res.reports || res.qreports || [];
+        ADMIN.data.qreports = this.all;
+        ADMIN.data.qreportsTotalCount = res.totalCount || this.all.length;
+        ADMIN.data.qreportsTruncated = !!res.truncated;
+        this.render(this.all);
+      } else TOAST.show(res.error || 'Could not load reports', 'error');
     } catch (e) { TOAST.show(e.message, 'error'); }
     BUSY.stop();
   },
@@ -143,6 +187,16 @@ const ADMIN_REPORT = {
     return { level: 'Other', chapter, label: 'Other — ' + chapter };
   },
   chapterFor(fileId) { return this.metaFor(fileId).label; },
+
+  _driveLink(fileId) {
+    /* Only a bare Google Drive id is a file link. Weekly sets, Storage paths
+       and synthetic ids (local, weekly_…) would open a dead Drive page. */
+    const id = String(fileId || '');
+    if (/^(weekly_|local$|subjective|storage|hourly|exam-|qotd)/i.test(id)) return '';
+    if (!/^[A-Za-z0-9_-]{20,}$/.test(id)) return '';
+    return ' \u00b7 <a href="https://drive.google.com/file/d/' + encodeURIComponent(id) +
+      '/view" target="_blank" rel="noopener">open the file in Drive</a>';
+  },
 
   _levelOptions() {
     const sel = $('qreports-level-filter');
@@ -196,6 +250,9 @@ const ADMIN_REPORT = {
     if (this.reasonFilter !== 'all') {
       rows = rows.filter(r => r.reason === this.reasonFilter);
     }
+    if (this.multiOnly) {
+      rows = rows.filter(r => (Number(r.openReporters) || 0) > 1);
+    }
     if (this.searchTerm) {
       const q = this.searchTerm;
       rows = rows.filter(r =>
@@ -203,7 +260,38 @@ const ADMIN_REPORT = {
         (r.note || '').toLowerCase().includes(q) ||
         (r.reportedBy || '').toLowerCase().includes(q));
     }
+    rows = rows.slice();
+    if (this.sortMode === 'oldest') {
+      rows.sort((a, b) => (Number(a.reportedAt) || 0) - (Number(b.reportedAt) || 0));
+    } else if (this.sortMode === 'reported') {
+      rows.sort((a, b) =>
+        ((Number(b.openReporters) || 0) - (Number(a.openReporters) || 0)) ||
+        ((Number(b.reportedAt) || 0) - (Number(a.reportedAt) || 0)));
+    } else {
+      rows.sort((a, b) => (Number(b.reportedAt) || 0) - (Number(a.reportedAt) || 0));
+    }
     return rows;
+  },
+
+  _summaryHtml() {
+    const box = $('qr-summary');
+    if (!box) return;
+    const all = this.all || [];
+    const open = all.filter(r => r.status === 'open').length;
+    const resolved = all.filter(r => r.status === 'resolved').length;
+    const dismissed = all.filter(r => r.status === 'dismissed').length;
+    const wrong = all.filter(r => r.status === 'open' && r.reason === 'wrong_answer').length;
+    const multi = all.filter(r => r.status === 'open' && (Number(r.openReporters) || 0) > 1).length;
+    const chip = (label, n, action, on, alert) =>
+      '<button type="button" class="qr-sum' + (on ? ' is-on' : '') + (alert && n ? ' is-alert' : '') + '" ' +
+        'data-on-click="' + action + '"><b>' + n + '</b> ' + label + '</button>';
+    box.innerHTML =
+      chip('open', open, "QREPORTS.setFilter('open')", this.filter === 'open' && !this.multiOnly, true) +
+      chip('wrong answer', wrong, 'QREPORTS.showWrong()', this.filter === 'open' && this.reasonFilter === 'wrong_answer', false) +
+      chip('multiple reports', multi, 'QREPORTS.setMulti(' + (this.multiOnly ? 'false' : 'true') + ')', this.multiOnly, true) +
+      chip('resolved', resolved, "QREPORTS.setFilter('resolved')", this.filter === 'resolved', false) +
+      chip('dismissed', dismissed, "QREPORTS.setFilter('dismissed')", this.filter === 'dismissed', false) +
+      (open ? '<button type="button" class="qr-sum is-on" data-on-click="QREPORTS.nextOpen()"><i class="ph ph-arrow-right"></i> Triage highest impact</button>' : '');
   },
 
   /* The student's options, with the answer the app marks correct and the
@@ -246,6 +334,7 @@ const ADMIN_REPORT = {
 
   render(reports) {
     this.all = reports || [];
+    this._summaryHtml();
     this._levelOptions();
     this._chapterOptions();
     BADGES.update();
@@ -307,11 +396,7 @@ const ADMIN_REPORT = {
         '<div class="t-cap mt2">' +
           esc(REPORT_SECTION_LABELS[r.section] || 'Section not recorded') +
           (r.questionNumber ? ' \u00b7 question ' + r.questionNumber + ' in its file' : '') +
-          (r.fileId && r.fileId !== 'local'
-            ? ' \u00b7 <a href="https://drive.google.com/file/d/' +
-              encodeURIComponent(r.fileId) + '/view" target="_blank" rel="noopener">' +
-              'open the file in Drive</a>'
-            : '') +
+          this._driveLink(r.fileId) +
           (r.status !== 'open' && r.resolvedBy
             ? ' \u00b7 closed by ' + esc(r.resolvedBy) +
               (r.corrected ? " (students' apps told to refresh)" : '')

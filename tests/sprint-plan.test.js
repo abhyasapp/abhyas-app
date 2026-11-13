@@ -14,6 +14,33 @@ function syllabus(rand, { chapters = 12, gk = 4 } = {}) {
 }
 const sumSlices = (days) => days.reduce((a, d) => a + d.slices.reduce((x, s) => x + s.count, 0), 0);
 
+describe('calendar export', () => {
+  it('exports study days and the exam date as a valid iCalendar file', () => {
+    const rand = rng(42);
+    const plan = P.buildPlan({
+      units: syllabus(rand, { chapters: 4, gk: 1 }),
+      today: '2026-01-01', start: '2026-01-01', exam: '2026-03-01'
+    });
+    plan.cfg = { examDate: '2026-03-01' };
+    const ics = P.calendarText(plan, { now: Date.UTC(2026, 0, 1) });
+    expect(ics).toMatch(/^BEGIN:VCALENDAR/);
+    expect(ics).toContain('END:VCALENDAR');
+    expect(ics).toContain('SUMMARY:Abhyas:');
+    expect(ics).toContain('DTSTART;VALUE=DATE:20260101');
+    expect(ics).toContain('UID:abhyas-exam-2026-03-01@app.mku.name.np');
+    expect(ics).toContain('SUMMARY:Loksewa exam');
+    expect(ics).toContain('DTSTAMP:20260101T000000Z');
+  });
+
+  it('escapes commas, semicolons and newlines in calendar text', () => {
+    const ics = P.calendarText({
+      schedule: [{ iso: '2026-01-01', slices: [{ name: 'Survey; maps, curves', count: 3 }] }],
+      cfg: { examDate: '' }
+    }, { now: Date.UTC(2026, 0, 1) });
+    expect(ics).toContain('Survey\\; maps\\, curves');
+  });
+});
+
 describe('phase split', () => {
   it('60 days is Learn 35 / Drill 17 / Mock 8, exactly as the sprint was designed', () => {
     expect(P.phaseSplit(60)).toEqual({ learn: 35, drill: 17, mock: 8 });

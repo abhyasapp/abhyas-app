@@ -43,6 +43,14 @@ describe('offline-first question reports', () => {
     expect(out.queue[0]).toMatchObject({ uid: Q.uid, reason: 'wrong_answer', chosen: 2 });
   });
 
+  it('warns when the same question is already reported on this device', () => {
+    p.ev(`
+      localStorage.setItem('abhyas_report_queue', JSON.stringify([{ uid: ${JSON.stringify(Q.uid)}, reason: 'typo', note: '' }]));
+      USER_REPORT.openSheet(${JSON.stringify(Q)}, { section: 'practice' });
+    `);
+    expect(p.ev("document.getElementById('mbody').textContent")).toContain('already reported this question');
+  });
+
   it('keeps the report queued when the server rejects the send', async () => {
     p.ev(`
       S.online = true; S.forcedOffline = false;

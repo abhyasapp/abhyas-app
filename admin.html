@@ -506,6 +506,14 @@ td .empty{padding:var(--sp-10) var(--sp-4)}
 .banner i{flex-shrink:0;margin-top:1px;font-size:1rem}
 .banner-warning{background:var(--warning-soft);color:var(--warning)}
 .banner-danger{background:var(--danger-soft);color:var(--danger)}
+.qr-summary{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 var(--sp-3)}
+.qr-sum{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--sep);border-radius:var(--r-full);background:var(--surface);color:var(--ink-2);font-size:var(--fs-cap);font-weight:650;cursor:pointer}
+.qr-sum b{font-size:var(--fs-callout);color:var(--ink)}
+.qr-sum:hover{border-color:var(--sep-strong);background:var(--bg-grouped)}
+.qr-sum.is-on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.qr-sum.is-on b{color:var(--accent)}
+.qr-sum.is-alert{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
+.qr-sum.is-alert b{color:var(--danger)}
 .qr-opts{margin-top:var(--sp-2);display:grid;gap:4px}
 .qr-opt{padding:6px 10px;border:1px solid var(--sep);border-radius:var(--r-control);font-size:var(--fs-callout);color:var(--ink)}
 .qr-opt.is-correct{border-color:var(--success);background:var(--success-soft)}
@@ -1214,6 +1222,7 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
           <div><h2>Reports</h2><p>Questions students have flagged as wrong, unclear or broken.</p></div>
           <div class="acts"><button class="btn btn-secondary btn-sm" data-perm="qreports_manage" data-on-click="QREPORTS.refreshFile()"><i class="ph ph-arrows-clockwise"></i> Refresh a file</button><button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="QREPORTS.exportCSV()"><i class="ph ph-download-simple"></i> Export CSV</button></div>
         </div>
+        <div id="qr-summary" class="qr-summary" aria-label="Report summary"></div>
         <div class="toolbar">
           <input class="input search" type="search" id="qreports-search" placeholder="Search question, reporter or note" data-on-input="QREPORTS.debouncedFilter()" aria-label="Search reports">
           <select class="select" id="qreports-filter" data-on-change="QREPORTS.setFilter(this.value)" aria-label="Status">
@@ -1222,6 +1231,11 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
           </select>
           <select class="select" id="qreports-level-filter" data-on-change="QREPORTS.setLevelFilter(this.value)" aria-label="Level"><option value="all">All levels</option></select>
           <select class="select" id="qreports-chapter-filter" data-on-change="QREPORTS.setChapterFilter(this.value)" aria-label="Chapter"><option value="all">All chapters</option></select>
+          <select class="select" id="qreports-sort" data-on-change="QREPORTS.setSort(this.value)" aria-label="Sort reports">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="reported">Most reported</option>
+          </select>
           <select class="select" id="qreports-reason-filter" data-on-change="QREPORTS.setReasonFilter(this.value)" aria-label="Reason">
             <option value="all">All reasons</option>
             <option value="wrong_answer">Wrong answer</option>

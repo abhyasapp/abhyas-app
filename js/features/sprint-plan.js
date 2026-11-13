@@ -234,6 +234,78 @@
     return n ? sum / n : 0;
   }
 
+  /** Escape a value for an iCalendar text field. */
+  function _icsEsc(value) {
+    return String(value == null ? '' : value)
+      .replace(/\\/g, '\\\\')
+      .replace(/\r?\n/g, '\\n')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,');
+  }
+
+  /** RFC 5545 says a content line is folded at 75 octets. Most calendar apps are
+      forgiving, but folding keeps Google Calendar and Outlook happy with long
+      chapter lists. */
+  function _icsFold(line) {
+    const s = String(line);
+    const out = [];
+    let at = 0;
+    while (at < s.length) {
+      const take = at === 0 ? 73 : 72;
+      out.push((at === 0 ? '' : ' ') + s.slice(at, at + take));
+      at += take;
+    }
+    return out.join('\r\n');
+  }
+
+  /** The 60-day plan as an .ics calendar: one all-day event per study day,
+      plus the exam date. Pure — the caller turns the text into a Blob. */
+  function calendarText(plan, opts) {
+    const stamp = (opts && opts.now ? new Date(opts.now) : new Date())
+      .toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const rows = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Abhyas//60-day plan//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:Abhyas 60-day plan',
+      'X-WR-TIMEZONE:Asia/Kathmandu'
+    ];
+    const add = (line) => rows.push(_icsFold(line));
+    const days = (plan && Array.isArray(plan.schedule)) ? plan.schedule : [];
+    days.forEach((day, i) => {
+      const slices = Array.isArray(day && day.slices) ? day.slices.filter((s) => s && s.count > 0) : [];
+      if (!slices.length) return;
+      const names = slices.map((s) => s.name).filter(Boolean);
+      const summary = names.length > 2 ? names.slice(0, 2).join(', ') + ' +' + (names.length - 2) + ' more' : names.join(', ');
+      const desc = slices.map((s) => s.name + ': ' + s.count + ' new question' + (s.count === 1 ? '' : 's')).join('\n');
+      add('BEGIN:VEVENT');
+      add('UID:abhyas-plan-' + day.iso + '-' + i + '@app.mku.name.np');
+      add('DTSTAMP:' + stamp);
+      add('DTSTART;VALUE=DATE:' + String(day.iso).replace(/-/g, ''));
+      add('DTEND;VALUE=DATE:' + addDays(day.iso, 1).replace(/-/g, ''));
+      add('SUMMARY:' + _icsEsc('Abhyas: ' + (summary || 'Study day')));
+      add('DESCRIPTION:' + _icsEsc(desc));
+      add('TRANSP:TRANSPARENT');
+      add('END:VEVENT');
+    });
+    const exam = plan && plan.cfg && plan.cfg.examDate;
+    if (validIso(exam)) {
+      add('BEGIN:VEVENT');
+      add('UID:abhyas-exam-' + exam + '@app.mku.name.np');
+      add('DTSTAMP:' + stamp);
+      add('DTSTART;VALUE=DATE:' + exam.replace(/-/g, ''));
+      add('DTEND;VALUE=DATE:' + addDays(exam, 1).replace(/-/g, ''));
+      add('SUMMARY:' + _icsEsc('Loksewa exam'));
+      add('DESCRIPTION:' + _icsEsc('Target date from your Abhyas 60-day plan.'));
+      add('TRANSP:TRANSPARENT');
+      add('END:VEVENT');
+    }
+    rows.push('END:VCALENDAR');
+    return rows.join('\r\n');
+  }
+
   /** Date the syllabus would be finished at a given pace (study days only). null if it never would be. */
   function projectFinish(remaining, perDay, today, rest, off) {
     if (remaining <= 0) return today;
@@ -248,5 +320,5 @@
     return null;
   }
 
-  window.SPRINT_PLAN = { buildPlan, phaseSplit, phaseOf, recentRate, projectFinish, addDays, diffDays, parse, fmt, validIso, splitBy };
+  window.SPRINT_PLAN = { buildPlan, phaseSplit, phaseOf, recentRate, projectFinish, calendarText, addDays, diffDays, parse, fmt, validIso, splitBy };
 })();

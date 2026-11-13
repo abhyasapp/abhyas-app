@@ -6,10 +6,10 @@ import { ROOT } from './helpers/load-globals.js';
 
 const fetchReply = () => 'window.ChapterData = window.ChapterData || [];';
 const rows = [
-  { id: 'r1', fileId: 'f_l5_survey', status: 'open', reason: 'typo', questionSnapshot: 'Level 5 survey question', reportedBy: 'a', reportedAt: Date.now() },
-  { id: 'r2', fileId: 'f_l5_struct', status: 'open', reason: 'unclear', questionSnapshot: 'Level 5 structure question', reportedBy: 'b', reportedAt: Date.now() },
-  { id: 'r3', fileId: 'f_l7_survey', status: 'open', reason: 'typo', questionSnapshot: 'Level 7 survey question', reportedBy: 'c', reportedAt: Date.now() },
-  { id: 'r4', fileId: 'weekly_123', status: 'open', reason: 'other', questionSnapshot: 'Weekly set question', reportedBy: 'd', reportedAt: Date.now() }
+  { id: 'r1', fileId: 'f_l5_survey', status: 'open', reason: 'typo', questionSnapshot: 'Level 5 survey question', reportedBy: 'a', openReporters: 3, reportedAt: Date.now() - 3000 },
+  { id: 'r2', fileId: 'f_l5_struct', status: 'open', reason: 'unclear', questionSnapshot: 'Level 5 structure question', reportedBy: 'b', openReporters: 1, reportedAt: Date.now() - 2000 },
+  { id: 'r3', fileId: 'f_l7_survey', status: 'open', reason: 'typo', questionSnapshot: 'Level 7 survey question', reportedBy: 'c', openReporters: 2, reportedAt: Date.now() - 1000 },
+  { id: 'r4', fileId: 'weekly_123', status: 'open', reason: 'other', questionSnapshot: 'Weekly set question', reportedBy: 'd', openReporters: 1, reportedAt: Date.now() }
 ];
 
 describe('admin reported-question review', () => {
@@ -32,6 +32,8 @@ describe('admin reported-question review', () => {
       QREPORTS.levelFilter = 'all';
       QREPORTS.chapterFilter = 'all';
       QREPORTS.reasonFilter = 'all';
+      QREPORTS.sortMode = 'newest';
+      QREPORTS.multiOnly = false;
       QREPORTS.searchTerm = '';
       QREPORTS.render(${JSON.stringify(rows)});
     `);
@@ -57,10 +59,36 @@ describe('admin reported-question review', () => {
     expect(cards()[0].textContent).toContain('Level 5 survey question');
   });
 
-  it('resets level, chapter and status together', () => {
+  it('summarises the triage load and surfaces the highest-impact work', () => {
+    const summary = p.ev("document.getElementById('qr-summary').textContent");
+    expect(summary).toContain('open');
+    expect(summary).toContain('multiple reports');
+    expect(summary).toContain('Triage highest impact');
+
+    p.ev("QREPORTS.nextOpen()");
+    expect(cards()).toHaveLength(4);
+    expect(cards()[0].textContent).toContain('3 students');
+    expect(p.ev("document.getElementById('qreports-sort').value")).toBe('reported');
+  });
+
+  it('only links real Drive ids, never a weekly set or a Storage path', () => {
+    expect(p.ev("QREPORTS._driveLink('weekly_1750000000000')")).toBe('');
+    expect(p.ev("QREPORTS._driveLink('storage/questions/f_l5_survey.json')")).toBe('');
+    expect(p.ev("QREPORTS._driveLink('1AbCdEfGhIjKlMnOpQrStUvWxYz012345')")).toContain('drive.google.com');
+  });
+
+  it('filters to questions with more than one reporter', () => {
+    p.ev('QREPORTS.setMulti(true)');
+    expect(cards()).toHaveLength(2);
+    expect(cards().every((c) => /students/.test(c.textContent))).toBe(true);
+  });
+
+  it('resets level, chapter, status and sorting together', () => {
     p.ev('QREPORTS.clearFilters()');
     expect(p.ev("document.getElementById('qreports-level-filter').value")).toBe('all');
     expect(p.ev("document.getElementById('qreports-chapter-filter').value")).toBe('all');
+    expect(p.ev("document.getElementById('qreports-sort').value")).toBe('newest');
+    expect(p.ev('QREPORTS.multiOnly')).toBe(false);
     expect(cards()).toHaveLength(4);
   });
 });

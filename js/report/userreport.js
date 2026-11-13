@@ -42,10 +42,19 @@ function _openSheet(q, ctx) {
   const reasons = REPORT_REASONS.map(r =>
     '<option value="' + r + '">' + esc(REPORT_REASON_LABELS[r] || r) + '</option>'
   ).join('');
+  const prior = _rqLoad().filter(x => x && x.uid === q.uid);
+  const priorNote = prior.length
+    ? '<div class="banner banner-warning mb3" style="align-items:flex-start"><i class="ph ph-info"></i><span>' +
+        'You already reported this question on this device' +
+        (prior.length === 1 ? ' (' + esc(REPORT_REASON_LABELS[prior[0].reason] || prior[0].reason) + ')' : ' (' + prior.length + ' reports)') +
+        '. Sending again adds a separate note for your teacher.' +
+      '</span></div>'
+    : '';
   openMod('Report an issue',
     '<div class="t-foot mb2" style="max-height:4.5em;overflow:hidden">' +
       esc(String(q.q || '').slice(0, 160)) +
     '</div>' +
+    priorNote +
     '<div class="sf"><label for="qr-reason">What\'s wrong?</label>' +
       '<select id="qr-reason">' + reasons + '</select>' +
     '</div>' +

@@ -938,6 +938,30 @@
     } catch (e) { toast(T('Could not copy. Select the report and copy it manually.')); }
   }
 
+  // ── Export the plan ──────────────────────────────────────────────────────────────────────
+  function exportCalendar() {
+    try {
+      const plan = _plan();
+      if (!plan || !plan.schedule || !plan.schedule.length) {
+        toast(T('Count your syllabus first — there is no plan to export yet.'), 4500);
+        return;
+      }
+      const text = P.calendarText(plan);
+      const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'abhyas-60-day-plan.ics';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast(T('Calendar downloaded. Import it into Google Calendar, Apple Calendar or Outlook.'), 6000);
+    } catch (e) {
+      toast(T('Could not create the calendar file. Try again.'), 4500);
+    }
+  }
+
   // ── Settings actions ─────────────────────────────────────────────────────────────────────
   function setExamDate(iso) {
     if (!P.validIso(iso)) { toast(T('Pick a valid exam date.')); return false; }
@@ -984,6 +1008,7 @@
     else if (act === 'count') RUN.count();
     else if (act === 'focus') openFocus();
     else if (act === 'copy-report') _copyReport();
+    else if (act === 'export-calendar') exportCalendar();
     else if (act === 'save-exam') { const i = document.getElementById('sprint-exam-input'); if (i) setExamDate(i.value); }
     else if (act === 'add-rest') {
       const i = document.getElementById('sprint-rest-input');
@@ -1071,12 +1096,12 @@
     render() { renderHomeStrip(); renderPage(); },
     renderHomeStrip, renderPage, isEligible, openFocus, toggleFocusLevel,
     focusKeys: () => _eligibleRefs().map((r) => _focusKey(r.lv, r.ch)),
-    takeTodayOff, setExamDate, addRestDay, removeRestDay,
+    takeTodayOff, setExamDate, addRestDay, removeRestDay, exportCalendar,
     run: RUN, plan: _plan, targets: () => _targets(_plan()),
   };
 
   window.SPRINT = window.SPRINT || {};
-  ['takeTodayOff', 'setExamDate', 'addRestDay', 'removeRestDay', 'renderPage', 'renderHomeStrip'].forEach((k) => { window.SPRINT[k] = window.SPRINT_PAGE[k]; });
+  ['takeTodayOff', 'setExamDate', 'addRestDay', 'removeRestDay', 'renderPage', 'renderHomeStrip', 'exportCalendar'].forEach((k) => { window.SPRINT[k] = window.SPRINT_PAGE[k]; });
   window.SPRINT.run = RUN;
 
   function _hookNav() {
