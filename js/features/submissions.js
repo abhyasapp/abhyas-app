@@ -27,7 +27,7 @@ window.MY_SUBJ = {
     if (this._loading) return;
     this._loading = true;
 
-    box.innerHTML = `<div class="card">
+    box.innerHTML = this._queueCard() + `<div class="card">
       <div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div>
     </div>`;
 
@@ -44,10 +44,11 @@ window.MY_SUBJ = {
     }
 
     if (!this._online()) {
-      box.innerHTML = '<div class="card"><div class="banner banner-warning">' +
+      box.innerHTML = this._queueCard() + '<div class="card"><div class="banner banner-warning">' +
         '<i class="ph ph-wifi-slash"></i>' +
-        '<span>You are offline. Connect to the internet to see your submissions — nothing is lost while you wait.</span>' +
+        '<span>You are offline. Your saved answers above are still on this device; connect to see marked submissions.</span>' +
         '</div></div>';
+      this.refreshHint();
       this._loading = false;
       return;
     }
@@ -70,26 +71,78 @@ window.MY_SUBJ = {
       this.render();
       this.refreshHint();
     } catch(e){
-      box.innerHTML = '<div class="card"><div class="banner banner-danger">' +
+      box.innerHTML = this._queueCard() + '<div class="card"><div class="banner banner-danger">' +
         '<i class="ph ph-warning-circle"></i>' +
         '<span>' + esc(e.message || 'Could not load.') +
         ' <button class="btn btn-sm btn-quiet" data-on-click="MY_SUBJ.load(true)">Try again</button></span>' +
         '</div></div>';
     }
     this._loading = false;
+    this.refreshHint();
+  },
+
+  _queueItems(){
+    const user = this._user();
+    if (!user || typeof SUBJ_QUEUE === 'undefined') return [];
+    try { return SUBJ_QUEUE.forUser(user.username); } catch (e) { return []; }
+  },
+
+  _queueCard(){
+    const items = this._queueItems();
+    if (!items.length) return '';
+    const failed = items.filter(x => x.failed).length;
+    const rows = items.map(item => {
+      const kind = item.kind === 'exam' ? 'Full 100-mark paper' : 'Question of the day';
+      const when = item.queuedAt ? new Date(item.queuedAt).toLocaleString() : '—';
+      const q = String(item.questionText || '').replace(/\s+/g, ' ').trim();
+      const preview = q.length > 150 ? q.slice(0, 147) + '…' : q;
+      const error = item.failed && item.lastError ? '<div style="font-size:.68rem;color:var(--ros);margin-top:.2rem">' + esc(item.lastError) + '</div>' : '';
+      return '<div style="padding:.75rem 0;border-top:1px solid var(--sep)">' +
+        '<div class="flex between" style="gap:var(--sp-3);align-items:flex-start">' +
+          '<div style="min-width:0">' +
+            '<div style="font-weight:700;font-size:.8rem;color:var(--ink)">' + kind + '</div>' +
+            '<div style="font-size:.72rem;color:var(--ink-2);line-height:1.5;margin-top:.15rem">' + esc(preview || 'No question text saved.') + '</div>' +
+            '<div style="font-size:.66rem;color:var(--ink-3);margin-top:.25rem">Saved ' + esc(when) + ' · ' + (item.attempts || 0) + ' send attempt' + ((item.attempts || 0) === 1 ? '' : 's') + '</div>' +
+            error +
+          '</div>' +
+          '<span class="ctag ' + (item.failed ? 'tr' : 'tw') + '">' + (item.failed ? 'Not sent' : 'Waiting') + '</span>' +
+        '</div>' +
+        '<div class="bg" style="margin-top:.55rem">' +
+          '<button class="btn btn-sm btn-a" data-on-click="SUBJ_QUEUE.retry(\'' + escAttrJs(item.kind) + '\',\'' + escAttrJs(item.questionId) + '\')"><i class="ph ph-paper-plane-tilt"></i> Retry</button>' +
+          '<button class="btn btn-sm btn-quiet" data-on-click="SUBJ_QUEUE.discard(\'' + escAttrJs(item.kind) + '\',\'' + escAttrJs(item.questionId) + '\')">Discard</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:var(--sp-3);border-color:' + (failed ? 'var(--danger-line)' : 'var(--accent-line)') + '">' +
+      '<div class="card-hd"><h3><i class="ph ph-cloud-arrow-up"></i> Saved on this device</h3>' +
+        '<span class="ctag ' + (failed ? 'tr' : 'tw') + '">' + items.length + '</span></div>' +
+      '<p style="font-size:.74rem;color:var(--ink-2);line-height:1.55;margin:0 0 .35rem">' +
+        (failed
+          ? '<b>' + failed + ' saved answer' + (failed === 1 ? '' : 's') + ' could not be sent.</b> They are still here — retry while online, or discard only if you no longer need them.'
+          : 'These answers are waiting to reach the server. They send automatically when you are online, and you can send one now without waiting.') +
+      '</p>' +
+      '<div class="bg" style="margin-bottom:.2rem">' +
+        '<button class="btn btn-sm btn-a" data-on-click="SUBJ_QUEUE.retryAll()"><i class="ph ph-paper-plane-tilt"></i> Retry all</button>' +
+        '<button class="btn btn-sm btn-quiet" data-on-click="SUBJ_QUEUE.discardAll()">Discard all</button>' +
+      '</div>' +
+      rows +
+    '</div>';
   },
 
   refreshHint(){
     const n = this._items.length;
     const pending = this._items.filter(s => s.status !== 'graded').length;
+    const unsent = this._queueItems().length;
+    const total = pending + unsent;
     const badge = $('subj-mine-badge');
     const hint = $('subj-mine-hint');
     if (badge) {
-      badge.hidden = pending === 0;
-      badge.textContent = pending > 99 ? '99+' : pending;
+      badge.hidden = total === 0;
+      badge.textContent = total > 99 ? '99+' : total;
     }
     if (hint) {
-      hint.textContent = n === 0 ? 'Nothing submitted yet'
+      hint.textContent = unsent > 0 ? unsent + ' saved answer' + (unsent === 1 ? '' : 's') + ' waiting'
+        : n === 0 ? 'Nothing submitted yet'
         : pending > 0 ? pending + ' awaiting marking'
         : n === 1 ? '1 marked' : n + ' marked';
     }
@@ -98,8 +151,9 @@ window.MY_SUBJ = {
   render(){
     const box = $('subj-mine-body');
     if (!box) return;
+    const queue = this._queueCard();
     if (!this._items.length) {
-      box.innerHTML = '<div class="card"><div class="empty">' +
+      box.innerHTML = queue + '<div class="card"><div class="empty">' +
         '<div class="empty-i"><i class="ph ph-file-text"></i></div>' +
         '<p>No submissions yet</p>' +
         '<p>Send in a written answer and it will show up here with the PDF you uploaded.</p>' +
@@ -111,7 +165,7 @@ window.MY_SUBJ = {
     }
     
     requestAnimationFrame(() => {
-      box.innerHTML = this._items.map(s => this._renderCard(s)).join('');
+      box.innerHTML = queue + this._items.map(s => this._renderCard(s)).join('');
       if (!this._modelChecked && typeof STUDYDOCS !== 'undefined' && this._items.some(s => s.chapterId)) {
         this._modelChecked = true;
         STUDYDOCS.ensureLoaded().then(() => { if (STUDYDOCS.docs.length) this.render(); });

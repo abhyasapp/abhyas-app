@@ -97,18 +97,35 @@ function _renderExam(){
   }
 
   if(EXAM && EXAM.submitted){
+    let qItem = null;
+    if (EXAM.queued) {
+      try {
+        const user = (typeof S !== 'undefined' && S && S.user) ? S.user : null;
+        if (user && typeof SUBJ_QUEUE !== 'undefined') qItem = SUBJ_QUEUE.forUser(user.username).find(x => x.kind === 'exam' && x.questionId === 'exam_' + EXAM.generatedAt);
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-exam.js', e); }
+    }
+    const failed = !!(qItem && qItem.failed);
     body.innerHTML = `
       <div class="card">
         <div class="qotd-head">
           <div>
-            <div class="qotd-meta">Exam Submitted</div>
-            <div style="font-size:.9rem;font-weight:700;color:var(--grn);margin-top:.15rem">Sent for grading</div>
+            <div class="qotd-meta">${EXAM.queued ? (failed ? 'Saved, not sent' : 'Queued on this device') : 'Exam Submitted'}</div>
+            <div style="font-size:.9rem;font-weight:700;color:var(--${failed ? 'ros' : EXAM.queued ? 'amb' : 'grn'});margin-top:.15rem">${failed ? 'Needs one more try' : EXAM.queued ? 'Will send when online' : 'Sent for grading'}</div>
           </div>
           <div class="qotd-marks">100</div>
         </div>
         <p style="font-size:.78rem;color:var(--t3);line-height:1.55;margin-bottom:.85rem">
-          Submitted at ${new Date(EXAM.submittedAt).toLocaleString()}. Admin will grade it and you'll get a push notification when it's done.
+          ${failed
+            ? 'The PDF is still on this device, but the last sends did not reach the server. Nothing has been deleted. Try again while you are online, or open My submissions to manage it.'
+            : EXAM.queued
+              ? 'Your paper is saved locally and will be sent to admin automatically when you are back online.'
+              : 'Submitted at ' + new Date(EXAM.submittedAt).toLocaleString() + '. Admin will grade it and you\'ll get a push notification when it\'s done.'}
         </p>
+        ${failed && qItem && qItem.lastError ? `<p style="font-size:.72rem;color:var(--t3);margin-top:-.4rem;margin-bottom:.85rem">${esc(qItem.lastError)}</p>` : ''}
+        ${EXAM.queued ? `<div class="bg" style="margin-bottom:.55rem">
+          <button class="btn btn-sm btn-a" data-on-click="SUBJ_QUEUE.retry('exam','${escAttrJs('exam_' + EXAM.generatedAt)}')"><i class="ph ph-paper-plane-tilt"></i> Try sending now</button>
+          <button class="btn btn-sm btn-quiet" data-on-click="SUBJ_QUEUE.discard('exam','${escAttrJs('exam_' + EXAM.generatedAt)}')">Discard</button>
+        </div>` : ''}
         <button class="btn btn-r btn-blk" data-on-click="SUBJ._examReset()">
           <i class="ph ph-arrow-counter-clockwise"></i> Discard &amp; Start a Fresh Paper
         </button>
@@ -389,7 +406,7 @@ async function _examSubmit(){
     const paperTextQ = EXAM.sections.map(s =>
       `[${s.name}]\n` + s.questions.map((q,i) => `${i+1}. ${q.q} [${q.marks}]`).join('\n')
     ).join('\n\n').slice(0, 3000);
-    SUBJ_QUEUE.add({
+    const queued = SUBJ_QUEUE.add({
       username: (typeof S !== 'undefined' && S && S.user ? S.user.username : ''),
       kind: 'exam',
       questionId: 'exam_' + EXAM.generatedAt,
@@ -401,6 +418,11 @@ async function _examSubmit(){
       pdfData: _pendingExamFile.dataUrl,
       filename: _pendingExamFile.filename
     });
+    if (!queued) {
+      if(btn){ btn.disabled = false; btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit Paper for Grading'; }
+      toast('❌ This device could not save the paper. Reconnect and submit again — your PDF is still selected.', 7000);
+      return;
+    }
     EXAM.submitted = true;
     EXAM.submittedAt = Date.now();
     EXAM.queued = true;

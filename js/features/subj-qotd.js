@@ -139,13 +139,23 @@ function _renderQotd(){
 
   if(phase === 'submitted'){
     if(QOTD.queued){
+      let qItem = null;
+      try {
+        const user = (typeof S !== 'undefined' && S && S.user) ? S.user : null;
+        if (user && typeof SUBJ_QUEUE !== 'undefined') qItem = SUBJ_QUEUE.forUser(user.username).find(x => x.kind === 'qotd' && x.questionId === QOTD.questionId);
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/subj-qotd.js', e); }
+      const failed = !!(qItem && qItem.failed);
       body.innerHTML = `
         <div class="card qotd-done">
-          <span class="big"><i class="ph ph-cloud-slash" style="color:var(--amb)"></i></span>
-          <h3 style="color:var(--amb)">Queued on this device</h3>
-          <p>Your answer is saved locally and will be sent to admin the moment you are back online.</p>
+          <span class="big"><i class="ph ${failed ? 'ph-warning-circle' : 'ph-cloud-slash'}" style="color:var(--${failed ? 'ros' : 'amb'})"></i></span>
+          <h3 style="color:var(--${failed ? 'ros' : 'amb'})">${failed ? 'Saved, but not sent' : 'Queued on this device'}</h3>
+          <p>${failed
+            ? 'Your answer is still on this device. The last few sends did not reach the server, so it needs one more try while you are online. Nothing has been deleted.'
+            : 'Your answer is saved locally and will be sent to admin the moment you are back online.'}</p>
+          ${failed && qItem && qItem.lastError ? `<p style="font-size:.72rem;color:var(--t3);margin-top:.4rem">${esc(qItem.lastError)}</p>` : ''}
           <div class="bg mt3" style="justify-content:center">
-            <button class="btn btn-sm btn-a" data-on-click="SUBJ_QUEUE.process()"><i class="ph ph-paper-plane-tilt"></i> Try sending now</button>
+            <button class="btn btn-sm btn-a" data-on-click="SUBJ_QUEUE.retry('qotd','${escAttrJs(QOTD.questionId)}')"><i class="ph ph-paper-plane-tilt"></i> Try sending now</button>
+            <button class="btn btn-sm btn-quiet" data-on-click="SUBJ_QUEUE.discard('qotd','${escAttrJs(QOTD.questionId)}')">Discard</button>
           </div>
         </div>`;
       _stopQotdTick();
@@ -339,7 +349,7 @@ async function _qotdSubmitInner(){
       toast('❌ That answer is too large to queue offline. Reconnect and try again.', 6000);
       return;
     }
-    SUBJ_QUEUE.add({
+    const queued = SUBJ_QUEUE.add({
       username: (typeof S !== 'undefined' && S && S.user ? S.user.username : ''),
       kind: 'qotd',
       questionId: QOTD.questionId,
@@ -351,6 +361,11 @@ async function _qotdSubmitInner(){
       pdfData: _pendingQotdFile.dataUrl,
       filename: _pendingQotdFile.filename
     });
+    if (!queued) {
+      if(btn){ btn.disabled = false; btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit for Review'; }
+      toast('❌ This device could not save the answer. Reconnect and submit again — your PDF is still selected.', 7000);
+      return;
+    }
     QOTD.submitted = true;
     QOTD.submittedAt = Date.now();
     QOTD.queued = true;
