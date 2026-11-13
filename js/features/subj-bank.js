@@ -92,6 +92,38 @@ function _parseMarks(raw) {
   return (n === 5 || n === 10) ? n : 10;
 }
 
+function _questionKey(text) {
+  return String(text || '').toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/* The bundled Public Health bank is a safety net and a way to ship newly
+   transcribed questions before the Storage JSON is re-imported. A question
+   already returned by the server is never duplicated. */
+function _mergeSeedQuestions(byChapter) {
+  const seed = (typeof window !== 'undefined' && window.SUBJECTIVE_SEED) || {};
+  Object.keys(seed).forEach(chapterId => {
+    const list = byChapter[chapterId] = byChapter[chapterId] || [];
+    const seen = new Set(list.map(q => _questionKey(q.q)));
+    (Array.isArray(seed[chapterId]) ? seed[chapterId] : []).forEach((q, i) => {
+      const text = String(q && q.q || '').trim();
+      if (!text) return;
+      const key = _questionKey(text);
+      if (seen.has(key)) return;
+      seen.add(key);
+      list.push({
+        id: q.id || ('seed_' + chapterId + '_' + i),
+        chapterId,
+        topic: String(q.topic || 'General').trim(),
+        q: text,
+        marks: _parseMarks(q.marks),
+        hint: String(q.hint || '').trim(),
+        modelAnswer: String(q.modelAnswer || '').trim(),
+        source: String(q.source || '').trim()
+      });
+    });
+  });
+}
+
 function _normalizeSubjRaw(raw, fileId, chapterId, chapterName){
   // ── Supabase getfile response shape: { success, content: "<JSON string>" }
   //    Unwrap it in case old cache still holds this shape.
@@ -125,7 +157,8 @@ function _normalizeSubjRaw(raw, fileId, chapterId, chapterName){
           q: text,
           marks: _parseMarks(q.marks),
           hint: String(q.hint || '').trim(),
-          modelAnswer: String(q.modelAnswer || '').trim()
+          modelAnswer: String(q.modelAnswer || '').trim(),
+          source: String(q.source || '').trim()
         });
       });
     });
@@ -150,7 +183,8 @@ function _normalizeSubjRaw(raw, fileId, chapterId, chapterName){
       q: text,
       marks: _parseMarks(q.marks),
       hint: String(q.hint || '').trim(),
-      modelAnswer: String(q.modelAnswer || '').trim()
+      modelAnswer: String(q.modelAnswer || '').trim(),
+      source: String(q.source || '').trim()
     });
   });
   return out;
@@ -282,6 +316,8 @@ async function loadBank(force){
     }
   }
   await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, refs.length) }, worker));
+
+  _mergeSeedQuestions(byChapter);
 
   Object.keys(byChapter).forEach(ch => {
     byChapter[ch].sort((a, b) => String(a.topic).localeCompare(String(b.topic)));

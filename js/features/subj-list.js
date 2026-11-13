@@ -42,7 +42,7 @@ function _renderList(){
           `</div>` +
           tQs.map((q, i) => `<div class="subj-q-row">` +
             `<span class="qn">${i+1}.</span>` +
-            `<span class="qt">${esc(q.q)}</span>` +
+            `<span class="qt">${esc(q.q)}${q.source ? `<span class="qsrc">${esc(q.source)}</span>` : ''}</span>` +
             `<span class="qm ${q.marks===10?'m10':'m5'}">${q.marks}M</span>` +
           `</div>`).join('') +
         `</div>`;

@@ -1211,6 +1211,7 @@ body{
 .subj-q-row:last-child{border-bottom:none}
 .subj-q-row .qn{flex-shrink:0;min-width:1.8rem;color:var(--accent);font-weight:700}
 .subj-q-row .qt{flex:1;font-size:var(--fs-callout);font-weight:400;line-height:1.6;color:var(--ink)}
+.subj-q-row .qsrc{display:block;margin-top:3px;font-size:var(--fs-cap);font-weight:600;color:var(--ink-3)}
 .subj-q-row .qm{flex-shrink:0;margin:0;padding:.1rem .45rem;border-radius:var(--r-full);font-size:var(--fs-cap);font-weight:700}
 .subj-q-row .qm.m5{background:var(--accent-soft);color:var(--accent)}
 .subj-q-row .qm.m10{background:var(--violet-soft);color:var(--violet-ink)}
