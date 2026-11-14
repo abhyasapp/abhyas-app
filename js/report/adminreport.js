@@ -543,6 +543,7 @@ const ADMIN_REPORT = {
     const dismissed = all.filter(r => r.status === 'dismissed').length;
     const wrong = all.filter(r => r.status === 'open' && r.reason === 'wrong_answer').length;
     const multi = all.filter(r => r.status === 'open' && (Number(r.openReporters) || 0) > 1).length;
+    const legacy = all.filter(r => r.status === 'open' && (r.qid == null || r.qid === '')).length;
     const chip = (label, n, action, on, alert) =>
       '<button type="button" class="qr-sum' + (on ? ' is-on' : '') + (alert && n ? ' is-alert' : '') + '" ' +
         'data-on-click="' + action + '"><b>' + n + '</b> ' + label + '</button>';
@@ -552,6 +553,9 @@ const ADMIN_REPORT = {
       chip('multiple reports', multi, 'QREPORTS.setMulti(' + (this.multiOnly ? 'false' : 'true') + ')', this.multiOnly, true) +
       chip('resolved', resolved, "QREPORTS.setFilter('resolved')", this.filter === 'resolved', false) +
       chip('dismissed', dismissed, "QREPORTS.setFilter('dismissed')", this.filter === 'dismissed', false) +
+      (legacy && ADMIN.can('qreports_manage')
+        ? '<button type="button" class="qr-sum is-alert" data-on-click="QREPORTS.matchOld()"><b>' + legacy + '</b> old, no qid</button>'
+        : '') +
       (open ? '<button type="button" class="qr-sum is-on" data-on-click="QREPORTS.nextOpen()"><i class="ph ph-arrow-right"></i> Triage highest impact</button>' : '');
   },
 
@@ -883,6 +887,40 @@ const ADMIN_REPORT = {
     const order = rows.slice(i + 1).concat(rows.slice(0, Math.max(i, 0)));
     const nxt = order.find(r => r.status === 'open' && !ADMIN_DRAFTS.forReport(r));
     if (nxt) setTimeout(() => this.editQ(nxt.id), 0);
+  },
+
+  /* Old reports were saved before questions had ids. Match their stored text
+     to the current file, preview first, and only then write the qid. */
+  async matchOld() {
+    BUSY.start();
+    try {
+      const preview = await ADMIN.post('adminBackfillReportQids', { apply: false });
+      if (!preview || !preview.success) throw new Error((preview && preview.error) || 'Could not match old reports.');
+      if (!preview.matched) {
+        TOAST.show('No unique text matches found. The reports were left unchanged.', 'warning');
+        return;
+      }
+      const rest = [
+        preview.ambiguous ? preview.ambiguous + ' ambiguous' : '',
+        preview.noMatch ? preview.noMatch + ' unmatched' : '',
+        preview.noFile ? preview.noFile + ' file missing' : '',
+        preview.noQuestionId ? preview.noQuestionId + ' file has no qid' : ''
+      ].filter(Boolean).join(', ');
+      const ok = await CONFIRM.ask({
+        title: 'Match old reports to questions?',
+        body: 'Found a unique current question for <b>' + preview.matched + '</b> old report' +
+          (preview.matched === 1 ? '' : 's') + '. Only the qid field is added; no report is deleted.' +
+          (rest ? '<br><span class="t-cap">' + esc(rest) + ' will be left unchanged.</span>' : ''),
+        confirmText: 'Add qids'
+      });
+      if (!ok) return;
+      const res = await ADMIN.post('adminBackfillReportQids', { apply: true });
+      if (!res || !res.success) throw new Error((res && res.error) || 'Could not save the matches.');
+      TOAST.show('Matched ' + res.applied + ' old report' + (res.applied === 1 ? '' : 's') + '.', 'success');
+      await this.load();
+    } catch (e) {
+      TOAST.show(e.message || 'Could not match old reports.', 'error');
+    } finally { BUSY.stop(); }
   },
 
   /* ── Correction history for a file ───────────────────────────────────
