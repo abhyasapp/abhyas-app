@@ -39,6 +39,7 @@
     psycho:     { icon: 'ph-lightning',       label: 'Mixed practice',           text: 'Draw from several chapters at once — closer to what the real paper feels like.' },
     bookmarks:  { icon: 'ph-star',            label: 'Saved',                    text: 'Questions you starred to come back to.' },
     wrong:      { icon: 'ph-target',          label: 'Weak spots',               text: 'Your missed questions, grouped four ways. Due now is the default — nothing else needs your attention today.' },
+    reports:    { icon: 'ph-flag',            label: 'My reports',               text: 'Questions you flagged for a correction, with the status of each report. Kept on this device.' },
     progress:   { icon: 'ph-chart-bar',       label: 'Your progress',            text: 'Accuracy, heatmap and coverage in one place. Switch tabs to change the view.' },
     offline:    { icon: 'ph-download-simple', label: 'Downloads',                text: 'Save question sets to this device so they open during load-shedding or with no signal.' },
     data:       { icon: 'ph-floppy-disk',     label: 'Backup',                   text: 'Save everything on this device to a file, or load one back.' },
@@ -66,6 +67,7 @@
     ]},
     { key: 'review', label: 'Review', tab: 'progress', items: [
       { view: 'wrong',     label: 'Weak spots', icon: 'ph-target', sub: 'What to work on next', count: { id: 'wrc', cls: '' } },
+      { view: 'reports',   sub: 'What you flagged, and its state' },
       { view: 'bookmarks', sub: 'Starred for later',              count: { id: 'bkc', cls: 'ok' } }
     ]},
     { key: 'progress', label: 'Progress & plan', tab: 'progress', items: [

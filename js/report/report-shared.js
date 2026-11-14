@@ -33,6 +33,34 @@ const REPORT_SECTION_LABELS = {
 /* Where the offline report queue lives on the device (survives a restart). */
 const REPORT_QUEUE_KEY = 'abhyas_report_queue';
 
+/* A view-only copy of what this device reported. The queue above is deleted
+   after a successful send; this list keeps the question and its state so the
+   student can look back at it. It is deliberately local: there is no student
+   API for reading report history from another device. */
+const REPORT_HISTORY_KEY = 'abhyas_report_history_v1';
+const REPORT_HISTORY_MAX = 100;
+
+function reportHistoryKey(r) {
+  return String((r && r.uid) || '') + '|' + String((r && r.reason) || '');
+}
+
+function reportHistoryAdd(list, entry, now) {
+  const src = Array.isArray(list) ? list : [];
+  if (!entry || !entry.uid || !entry.reason) return src.slice();
+  const key = reportHistoryKey(entry);
+  const t = Number(now) || Date.now();
+  const out = src.filter(x => x && reportHistoryKey(x) !== key);
+  out.push(Object.assign({ status: 'queued', reportedAt: t }, entry));
+  return out.slice(-REPORT_HISTORY_MAX);
+}
+
+function reportHistoryUpdate(list, uid, reason, patch) {
+  const key = reportHistoryKey({ uid: uid, reason: reason });
+  return (Array.isArray(list) ? list : []).map(x =>
+    x && reportHistoryKey(x) === key ? Object.assign({}, x, patch || {}) : x
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    OFFLINE REPORT QUEUE (v1.33, pure, unit-tested)
    A report written offline (or one that failed to send) waits here and is

@@ -134,6 +134,20 @@ function _rqSave(list) {
   catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); return false; }
 }
 
+function _histLoad() {
+  try {
+    const v = JSON.parse(localStorage.getItem(REPORT_HISTORY_KEY) || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch (e) { return []; }
+}
+function _histSave(list) {
+  try { localStorage.setItem(REPORT_HISTORY_KEY, JSON.stringify(list)); return true; }
+  catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); return false; }
+}
+function _histMark(uid, reason, patch) {
+  _histSave(reportHistoryUpdate(_histLoad(), uid, reason, patch));
+}
+
 function _queue(rep, reason, note, quiet) {
   const q = rep.q;
   const item = {
@@ -144,6 +158,14 @@ function _queue(rep, reason, note, quiet) {
     correct: (isNaN(Number(q.correct)) ? '' : Number(q.correct))
   };
   const saved = _rqSave(reportQueueAdd(_rqLoad(), item, Date.now()));
+  if (saved) {
+    _histSave(reportHistoryAdd(_histLoad(), {
+      uid: q.uid, qid: q.qid, reason: reason, note: note,
+      question: (q.q || '').slice(0, 1000),
+      section: rep.section,
+      reportedAt: Date.now(), status: 'queued'
+    }, Date.now()));
+  }
   if (saved && !quiet) toast('Saved. Your report will be sent when you are back online.', 5000);
   return saved;
 }
@@ -170,14 +192,23 @@ async function _flush(quiet) {
           body: JSON.stringify(_body(rep, it.reason, it.note))
         }, 15000);
         const res = await r.json();
-        if (res.success || /invalid|already|missing/i.test(String((res && res.error) || ''))) {
+        const resErr = String((res && res.error) || '');
+        if (res.success || /invalid|already|missing/i.test(resErr)) {
           /* Reload the queue before removing, so a report submitted while
              this flush was in flight is not overwritten by an older copy. */
           _rqSave(reportQueueRemove(_rqLoad(), it));
-          if (res.success) sent++;
+          if (res.success || /already/i.test(resErr)) {
+            _histMark(it.uid, it.reason, {
+              status: 'sent', sentAt: Date.now(),
+              reportId: (res && (res.reportId || res.id)) || ''
+            });
+            if (res.success) sent++;
+          } else {
+            _histMark(it.uid, it.reason, { status: 'failed', error: resErr || 'The server rejected this report.' });
+          }
         } else {
           failed++;
-          if (/too many/i.test(String((res && res.error) || ''))) break;
+          if (/too many/i.test(resErr)) break;
         }
       } catch (e) { failed++; break; }
     }
@@ -384,6 +415,23 @@ const USER_REPORT = {
   submit:    _submit,
   flush:     _flush,
   checkCorrections: _checkCorrections,
+
+  /* Newest first. Sent, waiting and rejected reports are all kept here. */
+  history() {
+    const list = _histLoad().slice();
+    const seen = new Set(list.map(reportHistoryKey));
+    _rqLoad().forEach(it => {
+      const key = reportHistoryKey(it);
+      if (!seen.has(key)) {
+        list.push({
+          uid: it.uid, qid: it.qid, reason: it.reason, note: it.note,
+          question: it.q, section: it.section,
+          reportedAt: it.queuedAt || Date.now(), status: 'queued'
+        });
+      }
+    });
+    return list.sort((a, b) => (Number(b.reportedAt) || 0) - (Number(a.reportedAt) || 0));
+  },
 
   current() {
     if (!S.quiz || !S.quiz.qs) return;

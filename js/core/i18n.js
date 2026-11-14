@@ -125,6 +125,7 @@
     'Mixed practice': 'मिश्रित अभ्यास',
     'Saved': 'सुरक्षित',
     'Weak spots': 'कमजोर पक्ष',
+    'My reports': 'मेरा रिपोर्टहरू',
     'Your progress': 'तपाईंको प्रगति',
     'Downloads': 'डाउनलोड',
     'Backup': 'ब्याकअप',
