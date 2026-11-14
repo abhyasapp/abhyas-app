@@ -58,4 +58,26 @@ describe('subjective question filters', () => {
     expect(out.unseen).toBe(66);
     expect(out.all).toBe(67);
   });
+
+  it('prints the whole written set for a chapter, including model answers', async () => {
+    const out = await p.ev(`(() => {
+      const buttons = [...document.querySelectorAll('.subj-group-hd button[data-on-click*="subjSheet"]')];
+      const html = PRINT_Q.subjSheetHtml([
+        { q: 'Explain the water treatment steps.', marks: 5, topic: 'Water', source: 'PSC 2080', modelAnswer: 'Screening, sedimentation, filtration, disinfection.' },
+        { q: 'Design a septic tank.', marks: 10, hint: 'Use IS 2470.' }
+      ], 'Public Health');
+      return {
+        buttons: buttons.length,
+        title: html.includes('Public Health'),
+        marks: html.includes('5 M') && html.includes('10 M'),
+        model: html.includes('filtration, disinfection'),
+        hint: html.includes('IS 2470')
+      };
+    })()`);
+    expect(out.buttons).toBeGreaterThan(0);
+    expect(out.title).toBe(true);
+    expect(out.marks).toBe(true);
+    expect(out.model).toBe(true);
+    expect(out.hint).toBe(true);
+  });
 });
