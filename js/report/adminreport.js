@@ -886,52 +886,63 @@ const ADMIN_REPORT = {
   },
 
   /* ── Correction history for a file ───────────────────────────────────
-     Supabase keeps a corrected snapshot on every resolved report. That is
-     the portable history: it needs only qreports_view (not logs_view) and
-     works for the hosted backend as well as Apps Script. Each entry offers
-     a "Restore" action, which creates a new correction event.
+     Read the per-edit correction events (qreports_view, not logs_view). Older
+     backends fall back to the corrected snapshot on each resolved report.
+     Each entry offers a "Restore" action, which creates a new event.
      ─────────────────────────────────────────────────────────────────── */
   async history(fileId) {
     if (!fileId) return TOAST.show('No file id on this report', 'warning');
     MODAL.sheet('Correction history — ' + fileId,
       '<div class="skeleton sk-100"></div><div class="skeleton sk-80"></div>');
     try {
-      const cache = await ADMIN_CORRECTIONS.load(true);
-      const rows = (cache.all || [])
-        .filter(c => c.fileId === fileId && c.oldSnapshot && c.newSnapshot)
-        .map(c => {
-          const m = String(c.uid || '').match(/_([0-9]+)$/);
-          return {
-            timestamp: c.correctedAt,
-            admin: c.correctedBy || 'unknown',
-            action: 'question_corrected',
-            target: fileId,
-            diff: {
-              qid: c.qid != null ? c.qid : null,
-              index: m ? Number(m[1]) : null,
-              reportId: c.id || '',
-              adminNote: c.note || '',
-              before: {
-                q: c.oldSnapshot.question || '',
-                options: Array.isArray(c.oldSnapshot.options) ? c.oldSnapshot.options : [],
-                correct: c.oldSnapshot.correctIndex
-              },
-              after: {
-                q: c.newSnapshot.question || '',
-                options: Array.isArray(c.newSnapshot.options) ? c.newSnapshot.options : [],
-                correct: c.newSnapshot.correctIndex,
-                explanation: c.newSnapshot.explanation || ''
-              }
+      const row = (uid, qid, correctedAt, admin, reportId, note, before, after) => {
+        const m = String(uid || '').match(/_([0-9]+)$/);
+        return {
+          timestamp: correctedAt,
+          admin: admin || 'unknown',
+          action: 'question_corrected',
+          target: fileId,
+          diff: {
+            qid: qid != null ? qid : null,
+            index: m ? Number(m[1]) : null,
+            reportId: reportId || '',
+            adminNote: note || '',
+            before: {
+              q: before.question || '',
+              options: Array.isArray(before.options) ? before.options : [],
+              correct: before.correctIndex
+            },
+            after: {
+              q: after.question || '',
+              options: Array.isArray(after.options) ? after.options : [],
+              correct: after.correctIndex,
+              explanation: after.explanation || ''
             }
-          };
-        })
-        .filter(r => r.diff.before.q && r.diff.after.q);
+          }
+        };
+      };
+      const ev = await ADMIN.post('adminListCorrectionEvents', { fileId, limit: 500 });
+      let rows;
+      if (ev && ev.success) {
+        rows = (ev.events || [])
+          .map(e => row(e.uid, e.qid, e.correctedAt, e.admin, e.reportId, e.note, e.before || {}, e.after || {}))
+          .filter(r => r.diff.before.q && r.diff.after.q);
+      } else {
+        // Older backend: fall back to the corrected snapshot on resolved reports.
+        const cache = await ADMIN_CORRECTIONS.load(true);
+        rows = (cache.all || [])
+          .filter(c => c.fileId === fileId && c.oldSnapshot && c.newSnapshot)
+          .map(c => row(c.uid, c.qid, c.correctedAt, c.correctedBy, c.id, c.note,
+            { question: c.oldSnapshot.question, options: c.oldSnapshot.options, correctIndex: c.oldSnapshot.correctIndex },
+            { question: c.newSnapshot.question, options: c.newSnapshot.options, correctIndex: c.newSnapshot.correctIndex, explanation: c.newSnapshot.explanation }))
+          .filter(r => r.diff.before.q && r.diff.after.q);
+      }
 
       if (!rows.length) {
         $('bd-sheet').innerHTML =
           '<div class="empty"><i class="ph ph-clock-counter-clockwise"></i>' +
           '<div class="t">No corrections yet</div>' +
-          '<div class="d">Corrections that closed a report will show up here.</div>' +
+          '<div class="d">Edits and restores made through this console will show up here.</div>' +
           '</div>';
         this._historyCache = [];
         return;
