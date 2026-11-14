@@ -6,8 +6,8 @@
   'use strict';
 
   const REPORTS = {
-    render() {
-      const body = document.getElementById('reports-body');
+    render(targetId) {
+      const body = document.getElementById(targetId || 'wr-reports-list');
       if (!body) return;
       const list = (typeof USER_REPORT !== 'undefined' && USER_REPORT.history)
         ? USER_REPORT.history() : [];
@@ -51,7 +51,4 @@
   };
 
   window.REPORTS = REPORTS;
-  if (typeof UI !== 'undefined' && UI.onEnter) {
-    UI.onEnter('reports', () => { try { REPORTS.render(); } catch (e) { window.warnCaught && window.warnCaught('js/features/reports-view.js', e); } });
-  }
 })();

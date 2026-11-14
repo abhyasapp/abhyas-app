@@ -187,6 +187,21 @@ function _renderExam(){
       <div class="qotd-timer-lbl" id="exam-tmr-lbl">${_phaseLabel}</div>
     </div>`);
 
+  parts.push(`
+    <div class="card">
+      <div class="card-hd"><h3><i class="ph ph-printer"></i> Print this paper</h3><span class="ctag tg">${EXAM.sections.reduce((n, s) => n + (s.questions || []).length, 0)} questions</span></div>
+      <p style="font-size:.74rem;color:var(--t3);line-height:1.55;margin-bottom:.7rem">
+        Prints the exact generated paper, including its marks total and group breakdown. Model answers go on a separate page after the paper.
+      </p>
+      <label class="flex center" style="gap:.45rem;font-size:.76rem;font-weight:600;margin-bottom:.65rem;cursor:pointer">
+        <input type="checkbox" id="exam-print-instr" checked>
+        <span>Include exam instructions</span>
+      </label>
+      <button class="btn btn-secondary btn-blk" data-on-click="SUBJ._examPrint()">
+        <i class="ph ph-printer"></i> Print full paper
+      </button>
+    </div>`);
+
   EXAM.sections.forEach(sec => {
     parts.push(`
       <div class="card">

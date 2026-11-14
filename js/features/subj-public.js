@@ -63,6 +63,15 @@ const SUBJ = {
   _qotdSubmit,
 
   _examGenerate,
+  _examPrint() {
+    if (!EXAM) { toast('Generate a paper first.'); return; }
+    if (typeof PRINT_Q === 'undefined' || typeof PRINT_Q.examSheet !== 'function') {
+      toast('Printing is not available right now.');
+      return;
+    }
+    const box = document.getElementById('exam-print-instr');
+    PRINT_Q.examSheet(EXAM, { instructions: !box || box.checked });
+  },
   _examFile,
   _examClearFile,
   _examSubmit,

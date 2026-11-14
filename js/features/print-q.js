@@ -246,5 +246,99 @@ window.PRINT_Q = {
     w.document.write(html);
     w.document.close();
     setTimeout(function(){ try { w.focus(); w.print(); } catch (e) { window.warnCaught && window.warnCaught('js/features/print-q.js', e); } }, 400);
+  },
+
+  /* The generated Full paper is the printable set. It is not a chapter bank:
+     the sections and questions here are exactly what the student is about to
+     write, so re-numbering or adding other questions would change the paper. */
+  examSheetHtml(exam, opts){
+    const o = opts || {};
+    const sections = ((exam && exam.sections) || []).map(sec => ({
+      name: String(sec.name || sec.group || 'Questions'),
+      questions: (Array.isArray(sec.questions) ? sec.questions : []).filter(q => q && q.q)
+    })).filter(sec => sec.questions.length);
+    const all = sections.reduce((a, sec) => a.concat(sec.questions), []);
+    const total = all.reduce((n, q) => n + (Number(q.marks) || 0), 0);
+    const marksOf = q => q.marks ? String(q.marks).replace(/\.0$/, '') + ' M' : '';
+    const date = new Date().toLocaleDateString();
+    const groups = sections.map(sec => {
+      const m = sec.questions.reduce((n, q) => n + (Number(q.marks) || 0), 0);
+      return esc(sec.name) + ' \u2014 ' + m + ' marks';
+    }).join(' \u00b7 ');
+    const body = sections.map(sec => {
+      const m = sec.questions.reduce((n, q) => n + (Number(q.marks) || 0), 0);
+      return '<section class="sec"><div class="sec-head"><h2>' + esc(sec.name) + '</h2><span>' + m + ' marks</span></div>' +
+        sec.questions.map((q, i) => '<div class="q"><span class="q-num">' + (i + 1) + '.</span>' +
+          '<span class="q-text">' + esc(String(q.q)) + '</span>' +
+          (marksOf(q) ? '<span class="marks">' + esc(marksOf(q)) + '</span>' : '') + '</div>').join('') +
+      '</section>';
+    }).join('');
+    const answerSections = sections.map(sec => {
+      const rows = sec.questions.map((q, i) => {
+        const model = String(q.modelAnswer || '').trim();
+        const hint = String(q.hint || '').trim();
+        if (!model && !hint) return '';
+        return '<div class="a"><span class="a-num">' + (i + 1) + '.</span><div>' +
+          (model ? '<div>' + esc(model) + '</div>' : '') +
+          (hint ? '<div class="a-hint"><b>Hint:</b> ' + esc(hint) + '</div>' : '') +
+        '</div></div>';
+      }).filter(Boolean).join('');
+      return rows ? '<h3>' + esc(sec.name) + '</h3>' + rows : '';
+    }).filter(Boolean).join('');
+    const instructions = o.instructions === false ? '' :
+      '<div class="instructions"><h2>Instructions</h2><ol>' +
+        '<li>Time allowed: <b>3 hours</b>.</li>' +
+        '<li>This paper contains <b>' + all.length + '</b> questions and totals <b>' + total + '</b> marks.</li>' +
+        '<li>Answer all questions.</li>' +
+        '<li>The marks for each question are shown in brackets.</li>' +
+        '<li>Write your answers in the answer book provided.</li>' +
+      '</ol></div>';
+    return '<!doctype html><html><head><meta charset="utf-8"><title>Full paper</title><style>' +
+      '@page{size:A4;margin:14mm}' +
+      'body{font:11pt/1.55 Georgia,"Times New Roman",serif;color:#111;max-width:186mm;margin:0 auto;padding:12px}' +
+      'h1{font-size:15pt;font-weight:700;margin:0 0 4px;border-bottom:2px solid #111;padding-bottom:4px}' +
+      '.meta{font-size:9pt;color:#666;margin-bottom:12px}' +
+      '.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border:1px solid #bbb;padding:8px;margin:10px 0}' +
+      '.summary div{text-align:center}.summary .k{display:block;font-size:8pt;text-transform:uppercase;letter-spacing:.06em;color:#666}' +
+      '.summary .v{display:block;font-size:14pt;font-weight:700}' +
+      '.groups{font-size:9pt;color:#555;margin:0 0 12px}' +
+      '.instructions{border:1px solid #ccc;padding:8px 12px;margin:12px 0}' +
+      '.instructions h2{font-size:10pt;margin:0 0 4px}.instructions ol{margin:0;padding-left:18px;font-size:9.5pt}' +
+      '.sec{margin-top:14px}.sec-head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #111;padding-bottom:3px}' +
+      '.sec-head h2{font-size:11.5pt;margin:0}.sec-head span{font-size:9pt;font-weight:700}' +
+      '.q{display:flex;gap:7px;margin:8px 0;page-break-inside:avoid}' +
+      '.q-num{font-weight:700;min-width:18px}.q-text{flex:1}.marks{font-weight:700;white-space:nowrap;font-size:9.5pt}' +
+      '.key{margin-top:22px;padding-top:10px;border-top:2px solid #111;page-break-before:always}' +
+      '.key h2{font-size:12pt;margin:0 0 8px}.key h3{font-size:10pt;margin:12px 0 4px}' +
+      '.a{display:flex;gap:8px;margin:7px 0;page-break-inside:avoid}.a-num{font-weight:700;white-space:nowrap}' +
+      '.a-hint{font-size:9pt;color:#555;margin-top:2px}' +
+      '.footer{margin-top:16px;font-size:8pt;color:#999;text-align:center}' +
+      '</style></head><body>' +
+      '<h1>Full paper</h1>' +
+      '<div class="meta">Abhyas written paper \u00b7 ' + all.length + ' questions \u00b7 ' + total + ' marks \u00b7 ' + date + '</div>' +
+      '<div class="summary"><div><span class="k">Total marks</span><span class="v">' + total + '</span></div>' +
+        '<div><span class="k">Questions</span><span class="v">' + all.length + '</span></div>' +
+        '<div><span class="k">Time allowed</span><span class="v">3 hours</span></div></div>' +
+      (groups ? '<div class="groups">' + groups + '</div>' : '') +
+      instructions + body +
+      (answerSections ? '<div class="key"><h2>Model answers</h2>' + answerSections + '</div>' : '') +
+      '<div class="footer">Generated by Abhyas \u00b7 abhyasbymku@gmail.com</div>' +
+      '</body></html>';
+  },
+
+  examSheet(exam, opts){
+    if (!exam || !Array.isArray(exam.sections)) { toast('Generate a paper first.'); return; }
+    const html = this.examSheetHtml(exam, opts || {});
+    let w = null;
+    try { w = window.open('', '_blank'); } catch (e) { w = null; }
+    if (!w) {
+      const ok = this._download(html, 'Abhyas_full_paper.html');
+      toast(ok ? 'Pop-up blocked \u2014 the full paper was downloaded instead.' : 'Could not create the download. Try again.', 5000);
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setTimeout(function(){ try { w.focus(); w.print(); } catch (e) { window.warnCaught && window.warnCaught('js/features/print-q.js', e); } }, 400);
   }
 };

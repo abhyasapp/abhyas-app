@@ -252,7 +252,7 @@ window.WRONGBY = {
   },
 
   _tab: 'due',
-  TABS: ['due', 'all', 'misconceptions', 'hardest'],
+  TABS: ['due', 'all', 'misconceptions', 'hardest', 'reports'],
   _items(){ return (S.wr || []).filter(q => !q._withdrawn); },
   _wNote(){
     const n = (S.wr || []).filter(x => x._withdrawn).length;
@@ -265,6 +265,12 @@ window.WRONGBY = {
       b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on));
     });
     const el = document.getElementById('wr-list'); if (el) el.setAttribute('role', 'tabpanel');
+  },
+  _syncPanes(){
+    const weak = document.getElementById('wr-weak-pane');
+    const reports = document.getElementById('wr-reports-pane');
+    if (weak) weak.hidden = this._tab === 'reports';
+    if (reports) reports.hidden = this._tab !== 'reports';
   },
   tab(name){
     WRONGBY._tab = WRONGBY.TABS.indexOf(name) === -1 ? 'due' : name;
@@ -395,6 +401,11 @@ window.WRONGBY = {
     const el = document.getElementById('wr-list');
     if (!el) return;
     this._syncTabs();
+    this._syncPanes();
+    if (this._tab === 'reports') {
+      if (typeof REPORTS !== 'undefined' && REPORTS.render) REPORTS.render('wr-reports-list');
+      return;
+    }
     this._last = this.groups();
     if (!this._last.length) { WRONGBY._plain('wr'); return; }
     const t = this._tab || 'due';

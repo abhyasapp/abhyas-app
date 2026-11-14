@@ -590,7 +590,9 @@
           <button data-tab="all" data-on-click="WRONGBY.tab('all')" role="tab">All missed</button>
           <button data-tab="misconceptions" data-on-click="WRONGBY.tab('misconceptions')" role="tab">Misconceptions</button>
           <button data-tab="hardest" data-on-click="WRONGBY.tab('hardest')" role="tab">Hardest 20</button>
+          <button data-tab="reports" data-on-click="WRONGBY.tab('reports')" role="tab">My reports</button>
         </div>
+        <div id="wr-weak-pane">
         <div class="card">
           <div class="card-hd">
             <h3>Your miss list</h3>
@@ -606,17 +608,13 @@
           <div class="toolbar" style="margin-bottom:var(--sp-2)"><input type="search" id="wr-search" placeholder="Search your missed questions" data-on-input="REV.filterList('wr', this.value)" aria-label="Search missed questions"></div>
           <div id="wr-list"></div>
         </div>
-      </div>
-
-      <!-- MY REPORTS -->
-      <div class="view" id="view-reports">
-        <div class="pg-head" data-head="reports"></div>
-        <div class="card" style="margin-bottom:var(--sp-3)">
-          <div class="card-hd"><h3><i class="ph ph-flag"></i> Questions you reported</h3></div>
-          <p class="t-callout" style="margin:0">This is your copy, kept on this device. It shows whether each report is waiting to send or has reached the server. Reports sent from another phone do not appear here.</p>
         </div>
-        <div id="reports-body" class="stack2">
-          <div class="card" style="padding:var(--sp-4)"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w80"></div></div>
+        <div id="wr-reports-pane" hidden>
+          <div class="card" style="margin-bottom:var(--sp-3)">
+            <div class="card-hd"><h3><i class="ph ph-flag"></i> Questions you reported</h3></div>
+            <p class="t-callout" style="margin:0">This is your copy, kept on this device. It shows whether each report is waiting to send or has reached the server. Reports sent from another phone do not appear here.</p>
+          </div>
+          <div id="wr-reports-list" class="stack2"></div>
         </div>
       </div>
 

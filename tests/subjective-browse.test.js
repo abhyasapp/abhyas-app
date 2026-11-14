@@ -59,25 +59,31 @@ describe('subjective question filters', () => {
     expect(out.all).toBe(67);
   });
 
-  it('prints the whole written set for a chapter, including model answers', async () => {
+  it('prints the generated full paper rather than a chapter bank', async () => {
     const out = await p.ev(`(() => {
-      const buttons = [...document.querySelectorAll('.subj-group-hd button[data-on-click*="subjSheet"]')];
-      const html = PRINT_Q.subjSheetHtml([
-        { q: 'Explain the water treatment steps.', marks: 5, topic: 'Water', source: 'PSC 2080', modelAnswer: 'Screening, sedimentation, filtration, disinfection.' },
-        { q: 'Design a septic tank.', marks: 10, hint: 'Use IS 2470.' }
-      ], 'Public Health');
+      const html = PRINT_Q.examSheetHtml({ sections: [
+        { name: 'Group A — Structure + Geotech', questions: [
+          { q: 'Explain the water treatment steps.', marks: 5, modelAnswer: 'Screening, sedimentation, filtration, disinfection.' },
+          { q: 'Design a septic tank.', marks: 10, hint: 'Use IS 2470.' }
+        ] }
+      ] }, { instructions: true });
+      const noInstructions = PRINT_Q.examSheetHtml({ sections: [
+        { name: 'Group A', questions: [{ q: 'One question', marks: 5 }] }
+      ] }, { instructions: false });
       return {
-        buttons: buttons.length,
-        title: html.includes('Public Health'),
+        printButtons: document.querySelectorAll('.subj-group-hd button[data-on-click*="subjSheet"]').length,
+        total: html.includes('Total marks') && html.includes('15'),
         marks: html.includes('5 M') && html.includes('10 M'),
         model: html.includes('filtration, disinfection'),
-        hint: html.includes('IS 2470')
+        hint: html.includes('IS 2470'),
+        instructions: html.includes('Instructions') && !noInstructions.includes('Instructions')
       };
     })()`);
-    expect(out.buttons).toBeGreaterThan(0);
-    expect(out.title).toBe(true);
+    expect(out.printButtons).toBe(0);
+    expect(out.total).toBe(true);
     expect(out.marks).toBe(true);
     expect(out.model).toBe(true);
     expect(out.hint).toBe(true);
+    expect(out.instructions).toBe(true);
   });
 });

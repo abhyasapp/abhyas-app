@@ -104,7 +104,7 @@ const UI = {
   _VIEW_TITLES: {
     home: 'Home', sprint: '60-day sprint', weekly: 'Weekly test', hourly: 'Hourly challenge', 'subj-qotd': 'Question of the day',
     'subj-mine': 'My submissions', studydocs: 'Model answers and notes', qna: 'Questions and answers', 'subj-exam': 'Full paper', 'subj-list': 'Browse questions',
-    online: 'Chapters', local: 'Local files', psycho: 'Mixed practice', bookmarks: 'Saved questions', wrong: 'Wrong bank', reports: 'My reports',
+    online: 'Chapters', local: 'Local files', psycho: 'Mixed practice', bookmarks: 'Saved questions', wrong: 'Wrong bank',
     progress: 'Progress', offline: 'Offline downloads', data: 'Data and backup', timetable: 'Study timetable',
   },
   _syncViewTitle(v, el) {

@@ -74,10 +74,7 @@ function _renderList(){
         `<div class="subj-group-hd" data-on-click="this.parentElement.classList.toggle('open')">` +
           `<div><div>${ch.icon || ''} ${esc(ch.name)} <span style="color:var(--t3);font-weight:400">· Group ${esc(ch.group || '')}</span></div>` +
           `<div class="meta">${qs.length} question${qs.length !== 1 ? 's' : ''} · ${topics.length} section${topics.length !== 1 ? 's' : ''}</div></div>` +
-          `<div style="display:flex;align-items:center;gap:.35rem">` +
-            `<button type="button" class="btn btn-quiet btn-sm" title="Print all ${qs.length} written questions" aria-label="Print all ${qs.length} written questions" data-on-click="event.stopPropagation();PRINT_Q.subjSheet('${escAttrJs(ch.id)}')"><i class="ph ph-printer"></i></button>` +
-            `<i class="ph ph-caret-right chev"></i>` +
-          `</div>` +
+          `<i class="ph ph-caret-right chev"></i>` +
         `</div>` +
         `<div class="subj-group-body">${topicBlocks}</div>` +
       `</div>`;
