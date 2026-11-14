@@ -79,7 +79,13 @@ describe('practice continuity', () => {
   it('moves to the next question with Enter after answering', async () => {
     await p.ev('QUIZ.fcAnswer(0)');
     await p.ev(`document.dispatchEvent(new KeyboardEvent('keydown', {key:'Enter', bubbles:true}))`);
-    expect(await p.ev('S.quiz.idx')).toBe(1);
+    const state = await p.ev(`({
+      idx: S.quiz.idx, active: S.quiz.active, answer: S.quiz.ans[0],
+      mode: S.quiz.mode, reviewOnly: S.quiz.reviewOnly,
+      display: document.getElementById('quiz-wrap').style.display,
+      modal: _anyModalOpen()
+    })`);
+    expect(state.idx, JSON.stringify(state)).toBe(1);
   });
 
   it('restarts the same set from the results screen', async () => {
