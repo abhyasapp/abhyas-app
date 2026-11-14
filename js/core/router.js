@@ -81,6 +81,7 @@ const UI = {
                     },
         qna:        () => typeof QNA !== 'undefined' && QNA.load(),
         online:     () => typeof ONPROG !== 'undefined' && ONPROG.render(),
+        library:    () => typeof LIBRARY !== 'undefined' && LIBRARY.render(),
         offline:    () => typeof CACHE !== 'undefined' && CACHE.render(),
         bookmarks:  () => typeof REV !== 'undefined' && REV.renderList('bk'),
         wrong:      () => typeof REV !== 'undefined' && REV.renderList('wr'),
@@ -105,6 +106,7 @@ const UI = {
     home: 'Home', sprint: '60-day sprint', weekly: 'Weekly test', hourly: 'Hourly challenge', 'subj-qotd': 'Question of the day',
     'subj-mine': 'My submissions', studydocs: 'Model answers and notes', qna: 'Questions and answers', 'subj-exam': 'Full paper', 'subj-list': 'Browse questions',
     online: 'Chapters', local: 'Local files', psycho: 'Mixed practice', bookmarks: 'Saved questions', wrong: 'Wrong bank',
+    library: 'My library',
     progress: 'Progress', offline: 'Offline downloads', data: 'Data and backup', timetable: 'Study timetable',
   },
   _syncViewTitle(v, el) {

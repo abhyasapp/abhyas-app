@@ -29,6 +29,7 @@
       { view: 'studydocs',  label: 'Study PDFs',     icon: 'ph-file-pdf',                feature: 'studydocs_view' },
       { view: 'qna',        label: 'Q&A splitter',   icon: 'ph-scissors',                feature: 'studydocs_view' },
       { view: 'subjective', label: 'Grading',        icon: 'ph-note-pencil',             feature: 'subjective_view', badge: 'badge-subjective' },
+      { view: 'content-health', label: 'Content health', icon: 'ph-heartbeat',           feature: 'qreports_view' },
       { view: 'qreports',   label: 'Reports',        icon: 'ph-flag',                    feature: 'qreports_view',   badge: 'badge-qreports' }
     ]},
     { label: 'System', items: [

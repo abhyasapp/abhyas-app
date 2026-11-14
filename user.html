@@ -582,6 +582,32 @@
         </div>
       </div>
 
+      <!-- MY LIBRARY -->
+      <div class="view" id="view-library">
+        <div class="pg-head" data-head="library"></div>
+        <div class="card" style="margin-bottom:var(--sp-3)">
+          <div class="card-hd">
+            <h3><i class="ph ph-books"></i> My library</h3>
+            <div class="bg">
+              <button class="btn btn-sm btn-solid" data-on-click="LIBRARY.start()"><i class="ph ph-cards"></i> Review these</button>
+              <button class="btn btn-sm btn-quiet" data-on-click="LIBRARY.exportNotes()"><i class="ph ph-download-simple"></i> Export notes</button>
+            </div>
+          </div>
+          <div class="tabbar" id="lib-tabs" role="tablist">
+            <button class="active" data-tab="all" data-on-click="LIBRARY.setTab('all')" role="tab" aria-selected="true">All</button>
+            <button data-tab="notes" data-on-click="LIBRARY.setTab('notes')" role="tab" aria-selected="false">Notes</button>
+            <button data-tab="saved" data-on-click="LIBRARY.setTab('saved')" role="tab" aria-selected="false">Saved</button>
+            <button data-tab="missed" data-on-click="LIBRARY.setTab('missed')" role="tab" aria-selected="false">Missed</button>
+          </div>
+          <div class="toolbar" style="margin-bottom:var(--sp-2)">
+            <input type="search" id="lib-search" placeholder="Search notes, questions and options" data-on-input="LIBRARY.search(this.value)" aria-label="Search your library">
+            <button class="btn btn-sm btn-quiet" data-on-click="LIBRARY.clearSearch()">Clear</button>
+          </div>
+          <div id="lib-summary" class="t-foot" style="margin-bottom:var(--sp-2)"></div>
+          <div id="lib-list" class="stack2"></div>
+        </div>
+      </div>
+
       <!-- WRONG -->
       <div class="view" id="view-wrong">
         <div class="pg-head" data-head="wrong"></div>
@@ -1114,6 +1140,7 @@
 <script defer src="js/features/chapter-nav.js"></script>
 <script defer src="js/features/print-q.js"></script>
 <script defer src="js/features/wrong-bank-ui.js"></script>
+<script defer src="js/features/my-library.js"></script>
 <script defer src="js/features/study-docs.js"></script>
 <script defer src="js/features/qna.js"></script>
 <script defer src="js/features/insights.js"></script>

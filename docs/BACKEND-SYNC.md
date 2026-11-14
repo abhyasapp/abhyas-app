@@ -507,6 +507,71 @@ async historyFromServer() {
 Merge by `(uid, reason)`, preferring the server's status over the local one,
 and keep the local-only rows whose reports are still queued.
 
+### 5.3 `adminGetStudentOverview` (optional, powers Student 360)
+
+The admin student drawer now asks for one support summary. If this action is
+missing, the drawer still shows the account and payment data and says study
+activity is not available — the console does not break.
+
+Request:
+
+```json
+{
+  "action": "adminGetStudentOverview",
+  "username": "<admin session>",
+  "adminToken": "<admin session>",
+  "targetUsername": "sita"
+}
+```
+
+`targetUsername` is the student being inspected. The acting admin is derived
+from the validated `adminToken`; never use `targetUsername` for authorization.
+
+Response:
+
+```json
+{
+  "success": true,
+  "study": {
+    "lastActiveAt": "2026-11-12T09:00:00.000Z",
+    "questionsAnswered": 120,
+    "accuracy": 82,
+    "streakDays": 4,
+    "minutes": 300,
+    "mockPapers": 2,
+    "weakChapters": [
+      { "name": "Hydraulics", "accuracy": 44, "attempted": 20 }
+    ]
+  },
+  "reports": {
+    "open": 1,
+    "total": 2,
+    "recent": [
+      { "id": "r1", "status": "open", "reason": "wrong_answer", "questionSnapshot": "...", "reportedAt": "2026-11-12T09:00:00.000Z" }
+    ]
+  },
+  "submissions": { "pending": 1, "graded": 2, "total": 3 },
+  "risk": { "level": "watch", "reasons": ["No practice for 12 days"] }
+}
+```
+
+Rules:
+
+* Scope every query by the target `username`; the caller must hold
+  `users_view`.
+* Return zeros and empty arrays for a new student, not an error.
+* `study.lastActiveAt` may be the latest quiz session, weekly attempt or
+  submission, whichever is newest.
+* `study.accuracy` is a whole-number percentage, or `null` when the student has
+  not answered anything.
+* `risk` is optional. If omitted, the frontend computes a fallback risk from
+  inactivity, trial expiry, zero questions and low accuracy.
+* Keep the query read-only. The drawer's grant, edit and delete actions use the
+  existing endpoints.
+
+Content Health needs no new endpoint: it calls `adminListQuestionReports` and
+`adminMostMissedQuestions`, then joins them by `uid` in the browser.
+
 ---
 
 ## 6. `getCorrections` changes

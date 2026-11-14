@@ -52,6 +52,7 @@ const UI = {
       if (id === 'settings') SETTINGS.load();
       if (id === 'dashboard') TRENDS.load();
       if (id === 'dashboard' && !MISSED.lastResults.length) MISSED.load();
+      if (id === 'content-health' && typeof HEALTH !== 'undefined') HEALTH.load();
       if (id === 'subjective') {
         /* SUBJ_TABS lives in subjective-store.js. If that module failed to
            load, the outer catch would swallow the ReferenceError and leave

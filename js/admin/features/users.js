@@ -7,6 +7,7 @@
 const USERS = {
   selected: new Set(), _lastIdx: null, _rows: [], _t: null,
   _sortKey: 'createdAt', _sortDir: -1,
+  _overview: {}, _viewUser: '',
 
   debouncedFilter(){ clearTimeout(this._t); this._t = setTimeout(() => this.filter(), 250); },
 
@@ -261,6 +262,7 @@ const USERS = {
         '<div><dt>Joined</dt><dd>' + esc(fullTime(u.createdAt)) + '</dd></div>' +
         '<div><dt>Trial ends</dt><dd>' + esc(fullTime(u.trialExpiresAt)) + '</dd></div>' +
       '</dl>' +
+      '<div id="user360" class="mb4"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div></div>' +
       (pay
         ? '<h4 class="t-cap mb2">Payment</h4><div class="panel" style="margin:0 0 var(--sp-4);background:var(--bg-grouped);border:none">' +
           '<dl class="dl"><div><dt>Transaction ID</dt><dd class="mono">' + esc(pay.txId || '') + '</dd></div>' +
@@ -281,6 +283,151 @@ const USERS = {
         '<button class="btn btn-quiet" style="margin-left:auto" data-on-click="MODAL.close(\'user\')">Close</button>' +
       '</div>';
     MODAL.open('user');
+    this._viewUser = username;
+    if (this._overview[username] && this._overview[username].data) this._paintOverview(username);
+    else this.loadOverview(username);
+  },
+
+  /* ── Student 360 ─────────────────────────────────────────────────────
+     The drawer already has account and payment data. This adds the missing
+     study context (last active, accuracy, weak chapters, reports, written
+     submissions) and turns it into an at-risk signal. It is optional: if the
+     backend does not have adminGetStudentOverview yet, the account drawer
+     still works and says so. */
+  async loadOverview(username) {
+    if (!username) return;
+    const hit = this._overview[username];
+    if (hit && (hit.pending || Date.now() - hit.at < 120000)) return;
+    this._overview[username] = { at: Date.now(), pending: true };
+    try {
+      const res = await ADMIN.post('adminGetStudentOverview', { targetUsername: username });
+      let data;
+      if (res && res.success) {
+        data = res;
+      } else {
+        const msg = String((res && res.error) || '');
+        data = { error: /unknown action|unsupported|not implemented|invalid action/i.test(msg)
+          ? 'Study activity is not available on this backend yet.'
+          : (msg || 'Study activity could not be loaded.') };
+      }
+      this._overview[username] = { at: Date.now(), data: data };
+    } catch (e) {
+      this._overview[username] = { at: Date.now(), data: { error: e.message || 'Study activity could not be loaded.' } };
+    }
+    if (this._viewUser === username) this._paintOverview(username);
+  },
+
+  _daysAgo(ts) {
+    const n = Number(new Date(ts).getTime());
+    if (!n || !isFinite(n)) return null;
+    return Math.max(0, Math.floor((Date.now() - n) / 86400000));
+  },
+
+  _atRisk(u, data) {
+    const s = (data && data.study) || {};
+    const reasons = [];
+    let level = 'ok';
+    const add = (text, high) => { reasons.push(text); if (high) level = 'high'; else if (level !== 'high') level = 'watch'; };
+    const lastDays = this._daysAgo(s.lastActiveAt);
+    if (lastDays != null && lastDays >= 14) add('No practice for ' + lastDays + ' days', true);
+    else if (lastDays != null && lastDays >= 7) add('No practice for ' + lastDays + ' days', false);
+    if (u && u.status === 'expired') add('Trial expired without payment', true);
+    if (u && u.status === 'payment_pending') add('Payment is still waiting', false);
+    if (u && u.status === 'trial' && u.trialExpiresAt) {
+      const left = new Date(u.trialExpiresAt).getTime() - Date.now();
+      if (left > 0 && left < 3 * 86400000) add('Trial ends in ' + Math.max(1, Math.ceil(left / 86400000)) + ' day(s)', false);
+    }
+    if (s.questionsAnswered === 0) add('Has not answered a question yet', true);
+    if (Number(s.questionsAnswered) >= 20 && Number(s.accuracy) < 40) add('Accuracy is below 40%', false);
+    if (data && data.risk && Array.isArray(data.risk.reasons)) {
+      data.risk.reasons.forEach(r => { if (r && !reasons.includes(String(r))) add(String(r), data.risk.level === 'high'); });
+    }
+    return { level: reasons.length ? level : 'ok', reasons: reasons };
+  },
+
+  _overviewHtml(u, data) {
+    if (!data || data.error) {
+      return '<div class="banner banner-info"><i class="ph ph-info"></i><span>' +
+        esc((data && data.error) || 'Study activity is not available yet.') +
+        ' Account and payment details below are current.</span></div>';
+    }
+    const s = data.study || {};
+    const r = data.reports || {};
+    const sub = data.submissions || {};
+    const risk = this._atRisk(u, data);
+    const tone = risk.level === 'high' ? 'danger' : risk.level === 'watch' ? 'warning' : 'accent';
+    const icon = risk.level === 'high' ? 'ph-warning-circle' : risk.level === 'watch' ? 'ph-warning' : 'ph-check-circle';
+    const num = v => (v == null || v === '' ? '—' : v);
+    const pct = v => (v == null || v === '' ? '—' : v + '%');
+    const last = s.lastActiveAt ? relTime(s.lastActiveAt) : 'Never';
+    const weak = Array.isArray(s.weakChapters) ? s.weakChapters.slice(0, 4) : [];
+    const recentReports = Array.isArray(r.recent) ? r.recent.slice(0, 3) : [];
+    const metric = (v, l) => '<div class="metric"><div class="v">' + esc(String(v)) + '</div><div class="l">' + esc(l) + '</div></div>';
+    return (
+      '<div class="banner banner-' + tone + '" style="align-items:flex-start">' +
+        '<i class="ph ' + icon + '"></i>' +
+        '<div style="flex:1;min-width:0"><b>' +
+          (risk.level === 'ok' ? 'Looks healthy' : risk.level === 'high' ? 'At risk — needs follow-up' : 'Watch this student') +
+        '</b>' +
+        (risk.reasons.length ? '<div class="t-foot" style="margin-top:2px;color:var(--ink-2)">' + esc(risk.reasons.join(' \u00b7 ')) + '</div>' : '') +
+        '</div>' +
+        '<button class="btn btn-sm btn-quiet" type="button" data-on-click="USERS.copyOverview(\'' + escAttrJs(u.username) + '\')">' +
+          '<i class="ph ph-copy"></i> Copy summary</button>' +
+      '</div>' +
+      '<div class="metrics mb4" style="margin-top:var(--sp-3)">' +
+        metric(num(s.questionsAnswered), 'Questions answered') +
+        metric(pct(s.accuracy), 'Accuracy') +
+        metric(num(s.streakDays), 'Day streak') +
+        metric(last, 'Last active') +
+      '</div>' +
+      '<div class="t-foot mb4" style="color:var(--ink-2);display:flex;flex-wrap:wrap;gap:var(--sp-3)">' +
+        '<span><i class="ph ph-clock"></i> ' + esc(num(s.minutes ? s.minutes + ' min studied' : 'No study time recorded')) + '</span>' +
+        '<span><i class="ph ph-note-pencil"></i> ' + esc(num(s.mockPapers) + ' mock paper' + (Number(s.mockPapers) === 1 ? '' : 's')) + '</span>' +
+        '<span><i class="ph ph-flag"></i> ' + esc(String(r.open || 0)) + ' open report' + (Number(r.open) === 1 ? '' : 's') + '</span>' +
+        '<span><i class="ph ph-file-text"></i> ' + esc(String(sub.pending || 0)) + ' written answer' + (Number(sub.pending) === 1 ? '' : 's') + ' to grade</span>' +
+      '</div>' +
+      (weak.length
+        ? '<h4 class="t-cap mb2">Weakest chapters</h4><div class="panel" style="margin:0 0 var(--sp-4);background:var(--bg-grouped);border:none">' +
+            weak.map(c => '<div class="row" style="padding:var(--sp-2) 0;border-top:1px solid var(--sep)">' +
+              '<div class="row-main"><div class="t-foot" style="color:var(--ink);font-weight:600">' + esc(c.name || c.chapter || 'Chapter') + '</div>' +
+              '<div class="t-cap">' + esc(String(c.attempted || c.answered || 0)) + ' answered</div></div>' +
+              '<span class="ctag ' + (Number(c.accuracy) < 50 ? 'tr' : 'ta') + '">' + esc(pct(c.accuracy)) + '</span></div>').join('') +
+          '</div>'
+        : '') +
+      (recentReports.length
+        ? '<h4 class="t-cap mb2">Recent reports</h4><div class="panel" style="margin:0 0 var(--sp-4);background:var(--bg-grouped);border:none">' +
+            recentReports.map(x => '<div class="row" style="padding:var(--sp-2) 0;border-top:1px solid var(--sep)">' +
+              '<div class="row-main"><div class="t-foot" style="color:var(--ink);line-height:1.45">' + esc(String(x.questionSnapshot || x.note || 'Reported question').slice(0, 120)) + '</div>' +
+              '<div class="t-cap">' + esc(String(x.reason || 'reported')) + ' \u00b7 ' + esc(relTime(x.reportedAt || Date.now())) + '</div></div>' +
+              '<span class="badge st-' + esc(x.status || 'open') + '">' + esc(statusLabel(x.status || 'open')) + '</span></div>').join('') +
+          '</div>'
+        : '')
+    );
+  },
+
+  _paintOverview(username) {
+    const box = document.getElementById('user360');
+    if (!box) return;
+    const u = (ADMIN.data.users || []).find(x => x.username === username);
+    const data = (this._overview[username] || {}).data;
+    box.innerHTML = this._overviewHtml(u, data);
+  },
+
+  copyOverview(username) {
+    const u = (ADMIN.data.users || []).find(x => x.username === username);
+    const data = (this._overview[username] || {}).data || {};
+    const s = data.study || {};
+    const risk = this._atRisk(u, data);
+    const lines = [
+      (u && (u.name || u.username)) || username,
+      'Status: ' + ((u && u.status) || 'unknown'),
+      'Access: ' + (u ? this.accessLabel(u) : '—'),
+      'Questions answered: ' + (s.questionsAnswered == null ? '—' : s.questionsAnswered),
+      'Accuracy: ' + (s.accuracy == null ? '—' : s.accuracy + '%'),
+      'Last active: ' + (s.lastActiveAt ? relTime(s.lastActiveAt) : 'not recorded'),
+      'Risk: ' + (risk.reasons.length ? risk.reasons.join('; ') : 'none')
+    ];
+    if (typeof copyText === 'function') copyText(lines.join('\n'), 'Student summary copied');
   },
 
   edit(username){

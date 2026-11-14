@@ -492,7 +492,8 @@ const ADMIN = {
       'adminPromoteUserToAdmin',
       'adminSetAdminPermissions',
       'adminDeleteAdmin',
-      'adminCreateAdmin'
+      'adminCreateAdmin',
+      'adminGetStudentOverview'
     ]);
     const _params = Object.assign({}, params || {});
     if (TARGET_USERNAME_ACTIONS.has(action) && _params.username != null) {

@@ -1217,6 +1217,29 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
         <div class="panel"><div id="qna-list" class="stack2"></div></div>
       </section>
 
+      <!-- ═════════════════════════ CONTENT HEALTH ═════════════════════════ -->
+      <section class="view" id="view-content-health" aria-label="Content health">
+        <div class="page-head">
+          <div><h2>Content health</h2><p>Questions that are reported, heavily missed, or both — ranked by how much attention they need.</p></div>
+          <div class="acts">
+            <button class="btn btn-secondary btn-sm" data-on-click="HEALTH.load(true)"><i class="ph ph-arrow-clockwise"></i> Reload</button>
+            <button class="btn btn-secondary btn-sm" data-perm="exports" data-on-click="HEALTH.exportCSV()"><i class="ph ph-download-simple"></i> Export CSV</button>
+          </div>
+        </div>
+        <div class="metrics mb4" id="ch-metrics"></div>
+        <div class="toolbar">
+          <input class="input search" type="search" id="ch-search" placeholder="Search question, chapter or uid" data-on-input="HEALTH.search(this.value)" aria-label="Search content health">
+          <select class="select" id="ch-filter" data-on-change="HEALTH.setFilter(this.value)" aria-label="Filter content health">
+            <option value="all">All quality signals</option>
+            <option value="combined">Reported and heavily missed</option>
+            <option value="reported">Reported only</option>
+            <option value="missed">Heavily missed only</option>
+          </select>
+          <button class="btn btn-quiet btn-sm spacer" data-on-click="HEALTH.clearFilters()">Reset</button>
+        </div>
+        <div id="ch-list" class="stack2"></div>
+      </section>
+
       <!-- ═══════════════════════════ REPORTS ═══════════════════════════ -->
       <section class="view" id="view-qreports" aria-label="Question reports">
         <div class="page-head">
@@ -1655,6 +1678,7 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 <script src="js/admin/features/expiring.js"></script>
 
 <script src="js/admin/features/dashboard.js"></script>
+<script src="js/admin/features/content-health.js"></script>
 <script src="js/admin/features/weeklysets.js"></script>
 <script src="js/admin/features/studydocs.js"></script>
 <script src="js/admin/features/qna.js"></script>

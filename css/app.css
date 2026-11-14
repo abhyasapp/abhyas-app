@@ -1985,3 +1985,16 @@ html.reduce-motion *,html.reduce-motion *::before,html.reduce-motion *::after{an
   .qi-group{display:none}
   .quick-foot>span:first-child{display:none}
 }
+
+/* My library: joins notes, saved questions and misses without changing the
+   question card itself. Source chips are deliberately quiet, not four colours. */
+.lib-card .qm{flex-wrap:wrap;gap:var(--sp-2)}
+.lib-card .qt{font-size:var(--fs-callout);line-height:1.55;font-weight:600}
+.lib-src-note{background:var(--violet-soft);color:var(--violet);border-color:var(--violet-line)}
+.lib-src-bookmark{background:var(--warning-soft);color:var(--warning)}
+.lib-src-flag{background:var(--danger-soft);color:var(--danger)}
+.lib-src-missed{background:var(--info-soft);color:var(--info)}
+@media (max-width:640px){
+  .lib-card{padding:var(--sp-3)}
+  .lib-card .qm{gap:4px}
+}
