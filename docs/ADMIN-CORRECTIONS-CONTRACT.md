@@ -1,5 +1,10 @@
 # Admin corrections: backend contract
 
+> The complete backend handover, including schema migration, reference SQL,
+> student report history, acceptance tests and deployment order, is in
+> [`BACKEND-SYNC.md`](./BACKEND-SYNC.md). Keep this file as the shorter
+> corrections-specific contract.
+
 The admin screen (`js/report/adminreport.js`) now saves each fix as a local draft
 and pushes all drafts together. The front end works against today's backend
 (it falls back to one `adminUpdateQuestion` call per fix). These are the backend
