@@ -96,3 +96,86 @@ function qReportHtml(q, onClickCode, ariaLabel) {
            '<i class="ph ph-warning-circle"></i>' +
          '</button>';
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ADMIN FIX DRAFTS (pure, unit-tested)
+   The admin writes each correction as a draft first (instant, no network),
+   then pushes every draft in one go. Drafts live in localStorage so a
+   closed tab loses nothing.
+
+   A draft is keyed by the question's stable id (qid) when the report has
+   one, otherwise by its positional uid. One question has one draft: saving
+   again replaces it.
+
+   adminDraftEvent() builds the exact shape the Drive-to-Neon pipeline
+   (sync/apply_corrections.py) reads: uid, qid, fileId, correctedAt (ISO,
+   fixed when the draft is saved so a retry is idempotent), before{question,
+   options} and after{question, options, correctIndex, explanation}.
+   ═══════════════════════════════════════════════════════════════════════ */
+const ADMIN_DRAFT_KEY = 'abhyas_admin_qdrafts_v1';
+const ADMIN_DRAFT_MAX = 500;
+
+/* Question text without its printed number, case and spacing. */
+function reportQuestionBody(text) {
+  return String(text || '').replace(/^\s*\d+\s*[.)]\s*/, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/* Does what the file holds at the reported position still look like the
+   question the student reported? `snapshot` is the first 1000 characters
+   the student's app captured. When nothing was captured we cannot tell, so
+   we do not warn. */
+function questionMatchesSnapshot(current, snapshot) {
+  const want = reportQuestionBody(snapshot);
+  if (!want) return true;
+  const have = reportQuestionBody(current);
+  if (!have) return false;
+  const n = Math.min(have.length, want.length, 200);
+  return have.slice(0, n) === want.slice(0, n);
+}
+
+function adminDraftKey(d) {
+  if (!d) return '';
+  if (d.qid !== undefined && d.qid !== null && d.qid !== '') return 'q' + d.qid;
+  return d.uid ? 'u' + d.uid : '';
+}
+
+function adminDraftsUpsert(list, draft, now) {
+  const key = adminDraftKey(draft);
+  if (!key) return Array.isArray(list) ? list.slice() : [];
+  const t = Number(now) || Date.now();
+  const out = (Array.isArray(list) ? list : []).filter(x => x && adminDraftKey(x) !== key);
+  out.push(Object.assign({}, draft, {
+    key: key, state: 'pending', error: '',
+    savedAt: t, correctedAt: new Date(t).toISOString()
+  }));
+  return out.slice(-ADMIN_DRAFT_MAX);
+}
+
+function adminDraftsRemove(list, key) {
+  return (Array.isArray(list) ? list : []).filter(x => x && x.key !== key);
+}
+
+function adminDraftEvent(d) {
+  const b = d.before || {};
+  const a = d.after || {};
+  return {
+    key: d.key,
+    uid: d.uid,
+    qid: (d.qid === undefined || d.qid === '') ? null : d.qid,
+    fileId: d.fileId,
+    index: d.index,
+    reportId: d.reportId,
+    reportReason: d.reportReason || null,
+    correctedAt: d.correctedAt,
+    expectedQ: b.question || '',
+    before: { question: b.question || '', options: Array.isArray(b.options) ? b.options : [] },
+    after: {
+      question: a.question || '',
+      options: Array.isArray(a.options) ? a.options : [],
+      correctIndex: Number.isInteger(a.correctIndex) ? a.correctIndex : null,
+      explanation: a.explanation || ''
+    },
+    adminNote: d.adminNote || null,
+    closeReport: d.closeReport !== false
+  };
+}

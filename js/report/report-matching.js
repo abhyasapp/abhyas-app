@@ -98,6 +98,7 @@ function applyQuestionCorrection(item, q, nowMs) {
     img: q.img,
     imgCaption: q.imgCaption,
     uid: q.uid,
+    qid: q.qid,
     fileId: q.fileId
   });
   delete out._withdrawn;

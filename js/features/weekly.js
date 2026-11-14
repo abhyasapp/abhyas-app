@@ -42,7 +42,7 @@ const WEEKLY = {
         json = JSON.stringify(paper);
       }
       if (json.length > 400000) {
-        paper.qs = paper.qs.map(q => ({ q: q.q, options: q.options, correct: q.correct, uid: q.uid }));
+        paper.qs = paper.qs.map(q => ({ q: q.q, options: q.options, correct: q.correct, uid: q.uid, qid: q.qid }));
         json = JSON.stringify(paper);
       }
       if (json.length > 800000) return false;

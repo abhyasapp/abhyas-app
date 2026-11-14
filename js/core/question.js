@@ -151,7 +151,11 @@ function normQ(raw, fid) {
       img: _resolveQImg(q.img || q.image || q.Image || q.figure || q.diagram || ''),
       imgCaption: String(q.imgCaption || q.imgAlt || q.figureCaption || q.caption || '').trim(),
       fileId: fid || 'local',
-      uid: `${fid || 'local'}_${i}`
+      uid: `${fid || 'local'}_${i}`,
+      /* Stable database id exported by the content pipeline (questions.id).
+         `uid` above is positional and changes whenever a set is re-exported;
+         reports and corrections key on qid when it exists. */
+      qid: (q.id !== undefined && q.id !== null && q.id !== '' && Number.isFinite(Number(q.id))) ? Number(q.id) : undefined
     });
   });
   if (skipped > 0) console.warn(`[normQ] ${skipped}/${a.length} questions skipped in ${fid}`);

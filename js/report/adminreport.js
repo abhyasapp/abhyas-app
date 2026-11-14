@@ -8,10 +8,13 @@
      ADMIN_CORRECTIONS — the one shared cache of "which files were
                          corrected, and what did the question say before?"
      ADMIN_REPORT      — the reports screen (was QREPORTS)
+     ADMIN_DRAFTS      — fixes are saved as drafts, then pushed together
      window.QREPORTS   — alias for the reports screen, so existing
                          data-on-click="QREPORTS.xxx()" keeps working
 
-   Uses from report-shared.js: REPORT_REASON_LABELS, REPORT_SECTION_LABELS.
+   Uses from report-shared.js: REPORT_REASON_LABELS, REPORT_SECTION_LABELS,
+     ADMIN_DRAFT_KEY, adminDraftKey, adminDraftsUpsert, adminDraftsRemove,
+     adminDraftEvent, questionMatchesSnapshot.
    Uses from the console: ADMIN, BUSY, TOAST, MODAL, CONFIRM, esc,
      escAttrJs, plural, relTime, fullTime, badge, statusLabel, initials,
      CHAPTERS, PAGINATION, ADMIN.can, ADMIN.post.
@@ -78,6 +81,236 @@ const ADMIN_CORRECTIONS = {
 window.ADMIN_CORRECTIONS = ADMIN_CORRECTIONS;
 
 /* ═══════════════════════════════════════════════════════════════════════
+   ADMIN_DRAFTS — fixes are written here first (instant, no network), then
+   pushed together. The pure helpers (adminDraftsUpsert, adminDraftEvent…)
+   live in report-shared.js and are unit-tested.
+
+   Push order of preference:
+     1. adminApplyCorrections — ONE call that applies every draft in a
+        single transaction and returns a result per draft.
+     2. If the backend does not have that action yet, the same drafts are
+        sent one by one through adminUpdateQuestion, in the background, so
+        the admin is never waiting on Drive between questions.
+   ═══════════════════════════════════════════════════════════════════════ */
+const ADMIN_DRAFTS = {
+  items: [],
+  auto: true,
+  advance: true,
+  busy: false,
+  _loaded: false,
+  _timer: null,
+  _noBatch: false,
+  AUTO_DELAY_MS: 30000,
+
+  load() {
+    if (this._loaded) return;
+    this._loaded = true;
+    try {
+      const o = JSON.parse(localStorage.getItem(ADMIN_DRAFT_KEY) || '{}');
+      this.items = Array.isArray(o.items) ? o.items : [];
+      this.auto = o.auto !== false;
+      this.advance = o.advance !== false;
+    } catch (e) { this.items = []; }
+    /* A tab closed mid-push leaves 'pushing' behind: treat it as waiting. */
+    this.items.forEach(d => { if (d.state === 'pushing') d.state = 'pending'; });
+  },
+  save() {
+    try {
+      localStorage.setItem(ADMIN_DRAFT_KEY,
+        JSON.stringify({ items: this.items, auto: this.auto, advance: this.advance }));
+      return true;
+    } catch (e) {
+      TOAST.show('Drafts could not be kept on this device. Push now so nothing is lost.', 'error', 6000);
+      return false;
+    }
+  },
+  counts() {
+    this.load();
+    const c = { pending: 0, pushing: 0, failed: 0, conflict: 0, total: this.items.length };
+    this.items.forEach(d => { c[d.state] = (c[d.state] || 0) + 1; });
+    return c;
+  },
+  forReport(r) {
+    this.load();
+    const key = adminDraftKey({ uid: r && r.uid, qid: r && r.qid });
+    return key ? (this.items.find(d => d.key === key) || null) : null;
+  },
+  add(draft) {
+    this.load();
+    this.items = adminDraftsUpsert(this.items, draft, Date.now());
+    this.save();
+    this.renderBar();
+    this.schedule();
+  },
+  discard(key) {
+    this.load();
+    this.items = adminDraftsRemove(this.items, key);
+    this.save();
+    ADMIN_REPORT.render(ADMIN_REPORT.all);
+  },
+  setAuto(on) {
+    this.auto = !!on;
+    this.save();
+    if (this.auto) this.schedule(); else this._clearTimer();
+    this.renderBar();
+  },
+  _clearTimer() { if (this._timer) { clearTimeout(this._timer); this._timer = null; } },
+  schedule() {
+    this._clearTimer();
+    if (!this.auto || this.busy || !this.counts().pending) return;
+    this._timer = setTimeout(() => this.pushAll(true), this.AUTO_DELAY_MS);
+  },
+
+  renderBar() {
+    const list = $('qreports-list');
+    if (!list || !list.parentNode) return;
+    let bar = $('qr-drafts-bar');
+    const c = this.counts();
+    if (!c.total) { if (bar) bar.innerHTML = ''; return; }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'qr-drafts-bar';
+      bar.className = 'mb3';
+      list.parentNode.insertBefore(bar, list);
+    }
+    const waiting = c.pending + c.pushing;
+    const problems = this.items.filter(d => d.state === 'failed' || d.state === 'conflict');
+    const retryable = c.failed;
+    bar.innerHTML =
+      '<div class="banner banner-info" style="align-items:center;flex-wrap:wrap;gap:8px">' +
+        '<i class="ph ph-tray-arrow-up"></i>' +
+        '<span style="flex:1;min-width:180px"><b>' + waiting + '</b> fix' + (waiting === 1 ? '' : 'es') +
+          ' ready to push' +
+          (problems.length ? ' \u00b7 <b>' + problems.length + '</b> need attention' : '') +
+          '. Students get them after you push.</span>' +
+        '<label class="perm-row" style="margin:0"><input type="checkbox" ' + (this.auto ? 'checked ' : '') +
+          'data-on-change="ADMIN_DRAFTS.setAuto(this.checked)"><span>Push automatically</span></label>' +
+        '<button class="btn btn-primary btn-sm" ' + (this.busy ? 'disabled ' : '') +
+          'data-on-click="ADMIN_DRAFTS.pushAll()">' +
+          (this.busy ? 'Pushing\u2026' : 'Push all (' + (waiting + retryable) + ')') + '</button>' +
+      '</div>' +
+      problems.map(d =>
+        '<div class="banner banner-warning mt2" style="align-items:center;flex-wrap:wrap;gap:8px">' +
+          '<i class="ph ph-warning-circle"></i>' +
+          '<span style="flex:1;min-width:180px">' +
+            (d.state === 'conflict'
+              ? 'Changed since you opened it \u2014 review before pushing again: '
+              : 'Not pushed: ') +
+            esc(d.error || 'unknown error') + '<br>' +
+            '<span class="t-cap">' + esc(String((d.after && d.after.question) || '').slice(0, 90)) + '</span></span>' +
+          '<button class="btn btn-quiet btn-sm" ' +
+            'data-on-click="ADMIN_DRAFTS.discard(\'' + escAttrJs(d.key) + '\')">Discard</button>' +
+        '</div>').join('');
+  },
+
+  /* One call, one transaction on the server. Returns the per-draft results,
+     or null when the backend does not know the action. */
+  async _pushBatch(batch) {
+    const res = await ADMIN.post('adminApplyCorrections', {
+      items: JSON.stringify(batch.map(adminDraftEvent))
+    });
+    const err = String((res && res.error) || '');
+    if (!res || (!res.success &&
+        /unknown action|unsupported|not supported|invalid action|unrecogni[sz]ed|no such action|not implemented/i.test(err))) {
+      this._noBatch = true;
+      return null;
+    }
+    if (!res.success) throw new Error(err || 'The push failed.');
+    return Array.isArray(res.results) ? res.results : [];
+  },
+
+  /* Fallback: the existing one-question endpoints, sent in the background. */
+  async _pushOne(d) {
+    const ev = adminDraftEvent(d);
+    const res = await ADMIN.post('adminUpdateQuestion', {
+      fileId: ev.fileId,
+      index: ev.index,
+      qid: ev.qid,
+      expectedQ: ev.expectedQ,
+      correctedAt: ev.correctedAt,
+      fields: JSON.stringify({
+        q: ev.after.question,
+        options: ev.after.options,
+        correct: ev.after.correctIndex,
+        explanation: ev.after.explanation
+      }),
+      reportId: ev.reportId,
+      reportReason: ev.reportReason,
+      adminNote: ev.adminNote
+    });
+    if (!res || !res.success) throw new Error((res && res.error) || 'Could not save.');
+    if (ev.closeReport && ev.reportId) {
+      const r2 = await ADMIN.post('adminUpdateQuestionReportStatus', { id: ev.reportId, status: 'resolved' });
+      if (!r2 || !r2.success) throw new Error((r2 && r2.error) || 'Saved, but the report was not closed.');
+    }
+  },
+
+  _done(d) {
+    this.items = adminDraftsRemove(this.items, d.key);
+    const r = ADMIN_REPORT.all.find(x => x.id === d.reportId);
+    if (r && d.closeReport !== false) { r.status = 'resolved'; r.corrected = true; }
+  },
+  _fail(d, e, conflict) {
+    const msg = String((e && e.message) || e || 'Failed');
+    d.state = (conflict || /changed|expected|stale|mismatch|conflict/i.test(msg)) ? 'conflict' : 'failed';
+    d.error = msg;
+  },
+
+  async pushAll(auto) {
+    this.load();
+    if (this.busy) return;
+    this._clearTimer();
+    const batch = this.items.filter(d => d.state === 'pending' || (!auto && d.state === 'failed'));
+    if (!batch.length) { if (!auto) TOAST.show('Nothing to push.', 'info'); return; }
+    this.busy = true;
+    batch.forEach(d => { d.state = 'pushing'; d.error = ''; });
+    this.save();
+    this.renderBar();
+    let ok = 0, bad = 0;
+    try {
+      let results = null, wholeFailed = false;
+      if (!this._noBatch) {
+        try { results = await this._pushBatch(batch); }
+        catch (e) { wholeFailed = true; batch.forEach(d => this._fail(d, e)); bad = batch.length; }
+      }
+      if (wholeFailed) {
+        /* every draft already marked failed above */
+      } else if (results === null) {
+        for (const d of batch) {
+          try { await this._pushOne(d); this._done(d); ok++; }
+          catch (e) { this._fail(d, e); bad++; }
+        }
+      } else {
+        const byKey = {};
+        results.forEach(x => { if (x && x.key) byKey[x.key] = x; });
+        batch.forEach(d => {
+          const x = byKey[d.key];
+          if (x && x.ok) { this._done(d); ok++; }
+          else { this._fail(d, new Error((x && x.error) || 'The server returned no result for this fix.'), !!(x && x.conflict)); bad++; }
+        });
+      }
+    } finally {
+      this.busy = false;
+      this.save();
+    }
+    ADMIN_CORRECTIONS.invalidate();
+    ADMIN_REPORT._qcache = {};
+    if (ok) await ADMIN_REPORT.load(true); else ADMIN_REPORT.render(ADMIN_REPORT.all);
+    this.renderBar();
+    if (ok || bad) {
+      TOAST.show('Pushed ' + ok + ' fix' + (ok === 1 ? '' : 'es') + (bad ? ' \u00b7 ' + bad + ' need attention' : '') +
+        (ok ? '. Students get them next time they open the app online.' : ''),
+        bad ? 'error' : 'success', 5000);
+    }
+    this.schedule();
+  }
+};
+window.ADMIN_DRAFTS = ADMIN_DRAFTS;
+window.addEventListener('beforeunload', e => {
+  if (ADMIN_DRAFTS.counts().total) { e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
    ADMIN_REPORT — the reports screen (was QREPORTS).
    ═══════════════════════════════════════════════════════════════════════ */
 const ADMIN_REPORT = {
@@ -91,6 +324,8 @@ const ADMIN_REPORT = {
   searchTerm: '',
   _t: null,
   _historyCache: null,
+  _qcache: {},          /* report id -> { q, at }: the question as the file holds it, fetched ahead of time */
+  _prefetching: false,
 
   setFilter(v) { this.filter = v; this.multiOnly = false; ADMIN.state.qrPage = 1; this.render(this.all); },
   setSort(v) {
@@ -165,8 +400,8 @@ const ADMIN_REPORT = {
     }, 250);
   },
 
-  async load() {
-    BUSY.start();
+  async load(silent) {
+    if (!silent) BUSY.start();
     try {
       const res = await ADMIN.post('adminListQuestionReports');
       if (res.success) {
@@ -175,9 +410,35 @@ const ADMIN_REPORT = {
         ADMIN.data.qreportsTotalCount = res.totalCount || this.all.length;
         ADMIN.data.qreportsTruncated = !!res.truncated;
         this.render(this.all);
+        this.prefetch();
       } else TOAST.show(res.error || 'Could not load reports', 'error');
     } catch (e) { TOAST.show(e.message, 'error'); }
-    BUSY.stop();
+    if (!silent) BUSY.stop();
+  },
+
+  /* Fetch the current question for every open report in the background, three
+     at a time, so "Fix the question" opens instantly instead of waiting on
+     Drive. A cached copy is only a convenience: the save still sends the old
+     text (expectedQ), so the server rejects an edit made on a stale copy. */
+  async prefetch() {
+    if (this._prefetching) return;
+    this._prefetching = true;
+    try {
+      const todo = this.all.filter(r => r.status === 'open' && r.uid && !this._qcache[r.id]).slice(0, 80);
+      let next = 0;
+      const worker = async () => {
+        while (next < todo.length) {
+          const r = todo[next++];
+          const m = String(r.uid).match(/^(.+)_(\d+)$/);
+          if (!m) continue;
+          try {
+            const res = await ADMIN.post('adminGetQuestion', { fileId: m[1], index: Number(m[2]), qid: r.qid });
+            if (res && res.success && res.question) this._qcache[r.id] = { q: res.question, at: Date.now() };
+          } catch (e) { /* the editor will fetch it when opened */ }
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+    } finally { this._prefetching = false; }
   },
 
   metaFor(fileId) {
@@ -335,6 +596,7 @@ const ADMIN_REPORT = {
   render(reports) {
     this.all = reports || [];
     this._summaryHtml();
+    ADMIN_DRAFTS.renderBar();
     this._levelOptions();
     this._chapterOptions();
     BADGES.update();
@@ -376,6 +638,9 @@ const ADMIN_REPORT = {
           '<div class="flex g2 wrap center">' +
             '<span class="badge st-' + esc(r.status || 'open') + '">' +
               esc(statusLabel(r.status || 'open')) + '</span>' +
+            (ADMIN_DRAFTS.forReport(r)
+              ? '<span class="badge warn">' + (ADMIN_DRAFTS.forReport(r).state === 'failed' || ADMIN_DRAFTS.forReport(r).state === 'conflict' ? 'Fix not pushed' : 'Fix queued') + '</span>'
+              : '') +
             '<span class="badge flat">' +
               esc(REPORT_REASON_LABELS[r.reason] || r.reason) + '</span>' +
             '<span class="badge flat">' + esc(this.chapterFor(r.fileId)) + '</span>' +
@@ -407,7 +672,7 @@ const ADMIN_REPORT = {
           ? '<div class="sub-acts">' +
             '<button class="btn btn-secondary btn-sm" ' +
               'data-on-click="ADMIN_REPORT.editQ(\'' + escAttrJs(r.id) + '\')">' +
-              '<i class="ph ph-pencil-simple"></i> Fix the question</button>' +
+              '<i class="ph ph-pencil-simple"></i> ' + (ADMIN_DRAFTS.forReport(r) ? 'Edit queued fix' : 'Fix the question') + '</button>' +
             '<button class="icon-btn sm" ' +
               'data-on-click="ADMIN_REPORT.history(\'' + escAttrJs(r.fileId) + '\')" ' +
               'title="Correction history for this file" ' +
@@ -463,13 +728,33 @@ const ADMIN_REPORT = {
       this._optionsHtml(r) +
       '<div class="t-cap mt3">The editable fields appear as soon as Drive responds.</div>');
     try {
-      const res = await ADMIN.post('adminGetQuestion', {
-        fileId: m[1], index: Number(m[2])
-      });
-      if (!res.success) throw new Error(res.error || 'Could not load that question.');
-      const q = res.question;
+      const draft = ADMIN_DRAFTS.forReport(r);
+      const hit = this._qcache[id];
+      let q;
+      if (draft) {
+        /* Re-opening a queued fix: the original stays as the "before". */
+        q = { q: draft.before.question, options: (draft.before.options || []).slice(), correct: null, explanation: '' };
+      } else if (hit && Date.now() - hit.at < 10 * 60 * 1000) {
+        q = hit.q;
+      } else {
+        const res = await ADMIN.post('adminGetQuestion', {
+          fileId: m[1], index: Number(m[2]), qid: r.qid
+        });
+        if (!res.success) throw new Error(res.error || 'Could not load that question.');
+        q = res.question;
+        this._qcache[id] = { q: q, at: Date.now() };
+      }
+      /* What the form shows: the queued edit if there is one, else the file. */
+      const cur = draft
+        ? { q: draft.after.question, options: draft.after.options || [], correct: draft.after.correctIndex, explanation: draft.after.explanation }
+        : q;
+      /* Reports made before questions had ids point at a position. If the
+         file was re-ordered since, that position holds a different question. */
+      const moved = !draft && !questionMatchesSnapshot(q.q, r.questionSnapshot);
       this._eq = {
         reportId: id,
+        uid: r.uid,
+        qid: r.qid,
         fileId: m[1],
         index: Number(m[2]),
         q: q,
@@ -478,9 +763,16 @@ const ADMIN_REPORT = {
         reportedBy: r.reportedBy || null
       };
       const letters = 'ABCDEF';
-      const opts = q.options || [];
+      const opts = cur.options || [];
       $('bd-sheet').innerHTML =
-        '<p class="t-foot mb3">Drive keeps the previous version in its version history. ' +
+        (moved
+          ? '<div class="banner banner-warning"><i class="ph ph-warning"></i>' +
+            '<span><b>This may not be the question the student reported.</b> The file has changed ' +
+            'since the report, so this position now holds different text (or it was already corrected). ' +
+            'Reported: <i>' + esc(String(r.questionSnapshot || '').slice(0, 140)) + '</i></span></div>'
+          : '') +
+        '<p class="t-foot mb3">Saving queues your fix; it goes live when you push. ' +
+        'Drive keeps the previous version in its version history. ' +
         'Every student\'s app replaces its copy within minutes of opening online, and updates ' +
         'the questions they saved for review. Correct questions in place: do not delete or ' +
         'reorder questions in the file, because students\' progress is tied to each ' +
@@ -496,31 +788,33 @@ const ADMIN_REPORT = {
           : '') +
         '<div class="field"><label for="eq-q">Question</label>' +
           '<textarea class="textarea" id="eq-q" style="min-height:96px">' +
-          esc(q.q) + '</textarea></div>' +
+          esc(cur.q) + '</textarea></div>' +
         opts.map((o, i) =>
           '<div class="field"><label for="eq-o' + i + '">Option ' + letters[i] + '</label>' +
           '<input class="input" type="text" id="eq-o' + i + '" value="' + esc(o) + '"></div>'
         ).join('') +
         '<div class="field"><label for="eq-c">Correct answer</label>' +
           '<select class="select" id="eq-c">' +
-            (q.correct === null ? '<option value="">Choose\u2026</option>' : '') +
+            (cur.correct === null || cur.correct === undefined ? '<option value="">Choose\u2026</option>' : '') +
             opts.map((o, i) =>
-              '<option value="' + i + '"' + (q.correct === i ? ' selected' : '') + '>' +
+              '<option value="' + i + '"' + (cur.correct === i ? ' selected' : '') + '>' +
               letters[i] + '</option>'
             ).join('') +
           '</select></div>' +
         '<div class="field"><label for="eq-e">Explanation</label>' +
-          '<textarea class="textarea" id="eq-e">' + esc(q.explanation) + '</textarea></div>' +
+          '<textarea class="textarea" id="eq-e">' + esc(cur.explanation) + '</textarea></div>' +
         '<div class="field"><label for="eq-admin-note">Your note <span class="dim">(optional, for the audit trail)</span></label>' +
           '<input class="input" type="text" id="eq-admin-note" maxlength="200" ' +
           'placeholder="e.g. Corrected per IS 456:2000 clause 6.1.3"></div>' +
-        '<label class="perm-row mb4"><input type="checkbox" id="eq-done" checked>' +
-          '<span>Mark this report as fixed</span></label>' +
+        '<label class="perm-row mb3"><input type="checkbox" id="eq-done"' + (moved ? '' : ' checked') + '>' +
+          '<span>Mark this report as fixed when pushed</span></label>' +
+        '<label class="perm-row mb4"><input type="checkbox" id="eq-next"' + (ADMIN_DRAFTS.advance ? ' checked' : '') + '>' +
+          '<span>Open the next report after saving</span></label>' +
         '<div class="flex g2">' +
           '<button class="btn btn-quiet" style="flex:1" ' +
             'data-on-click="MODAL.close(\'sheet\')">Cancel</button>' +
           '<button class="btn btn-primary" style="flex:1" id="eq-save" ' +
-            'data-on-click="ADMIN_REPORT.saveQ()">Save the fix</button>' +
+            'data-on-click="ADMIN_REPORT.saveQ()">Queue the fix</button>' +
         '</div>';
     } catch (e) {
       $('bd-sheet').innerHTML =
@@ -529,7 +823,9 @@ const ADMIN_REPORT = {
     }
   },
 
-  async saveQ() {
+  /* Queues the fix as a draft. No network call: the admin moves straight on to
+     the next report and the drafts are pushed together (button or timer). */
+  saveQ() {
     const c = this._eq;
     if (!c) return;
     const opts = [];
@@ -540,33 +836,31 @@ const ADMIN_REPORT = {
     const cv = $('eq-c').value;
     if (cv === '') return TOAST.show('Choose the correct answer', 'error');
     const adminNote = (($('eq-admin-note') && $('eq-admin-note').value) || '').trim().slice(0, 200);
-    const btn = $('eq-save');
-    btn.classList.add('loading');
-    try {
-      const res = await ADMIN.post('adminUpdateQuestion', {
-        fileId: c.fileId,
-        index: c.index,
-        expectedQ: c.q.q,
-        fields: JSON.stringify({
-          q: qt,
-          options: opts,
-          correct: Number(cv),
-          explanation: $('eq-e').value.trim()
-        }),
-        /* The backend attaches these to the correction event it writes. */
-        reportId: c.reportId,
-        reportReason: c.reportReason,
-        adminNote: adminNote || c.reportNote || null
-      });
-      if (!res.success) throw new Error(res.error || 'Could not save.');
-      TOAST.show('Saved. Students get the fix the next time they open the app online.',
-        'success', 5000);
-      ADMIN_CORRECTIONS.invalidate();
-      const done = $('eq-done') && $('eq-done').checked;
-      MODAL.close('sheet');
-      if (done) this.setStatus(c.reportId, 'resolved');
-    } catch (e) { TOAST.show(e.message, 'error', 6000); }
-    btn.classList.remove('loading');
+    const done = !!($('eq-done') && $('eq-done').checked);
+    const advance = !!($('eq-next') && $('eq-next').checked);
+    ADMIN_DRAFTS.load();
+    ADMIN_DRAFTS.advance = advance;
+    ADMIN_DRAFTS.add({
+      uid: c.uid, qid: c.qid, fileId: c.fileId, index: c.index,
+      reportId: c.reportId, reportReason: c.reportReason,
+      adminNote: adminNote || c.reportNote || null,
+      closeReport: done,
+      before: { question: c.q.q, options: (c.q.options || []).slice() },
+      after: { question: qt, options: opts, correctIndex: Number(cv), explanation: $('eq-e').value.trim() }
+    });
+    MODAL.close('sheet');
+    TOAST.show('Fix queued \u00b7 ' + ADMIN_DRAFTS.counts().pending + ' ready to push.', 'success', 2200);
+    this.render(this.all);
+    if (advance) this._openNextAfter(c.reportId);
+  },
+
+  /* Opens the next open report that has no queued fix yet. */
+  _openNextAfter(id) {
+    const rows = this._visibleRows();
+    const i = rows.findIndex(r => r.id === id);
+    const order = rows.slice(i + 1).concat(rows.slice(0, Math.max(i, 0)));
+    const nxt = order.find(r => r.status === 'open' && !ADMIN_DRAFTS.forReport(r));
+    if (nxt) setTimeout(() => this.editQ(nxt.id), 0);
   },
 
   /* ── Correction history for a file ───────────────────────────────────
@@ -735,6 +1029,9 @@ const ADMIN_REPORT = {
 
   async setStatus(id, status, corrected) {
     const item = this.all.find(r => r.id === id);
+    if (item && status === 'resolved' && corrected !== false && ADMIN_DRAFTS.forReport(item)) {
+      return TOAST.show('A fix is queued for this question. Push it first; pushing closes this report.', 'info', 4500);
+    }
     const prev = item && item.status;
     if (item) { item.status = status; this.render(this.all); }
     try {

@@ -75,6 +75,7 @@ function _body(rep, reason, note) {
     action: 'reportQuestion',
     username: S.user.username, token: S.user.token,
     uid: q.uid,
+    qid: q.qid != null ? q.qid : '',
     reason: reason,
     note: note,
     questionSnapshot: (q.q || '').slice(0, 1000),
@@ -136,7 +137,7 @@ function _rqSave(list) {
 function _queue(rep, reason, note, quiet) {
   const q = rep.q;
   const item = {
-    uid: q.uid, reason: reason, note: note,
+    uid: q.uid, qid: q.qid, reason: reason, note: note,
     section: rep.section, chosen: rep.chosen,
     q: (q.q || '').slice(0, 1000),
     options: (q.options || []).slice(0, 6),
@@ -160,7 +161,7 @@ async function _flush(quiet) {
   try {
     for (const it of list.slice()) {
       const rep = {
-        q: { uid: it.uid, q: it.q, options: it.options, correct: it.correct },
+        q: { uid: it.uid, qid: it.qid, q: it.q, options: it.options, correct: it.correct },
         chosen: it.chosen, section: it.section
       };
       try {
