@@ -894,10 +894,16 @@ const ADMIN_REPORT = {
   async matchOld() {
     BUSY.start();
     try {
-      const preview = await ADMIN.post('adminBackfillReportQids', { apply: false });
+      const preview = await ADMIN.post('adminBackfillReportQids', { apply: false }, { timeoutMs: 90000 });
       if (!preview || !preview.success) throw new Error((preview && preview.error) || 'Could not match old reports.');
       if (!preview.matched) {
-        TOAST.show('No unique text matches found. The reports were left unchanged.', 'warning');
+        const why = [
+          preview.noQuestionId ? preview.noQuestionId + ' matched a question with no id in its source file' : '',
+          preview.noMatch ? preview.noMatch + ' did not match the current question text' : '',
+          preview.ambiguous ? preview.ambiguous + ' matched more than one question' : '',
+          preview.noFile ? preview.noFile + ' file could not be loaded' : ''
+        ].filter(Boolean).join('; ');
+        TOAST.show('No qids could be added.' + (why ? ' ' + why + '.' : ' The reports were left unchanged.'), 'warning', 8000);
         return;
       }
       const rest = [
@@ -914,7 +920,7 @@ const ADMIN_REPORT = {
         confirmText: 'Add qids'
       });
       if (!ok) return;
-      const res = await ADMIN.post('adminBackfillReportQids', { apply: true });
+      const res = await ADMIN.post('adminBackfillReportQids', { apply: true }, { timeoutMs: 90000 });
       if (!res || !res.success) throw new Error((res && res.error) || 'Could not save the matches.');
       TOAST.show('Matched ' + res.applied + ' old report' + (res.applied === 1 ? '' : 's') + '.', 'success');
       await this.load();
