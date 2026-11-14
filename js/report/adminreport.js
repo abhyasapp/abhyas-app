@@ -661,6 +661,9 @@ const ADMIN_REPORT = {
             '<span class="badge flat">' +
               esc(REPORT_REASON_LABELS[r.reason] || r.reason) + '</span>' +
             '<span class="badge flat">' + esc(this.chapterFor(r.fileId)) + '</span>' +
+            (r.qid != null && r.qid !== ''
+              ? '<span class="badge flat mono" title="Stable question id in Neon">qid ' + esc(String(r.qid)) + '</span>'
+              : '') +
             this._searchHtml(r) +
           '</div>' +
           '<div class="t-cap">' + esc(r.reportedBy) + ' \u00b7 ' +
@@ -883,41 +886,52 @@ const ADMIN_REPORT = {
   },
 
   /* ── Correction history for a file ───────────────────────────────────
-     Every edit made through this console is logged to admin_logs with
-     action='question_corrected', target=fileId, and a JSON details payload
-     carrying the before/after diff. This reads those entries and offers
-     a "Restore" button per edit.
+     Supabase keeps a corrected snapshot on every resolved report. That is
+     the portable history: it needs only qreports_view (not logs_view) and
+     works for the hosted backend as well as Apps Script. Each entry offers
+     a "Restore" action, which creates a new correction event.
      ─────────────────────────────────────────────────────────────────── */
   async history(fileId) {
     if (!fileId) return TOAST.show('No file id on this report', 'warning');
     MODAL.sheet('Correction history — ' + fileId,
       '<div class="skeleton sk-100"></div><div class="skeleton sk-80"></div>');
     try {
-      const res = await ADMIN.post('adminListLogs', { limit: 1000 });
-      if (!res.success) throw new Error(res.error || 'Could not load history.');
-      const rows = (res.logs || [])
-        .filter(l => l.action === 'question_corrected' && l.target === fileId)
-        .map(l => {
-          let diff = null;
-          if (l.details) {
-            try {
-              const parsed = typeof l.details === 'string' ? JSON.parse(l.details) : l.details;
-              if (parsed && parsed.before && parsed.after) diff = parsed;
-            } catch (e) { /* not a JSON log entry — skip */ }
-          }
-          return Object.assign({}, l, { diff });
+      const cache = await ADMIN_CORRECTIONS.load(true);
+      const rows = (cache.all || [])
+        .filter(c => c.fileId === fileId && c.oldSnapshot && c.newSnapshot)
+        .map(c => {
+          const m = String(c.uid || '').match(/_([0-9]+)$/);
+          return {
+            timestamp: c.correctedAt,
+            admin: c.correctedBy || 'unknown',
+            action: 'question_corrected',
+            target: fileId,
+            diff: {
+              qid: c.qid != null ? c.qid : null,
+              index: m ? Number(m[1]) : null,
+              reportId: c.id || '',
+              adminNote: c.note || '',
+              before: {
+                q: c.oldSnapshot.question || '',
+                options: Array.isArray(c.oldSnapshot.options) ? c.oldSnapshot.options : [],
+                correct: c.oldSnapshot.correctIndex
+              },
+              after: {
+                q: c.newSnapshot.question || '',
+                options: Array.isArray(c.newSnapshot.options) ? c.newSnapshot.options : [],
+                correct: c.newSnapshot.correctIndex,
+                explanation: c.newSnapshot.explanation || ''
+              }
+            }
+          };
         })
-        .filter(r => r.diff);
+        .filter(r => r.diff.before.q && r.diff.after.q);
 
       if (!rows.length) {
         $('bd-sheet').innerHTML =
           '<div class="empty"><i class="ph ph-clock-counter-clockwise"></i>' +
           '<div class="t">No corrections yet</div>' +
-          '<div class="d">Edits made through this console will show up here.</div>' +
-          (res.truncated
-            ? '<div class="t-foot mt3">Only the ' + (res.logs || []).length + ' most recent log entries ' +
-              'are loaded, so older corrections may be further back than that.</div>'
-            : '') +
+          '<div class="d">Corrections that closed a report will show up here.</div>' +
           '</div>';
         this._historyCache = [];
         return;
@@ -1000,6 +1014,7 @@ const ADMIN_REPORT = {
       const res = await ADMIN.post('adminUpdateQuestion', {
         fileId,
         index: h.diff.index,
+        qid: h.diff.qid,
         expectedQ: a.q,                 /* concurrency guard: current state must match this */
         fields: JSON.stringify({
           q: b.q,
