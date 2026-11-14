@@ -77,6 +77,13 @@ describe('admin reported-question review', () => {
     expect(p.ev("QREPORTS._driveLink('1AbCdEfGhIjKlMnOpQrStUvWxYz012345')")).toContain('drive.google.com');
   });
 
+  it('offers a direct Google search for every reported question', () => {
+    const links = [...p.w.document.querySelectorAll('#qreports-list a[href^="https://www.google.com/search?q="]')];
+    expect(links).toHaveLength(4);
+    expect(links.every(a => a.target === '_blank' && a.rel === 'noopener')).toBe(true);
+    expect(decodeURIComponent(links[0].href)).toContain('Level 5 survey question');
+  });
+
   it('filters to questions with more than one reporter', () => {
     p.ev('QREPORTS.setMulti(true)');
     expect(cards()).toHaveLength(2);

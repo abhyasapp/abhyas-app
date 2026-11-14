@@ -570,6 +570,23 @@ const ADMIN_REPORT = {
     }).join('') + '</div>';
   },
 
+  /* A direct Google search for the words the student reported. This is a plain
+     query, not the student's AI prompt: a reviewer wants the source material,
+     not another generated answer. */
+  _searchHtml(r) {
+    const text = String((r && r.questionSnapshot) || '').trim();
+    if (!text) return '';
+    const opts = (Array.isArray(r.options) ? r.options : [])
+      .slice(0, 6)
+      .map((o, i) => String.fromCharCode(65 + i) + ') ' + String(o))
+      .join(' ');
+    const href = 'https://www.google.com/search?q=' + encodeURIComponent(text + (opts ? ' ' + opts : ''));
+    return '<a class="ib" href="' + esc(href) + '" target="_blank" rel="noopener" ' +
+      'title="Search this reported question on Google" ' +
+      'aria-label="Search this reported question on Google">' +
+      '<i class="ph ph-magnifying-glass"></i></a>';
+  },
+
   _correctedBannerHtml(r) {
     if (!r.correctedSnapshot) return '';
     const cs = r.correctedSnapshot;
@@ -644,6 +661,7 @@ const ADMIN_REPORT = {
             '<span class="badge flat">' +
               esc(REPORT_REASON_LABELS[r.reason] || r.reason) + '</span>' +
             '<span class="badge flat">' + esc(this.chapterFor(r.fileId)) + '</span>' +
+            this._searchHtml(r) +
           '</div>' +
           '<div class="t-cap">' + esc(r.reportedBy) + ' \u00b7 ' +
             relTime(r.reportedAt) + '</div>' +
@@ -722,9 +740,10 @@ const ADMIN_REPORT = {
       '<div class="banner banner-info"><i class="ph ph-spinner"></i>' +
         '<span>Loading the current file version...</span></div>' +
       '<div class="field"><label>Reported question</label>' +
-        '<div class="t-callout" style="line-height:1.6">' +
+        '<div class="flex g2" style="align-items:flex-start">' +
+        '<div class="t-callout" style="line-height:1.6;flex:1">' +
           esc(r.questionSnapshot || 'The question text was not captured.') +
-        '</div></div>' +
+        '</div>' + this._searchHtml(r) + '</div></div>' +
       this._optionsHtml(r) +
       '<div class="t-cap mt3">The editable fields appear as soon as Drive responds.</div>');
     try {
