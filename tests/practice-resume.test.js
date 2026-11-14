@@ -78,6 +78,9 @@ describe('practice continuity', () => {
 
   it('moves to the next question with Enter after answering', async () => {
     await p.ev('QUIZ.fcAnswer(0)');
+    // fcNav debounces rapid navigation for 200 ms; the previous test may have
+    // navigated just before this one, especially on a fast CI runner.
+    await new Promise(r => setTimeout(r, 250));
     await p.ev(`document.dispatchEvent(new KeyboardEvent('keydown', {key:'Enter', bubbles:true}))`);
     const state = await p.ev(`({
       idx: S.quiz.idx, active: S.quiz.active, answer: S.quiz.ans[0],
