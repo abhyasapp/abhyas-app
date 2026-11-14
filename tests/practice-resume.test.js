@@ -20,6 +20,11 @@ describe('practice continuity', () => {
   }, 120000);
   beforeEach(async () => {
     await p.ev(`
+      /* Close any dialog the previous test left behind: the global keydown
+         handler ignores Enter while a modal is open, and CI is slow enough
+         for that cleanup to race the next test. */
+      document.querySelectorAll('#quiz-limit-modal,#exam-resume-modal,#quiz-exit-modal,#quiz-error-card,#quiz-loader').forEach(el => el.remove());
+      const mbg = document.getElementById('mbg'); if (mbg) mbg.classList.remove('show');
       localStorage.removeItem('abhyas_practice_snap');
       S.user = { username: 'resume_test' };
       S.prog = { total: 0, correct: 0, sessions: [], bestRun: 3 };
