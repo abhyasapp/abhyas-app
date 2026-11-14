@@ -395,7 +395,10 @@ async function _checkCorrections(force) {
         (tot.withdrawn === 1 ? ' was' : 's were') +
         ' withdrawn from the question bank.', 5000);
     }
-    const mine = (res.resolvedMine || []).length;
+    /* resolvedMine includes reports an admin closed as "no change needed".
+       Only correctedMine may be described as corrected; older backends do not
+       send it, so their resolved list remains the fallback. */
+    const mine = (Array.isArray(res.correctedMine) ? res.correctedMine : (res.resolvedMine || [])).length;
     if (mine) {
       toast('\u2705 Thanks! ' + mine + ' question' +
         (mine === 1 ? '' : 's') + ' you reported ' +
