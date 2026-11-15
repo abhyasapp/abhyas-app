@@ -41,7 +41,7 @@ check('live version matches package', liveVersion === pkg.version, `live ${liveV
 
 const health = await get(`${API}?action=health`);
 let body = null;
-try { body = JSON.parse(health.text); } catch (e) { /* handled below */ }
+try { body = JSON.parse(health.text); } catch { /* a non-JSON body is reported below */ }
 check('backend health responds', health.status === 200, `HTTP ${health.status}${health.error ? ' ' + health.error : ''}`);
 check('backend is healthy', !!(body && body.success === true), health.text.slice(0, 160));
 if (body) console.log(`  info backend ${body.backend || 'unknown'} ${body.version || ''}`.trim());

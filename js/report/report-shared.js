@@ -81,20 +81,36 @@ function reportHistoryUpdate(list, id, reason, patch) {
 const REPORT_REASONS = ['wrong_answer', 'unclear', 'typo', 'incomplete', 'image_problem', 'other'];
 const REPORT_QUEUE_MAX = 20;
 
+/* The queue sends reports, so it has to agree with the server on what "the
+   same question" means: the stable qid when the export carries one, the
+   positional uid otherwise. Keying on uid alone meant a qid-only report
+   could never be queued and could never be removed after it was sent. */
+function reportQueueId(r) {
+  return String((r && (r.qid || r.uid)) || '');
+}
+
+function reportQueueKey(r) {
+  const id = reportQueueId(r);
+  return id ? id + '|' + String((r && r.reason) || '') : '';
+}
+
 function reportQueueAdd(queue, report, now) {
-  const q = Array.isArray(queue) ? queue.filter(x => x && x.uid) : [];
-  if (!report || !report.uid || REPORT_REASONS.indexOf(report.reason) === -1) return q;
+  const q = Array.isArray(queue) ? queue.filter(x => x && reportQueueId(x)) : [];
+  if (!report || !reportQueueId(report)) return q;
+  if (REPORT_REASONS.indexOf(report.reason) === -1) return q;
   const note = String(report.note || '').slice(0, 500);
-  const dup = q.findIndex(x => x.uid === report.uid && x.reason === report.reason);
+  const key = reportQueueKey(report);
+  const dup = q.findIndex(x => reportQueueKey(x) === key);
   const entry = Object.assign({}, report, { note, queuedAt: Number(now) || Date.now() });
   if (dup !== -1) q[dup] = entry; else q.push(entry);
   return q.slice(-REPORT_QUEUE_MAX);
 }
 
 function reportQueueRemove(queue, report) {
-  return (Array.isArray(queue) ? queue : []).filter(
-    x => !(x && report && x.uid === report.uid && x.reason === report.reason)
-  );
+  const src = Array.isArray(queue) ? queue : [];
+  const key = reportQueueKey(report);
+  if (!key) return src.slice();
+  return src.filter(x => !(x && reportQueueKey(x) === key));
 }
 
 /* qid-aware names used by the report sheet's call sites. Both share the

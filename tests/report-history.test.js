@@ -54,3 +54,28 @@ describe('student report history', () => {
     expect(out[0]).toMatchObject({ status: 'sent', sentAt: 5, question: 'Stem' });
   });
 });
+
+describe('offline report queue', () => {
+  it('queues a report that carries only a public qid', () => {
+    const out = g.reportQueueAdd([], { qid: '5-aaa-001-000012', reason: 'typo' }, 1);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ qid: '5-aaa-001-000012', reason: 'typo' });
+  });
+
+  it('dedupes the same question and reason across its qid and its uid', () => {
+    let q = g.reportQueueAdd([], { uid: 'f_1', qid: '5-aaa-001-000012', reason: 'typo' }, 1);
+    q = g.reportQueueAdd(q, { uid: 'f_1', qid: '5-aaa-001-000012', reason: 'typo', note: 'again' }, 2);
+    expect(q).toHaveLength(1);
+    expect(q[0].note).toBe('again');
+  });
+
+  it('removes a sent report keyed by its qid', () => {
+    const q = g.reportQueueAdd([], { qid: '5-aaa-001-000012', reason: 'typo' }, 1);
+    expect(g.reportQueueRemove(q, { qid: '5-aaa-001-000012', reason: 'typo' })).toHaveLength(0);
+  });
+
+  it('still removes a legacy uid-only report', () => {
+    const q = g.reportQueueAdd([], { uid: 'f_1', reason: 'typo' }, 1);
+    expect(g.reportQueueRemove(q, { uid: 'f_1', reason: 'typo' })).toHaveLength(0);
+  });
+});
