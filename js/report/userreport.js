@@ -397,12 +397,18 @@ async function _checkCorrections(force) {
     }
     /* resolvedMine includes reports an admin closed as "no change needed".
        Only correctedMine may be described as corrected; older backends do not
-       send it, so their resolved list remains the fallback. */
-    const mine = (Array.isArray(res.correctedMine) ? res.correctedMine : (res.resolvedMine || [])).length;
-    if (mine) {
-      toast('\u2705 Thanks! ' + mine + ' question' +
-        (mine === 1 ? '' : 's') + ' you reported ' +
-        (mine === 1 ? 'was' : 'were') + ' corrected.', 6000);
+       send it, so their resolved list remains the fallback. A reviewed-only
+       closure gets its own honest wording instead of being called a fix. */
+    const correctedList = Array.isArray(res.correctedMine) ? res.correctedMine : (res.resolvedMine || []);
+    const mine = correctedList.length;
+    const reviewed = Array.isArray(res.correctedMine) && Array.isArray(res.resolvedMine)
+      ? res.resolvedMine.filter(x => x && x.corrected === false).length : 0;
+    if (mine || reviewed) {
+      let msg = '\u2705 Thanks! ';
+      if (mine) msg += mine + ' question' + (mine === 1 ? ' you reported was' : 's you reported were') + ' corrected.';
+      if (reviewed) msg += (mine ? ' ' : '') + reviewed + ' question' +
+        (reviewed === 1 ? ' was' : 's were') + ' reviewed; no change was needed.';
+      toast(msg, 7000);
     }
   } catch (e) {
     /* offline or busy: tried again later */

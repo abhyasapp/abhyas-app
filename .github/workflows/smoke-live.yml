@@ -1,0 +1,25 @@
+name: Smoke live
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 */6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the deployed app and backend
+        run: node tools/smoke-live.mjs
