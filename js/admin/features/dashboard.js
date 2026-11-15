@@ -243,11 +243,19 @@ const MISSED = {
         return asList(v);
       };
       const BATCH = 8;
+      /* A content read refused for want of a valid session is refused the same way
+         for every other file. Asking anyway costs one gateway round trip per chunk
+         and then one per file, so the panel sat on skeletons for half a minute. The
+         first such refusal stops the remaining reads and the rows render with ids. */
+      let contentBlocked = '';
+      const fatalContent = e => /session|sign in|unauthori[sz]ed/i.test(String(e || ''));
       if (fids.length > 1) {
         for (let i = 0; i < fids.length; i += BATCH) {
+          if (contentBlocked) break;
           const part = fids.slice(i, i + BATCH);
           try {
             const b = await ADMIN.post('getFiles', { fileIds: part.join(',') });
+            if (b && b.success === false && fatalContent(b.error)) { contentBlocked = b.error; break; }
             const map = (b && b.success) ? (b.files || b.data || b.results) : null;
             if (map && typeof map === 'object') {
               part.forEach(fid => { const list = readEntry(map[fid]); if (list) cache[fid] = list; });
@@ -257,17 +265,23 @@ const MISSED = {
       }
 
       const rest = fids.filter(fid => !cache[fid]);
-      if (rest.length) {
+      if (rest.length && !contentBlocked) {
         await Promise.all(rest.map(async fid => {
+          if (contentBlocked) { cache[fid] = []; return; }
           try {
             const f = await _gate(() => ADMIN.post('getFile', { fileId: fid }));
+            if (f && f.success === false && fatalContent(f.error)) {
+              contentBlocked = f.error; cache[fid] = []; return;
+            }
             const raw = _unwrapGetFileResponse(f);
             if (raw == null) { cache[fid] = []; return; }
             cache[fid] = Array.isArray(raw) ? raw : (raw.questions || raw.data || raw.quiz || raw.items || []);
           } catch(e){ cache[fid] = []; }
         }));
       }
-      box.innerHTML = trunc + this.lastResults.map(r => {
+      box.innerHTML = (contentBlocked
+        ? '<div class="banner banner-warn"><i class="ph ph-info"></i><span>Question text is unavailable right now, so this list shows question ids only. The counts, rates and students below are unaffected.</span></div>'
+        : '') + trunc + this.lastResults.map(r => {
         const qs = cache[r.fileId];
         const q = (qs && r.index != null) ? qs[r.index] : null;
         const text = q ? (q.q || q.question || q.Question || q.stem || q.ques || q.text) : null;
