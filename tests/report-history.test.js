@@ -41,4 +41,16 @@ describe('student report history', () => {
     expect(g.reportHistoryAdd([], { reason: 'typo' }, 1)).toEqual([]);
     expect(g.reportHistoryAdd([], { uid: 'f_1' }, 1)).toEqual([]);
   });
+
+  it('keys a public qid report separately from a uid report with the same reason', () => {
+    let list = g.reportHistoryAdd([], { uid: 'f_1', reason: 'typo' }, 1);
+    list = g.reportHistoryAdd(list, { uid: 'f_1', qid: '5-aaa-001-000012', reason: 'typo' }, 2);
+    expect(list).toHaveLength(2);
+  });
+
+  it('updates a row addressed by its public qid', () => {
+    const list = g.reportHistoryAdd([], { uid: 'f_1', qid: '5-aaa-001-000012', reason: 'typo', question: 'Stem' }, 1);
+    const out = g.reportHistoryUpdateQid(list, '5-aaa-001-000012', 'typo', { status: 'sent', sentAt: 5 });
+    expect(out[0]).toMatchObject({ status: 'sent', sentAt: 5, question: 'Stem' });
+  });
 });

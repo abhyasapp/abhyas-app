@@ -31,17 +31,12 @@ const PROGRESS_RESET = {
     if(keys.length > 400){ keys.sort((x,y)=>r.rm[y]-r.rm[x]); const t = {}; keys.slice(0,400).forEach(k=>{ t[k] = r.rm[k]; }); r.rm = t; }
     this.save(r);
     if(typeof PSYNC !== 'undefined') PSYNC.scheduleSync();
-  }
+  },
+  /* the same question, addressed by its stable public qid */
   noteRemovedQid(qid){
     if(!qid) return;
-    const r = this.load(); r.rm = r.rm || {};
-    r.rm[String(qid)] = Date.now();
-    const keys = Object.keys(r.rm);
-    if(keys.length > 400){ keys.sort((x,y)=>r.rm[y]-r.rm[x]); const t = {}; keys.slice(0,400).forEach(k=>{ t[k] = r.rm[k]; }); r.rm = t; }
-    this.save(r);
-    if(typeof PSYNC !== 'undefined') PSYNC.scheduleSync();
-  }
-  ,
+    this.noteRemoved(qid);
+  },
   /* the whole wrong bank was cleared; returns the marker time so an undo can lift it */
   noteWrongCleared(){
     const T = Date.now(), r = this.load(); r.wr = T; this.save(r);

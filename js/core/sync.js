@@ -102,7 +102,9 @@ function applyResets(d, rs) {
       const at = Number(x._addedAt) || 0;
       if (allT && at <= allT) return false;
       if (wrT && at <= wrT) return false;
-      const r = Number(rm[x.uid]) || 0;
+      // A removed question can be marked by its stable qid or, for legacy
+      // rows and offline content, by its positional uid.
+      const r = Number(rm[x.uid] || rm[x.qid]) || 0;
       if (r && at <= r) return false;
       const t = chT(x.fileId);
       return !(t && at <= t);

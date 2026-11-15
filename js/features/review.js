@@ -56,7 +56,7 @@ const REV = {
       arr.splice(i, 1);
       toast(kind === 'bk' ? '⭐ Removed bookmark' : '🚩 Removed flag');
     } else {
-      arr.push(kind === 'bk' ? { ...REV._stripHeavy(question), tag: q.qid ? question.qid : '' } : REV._stripHeavy(question));
+      arr.push(kind === 'bk' ? { ...REV._stripHeavy(question), tag: '' } : REV._stripHeavy(question));
       toast(kind === 'bk' ? '⭐ Bookmarked' : '🚩 Flagged');
     }
     _save(REV._lsKey(kind), arr);
@@ -64,17 +64,19 @@ const REV = {
     return i === -1;
   },
   
-  has(kind, uid) { return REV._store(kind).some(x => x && x.uid === uid); },
+  has(kind, uid) {
+    return REV._store(kind).some(x => x && (x.uid === uid || (x.qid && String(x.qid) === String(uid))));
+  },
   getTag(uid) { 
-    const item = REV._store('bk').find(x => x && x.uid === uid);
+    const item = REV._store('bk').find(x => x && (x.uid === uid || (x.qid && String(x.qid) === String(uid))));
     return item ? (item.tag || '') : ''; 
   },
   
   setTag(uid, tag, questionObj) {
     if (!uid) return;
-    let item = REV._store('bk').find(x => x && x.uid === uid && (uid.indexOf('qid') !== 0 || x.qid));
+    let item = REV._store('bk').find(x => x && (x.uid === uid || (x.qid && String(x.qid) === String(uid))));
     if (!item && questionObj) { 
-      item = { ...REV._stripHeavy(questionObj), tag: questionObj.qid || '' }; 
+      item = { ...REV._stripHeavy(questionObj), tag: '' }; 
       S.bk.push(item); 
     }
     if (!item) return;

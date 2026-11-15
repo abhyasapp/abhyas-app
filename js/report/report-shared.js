@@ -40,27 +40,36 @@ const REPORT_QUEUE_KEY = 'abhyas_report_queue';
 const REPORT_HISTORY_KEY = 'abhyas_report_history_v1';
 const REPORT_HISTORY_MAX = 100;
 
+/* Keyed on the stable public qid when the export carries one, and on the
+   positional uid otherwise (legacy reports and offline content that predate
+   qids). The reason is part of the key, so one question can be reported once
+   per reason. */
 function reportHistoryKey(r) {
-  return (r && r.qid ? 'q' + r.qid : '') + '|' + String((r && r.reason) || '');
+  const id = (r && (r.qid || r.uid)) || '';
+  return String(id) + '|' + String((r && r.reason) || '');
 }
 
 function reportHistoryAdd(list, entry, now) {
   const src = Array.isArray(list) ? list : [];
   if (!entry || !entry.reason) return src.slice();
+  if (!entry.qid && !entry.uid) return src.slice();
   const key = reportHistoryKey(entry);
   const t = Number(now) || Date.now();
   const out = src.filter(x => x && reportHistoryKey(x) !== key);
-  const copy = Object.assign({ status: 'queued', reportedAt: t }, entry);
-  if (copy.qid === undefined || copy.qid === null) delete copy.qid;
-  out.push(copy);
+  out.push(Object.assign({ status: 'queued', reportedAt: t }, entry));
   return out.slice(-REPORT_HISTORY_MAX);
 }
 
-function reportHistoryUpdate(list, uid, reason, patch) {
-  const key = reportHistoryKey({ uid: uid, reason: reason, qid: null });
-  return (Array.isArray(list) ? list : []).map(x =>
-    x && reportHistoryKey(x) === key ? Object.assign({}, x, patch || {}) : x
-  );
+function reportHistoryUpdate(list, id, reason, patch) {
+  const want = String(id == null ? '' : id);
+  const why = String(reason || '');
+  return (Array.isArray(list) ? list : []).map(x => {
+    if (!x || !want) return x;
+    const mine = String(x.qid) === want || String(x.uid) === want;
+    return (mine && String(x.reason || '') === why)
+      ? Object.assign({}, x, patch || {})
+      : x;
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -88,51 +97,11 @@ function reportQueueRemove(queue, report) {
   );
 }
 
-/* Prefer the stable public qid when it is present; otherwise fall back to
-   the positional uid. This keeps the offline queue and history dedup keyed
-   on the readable qn id once exports carry it, without breaking legacy
-   events that carry only uid. */
-function reportHistoryKeyQid(r) {
-  return (r && r.qid ? 'q' + r.qid : '') + '|' + String((r && r.reason) || '');
-}
+/* qid-aware names used by the report sheet's call sites. Both share the
+   canonical implementation above, so a legacy uid-only row is still found. */
+function reportHistoryAddQid(list, entry, now) { return reportHistoryAdd(list, entry, now); }
 
-function reportHistoryAddQid(list, entry, now) {
-  const src = Array.isArray(list) ? list : [];
-  if (!entry || !entry.reason) return src.slice();
-  const key = reportHistoryKeyQid(entry);
-  const t = Number(now) || Date.now();
-  const out = src.filter(x => x && reportHistoryKeyQid(x) !== key);
-  const copy = Object.assign({ status: 'queued', reportedAt: t }, entry);
-  if (copy.qid === undefined || copy.qid === null) delete copy.qid;
-  out.push(copy);
-  return out.slice(-REPORT_HISTORY_MAX);
-}
-
-function reportHistoryUpdateQid(list, qid, reason, patch) {
-  const key = reportHistoryKeyQid({ reason: reason, qid: qid });
-  return (Array.isArray(list) ? list : []).map(x =>
-    x && reportHistoryKeyQid(x) === key ? Object.assign({}, x, patch || {}) : x
-  );
-}
-
-function reportHistoryAdd(list, entry, now) {
-  const src = Array.isArray(list) ? list : [];
-  if (!entry || !entry.reason) return src.slice();
-  const key = reportHistoryKey(entry);
-  const t = Number(now) || Date.now();
-  const out = src.filter(x => x && reportHistoryKey(x) !== key);
-  const copy = Object.assign({ status: 'queued', reportedAt: t }, entry);
-  if (copy.qid === undefined || copy.qid === null) delete copy.qid;
-  out.push(copy);
-  return out.slice(-REPORT_HISTORY_MAX);
-}
-
-function reportHistoryUpdate(list, uid, reason, patch) {
-  const key = reportHistoryKey({ uid: uid, reason: reason, qid: null });
-  return (Array.isArray(list) ? list : []).map(x =>
-    x && reportHistoryKey(x) === key ? Object.assign({}, x, patch || {}) : x
-  );
-}
+function reportHistoryUpdateQid(list, id, reason, patch) { return reportHistoryUpdate(list, id, reason, patch); }
 
 /* Which section a reported question came from. `where` is 'results' or
    'review-missed' / 'review-saved' / 'review-flagged'. */
