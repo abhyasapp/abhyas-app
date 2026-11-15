@@ -133,7 +133,10 @@ window.QSEARCH = {
       return '<button type="button" class="qs-item" data-on-click="QSEARCH.pick(' + i + ')">' +
         '<span class="qs-badge">' + esc(correct) + '</span>' +
         '<span class="qs-body"><span class="qs-stem">' + hl + '</span>' +
-        '<span class="qs-meta">' + esc((q.options || []).slice(0, 2).join('  \u00b7  ')) + '</span></span>' +
+        '<span class="qs-meta">' +
+          (qid ? '<span class="qs-qn">QN ' + esc(qid) + '</span> \u00b7 ' : '') +
+          esc((q.options || []).slice(0, 2).join('  \u00b7  ')) +
+        '</span></span>' +
       '</button>';
     }).join('');
     this._last = hits;
@@ -299,13 +302,24 @@ window.SIDEBAR_SEARCH = {
     const termLc = term.toLowerCase();
 
     if (!this._qResults.length) {
+      /* "No questions match" is misleading when this device has not downloaded
+         any content yet: the question may exist, it just is not searchable
+         here. Say which case this is. */
+      const nothingDownloaded = !QSEARCH._index || !QSEARCH._index.length;
       this._results.innerHTML =
         '<div class="sb-filter-empty">' +
-          '<i class="ph ph-magnifying-glass"></i> No questions match' +
+          '<i class="ph ph-magnifying-glass"></i> ' +
+          (nothingDownloaded
+            ? 'No questions on this device yet \u2014 open a chapter to search them'
+            : 'No questions match') +
         '</div>';
       this._results.style.display = '';
       return;
     }
+    const termIsId = hits.some(q => {
+      const qid = String(q.qid !== undefined && q.qid !== null ? q.qid : '');
+      return qid && qid.toLowerCase() === termLc;
+    });
 
     const rows = this._qResults.map((q, i) => {
       const stem = String(q.q || '');
@@ -314,16 +328,19 @@ window.SIDEBAR_SEARCH = {
         ? stem.slice(0, 100)
         : stem.slice(Math.max(0, pos - 25), pos + 75);
       const correct = q.correct != null ? String.fromCharCode(65 + Number(q.correct)) : '?';
+      const qid = String(q.qid !== undefined && q.qid !== null ? q.qid : '');
       return '<button type="button" class="sb-filter-item" ' +
         'data-on-mousedown="SIDEBAR_SEARCH._pick(' + i + ');return false" ' +
         'data-on-click="return false">' +
           '<span class="sb-filter-badge">' + esc(correct) + '</span>' +
-          '<span class="sb-filter-stem">' + esc(snip) + '</span>' +
+          '<span class="sb-filter-stem">' + esc(snip) +
+            (qid ? '<span class="sb-filter-qn">QN ' + esc(qid) + '</span>' : '') +
+          '</span>' +
         '</button>';
     }).join('');
 
     this._results.innerHTML =
-      '<div class="sb-filter-head">Questions \u00b7 ' + hits.length + '</div>' +
+      '<div class="sb-filter-head">' + (termIsId ? 'Question found' : 'Questions \u00b7 ' + hits.length) + '</div>' +
       rows +
       '<button type="button" class="sb-filter-all" data-on-mousedown="SIDEBAR_SEARCH._openAll();return false" data-on-click="return false">' +
         'See all ' + hits.length + ' in full view' +

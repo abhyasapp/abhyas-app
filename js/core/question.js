@@ -73,26 +73,10 @@ function qMetaHtml(q) {
   if (!q || !qMetaOn()) return '';
   const chips = [];
   const add = (label, val, cls) => { if (val) chips.push('<span class="qmeta-chip' + (cls ? ' ' + cls : '') + '">' + (label ? '<b>' + esc(label) + '</b> ' : '') + esc(String(val)) + '</span>'); };
-  add('ID', q.qid !== undefined && q.qid !== null && q.qid !== '' ? q.qid : '', 'mono');
-  /* The Drive file id is plumbing, not something a learner should ever read:
-     show the chapter the question belongs to and its place in that set. When
-     the published chapter list has not loaded (or the id is unknown) the chip
-     keeps just the position rather than falling back to the raw id. */
-  const inSet = q.fileId && q.fileId !== 'local';
-  const pos = String(q.uid || '').match(/_(\d+)$/);
-  let setName = '';
-  try {
-    if (inSet && typeof chapterRef === 'function') {
-      const ref = chapterRef(q.fileId);
-      if (ref) {
-        const ch = (typeof ChapterData !== 'undefined' && ChapterData.chapterName)
-          ? ChapterData.chapterName(ref.lv, ref.ch) : '';
-        const sub = (typeof prettySub === 'function') ? prettySub(ref.subtopic) : String(ref.subtopic || '');
-        setName = [ch, sub].filter(Boolean).join(' \u2014 ');
-      }
-    }
-  } catch (e) { setName = ''; }
-  add('Set', inSet ? [setName, pos ? '#' + (Number(pos[1]) + 1) : ''].filter(Boolean).join(' ') : '', 'mono');
+  /* Only the question's own id is shown. The set it came from is plumbing — the
+     Drive file id used to be printed here, and the set name is not something a
+     learner reads a question by. */
+  add('QN', q.qid !== undefined && q.qid !== null && q.qid !== '' ? q.qid : '', 'mono');
   add('', q.difficulty);
   add('', q.year);
   add('', q.source);

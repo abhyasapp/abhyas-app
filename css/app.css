@@ -1472,6 +1472,7 @@ html.focus-mode .marquee-bar{display:none!important}
 .sb-filter-stem{flex:1;min-width:0;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;line-clamp:2;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .sb-filter-all{display:block;width:100%;text-align:center;padding:var(--sp-2);margin-top:var(--sp-1);background:transparent;border:none;border-top:var(--hairline-w) solid var(--sep);color:var(--accent);font-family:var(--font);font-size:var(--fs-cap);font-weight:700;cursor:pointer}
 .sb-filter-all:hover{background:var(--accent-soft)}
+.sb-filter-qn{display:block;margin-top:2px;color:var(--ink-3);font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:var(--fs-cap)}
 .sb-filter-empty{padding:var(--sp-4) var(--sp-3);text-align:center;color:var(--ink-3);font-size:var(--fs-cap)}
 .sb-filter-empty i{display:block;font-size:1.2rem;margin-bottom:var(--sp-1);color:var(--ink-4)}
 @media (pointer:coarse){.sb-filter-input input{font-size:16px}}
