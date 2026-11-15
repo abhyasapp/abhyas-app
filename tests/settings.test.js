@@ -49,7 +49,7 @@ describe('settings cards (user.html)', () => {
   it('the switches use aria-checked, not aria-pressed (a switch role allows only the former)', async () => {
     p.ev('SETTINGS.renderDisplay()');
     expect(p.ev("document.querySelectorAll('#display-card-body [role=switch][aria-pressed]').length")).toBe(0);
-    expect(p.ev("document.querySelectorAll('#display-card-body [role=switch][aria-checked]').length")).toBe(2);
+    expect(p.ev("document.querySelectorAll('#display-card-body [role=switch][aria-checked]').length")).toBe(3);
   });
 
   it('storage card: meter, counts, backup, and removal disabled while nothing is saved', async () => {

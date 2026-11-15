@@ -51,6 +51,12 @@ window.SETTINGS = (function () {
   }
   applyMotion();
 
+  /* ── Question details: id, set, difficulty, year, source, topic on every quiz question ── */
+  function toggleQMeta() {
+    try { localStorage.setItem('abhyas_qmeta', (typeof qMetaOn === 'function' && qMetaOn()) ? '0' : '1'); } catch (e) { window.warnCaught && window.warnCaught('js/features/settings-ui.js', e); }
+    renderDisplay();
+  }
+
   /* ── Small builders ─────────────────────────────────────────────────────────────────────── */
   function seg(label, opts, current, call) {
     return '<div class="seg" role="group" aria-label="' + E(label) + '">' +
@@ -86,6 +92,7 @@ window.SETTINGS = (function () {
       row(T('Language'), T('Menus and buttons. Questions stay in English.'),
         seg(T('Language'), [{ v: 'en', t: 'English', lang: 'en' }, { v: 'ne', t: 'नेपाली', lang: 'ne' }], lang, 'language')) +
       row(T('Reduce motion'), T('Turns off animations and transitions.'), switchBtn(T('Reduce motion'), motionOn(), 'toggleMotion')) +
+      row(T('Question details'), T('Shows the question ID, set, year and topic on each question.'), switchBtn(T('Question details'), (typeof qMetaOn === 'function' ? qMetaOn() : true), 'toggleQMeta')) +
       (typeof FOCUSMODE !== 'undefined' ? row(T('Focus mode'), T('Hides streaks and badges while you study.'), switchBtn(T('Focus mode'), focus, 'toggleFocus')) : '') +
       '</div>';
   }
@@ -171,7 +178,7 @@ window.SETTINGS = (function () {
   document.addEventListener('abhyas:lang', refresh);
 
   return {
-    refresh, renderDisplay, renderStorage, protect, removeDownloads, toggleMotion,
+    refresh, renderDisplay, renderStorage, protect, removeDownloads, toggleMotion, toggleQMeta,
     theme: setTheme,
     textSize(v) { if (typeof FONT !== 'undefined') { FONT.set(Number(v)); renderDisplay(); } },
     language(l) { if (typeof I18N !== 'undefined') { I18N.setLang(l); } refresh(); },

@@ -1998,3 +1998,8 @@ html.reduce-motion *,html.reduce-motion *::before,html.reduce-motion *::after{an
   .lib-card{padding:var(--sp-3)}
   .lib-card .qm{gap:4px}
 }
+
+/* Question details chips (ID, set, year, source, topic) */
+.qmeta{display:flex;flex-wrap:wrap;gap:.25rem;margin:-.25rem 0 var(--sp-2)}
+.qmeta-chip{display:inline-flex;align-items:center;gap:.25rem;padding:.1rem .45rem;border-radius:var(--r-full);background:var(--accent-soft);color:var(--ink-3);font-size:var(--fs-cap);line-height:1.4}
+.qmeta-chip b{color:var(--accent);font-weight:700}

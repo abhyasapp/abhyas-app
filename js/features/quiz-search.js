@@ -38,13 +38,17 @@ window.QSEARCH = {
       const q = idx[i];
       const stem = String(q.q || '').toLowerCase();
       const opts = (q.options || []).join(' ').toLowerCase();
+      const qid = String(q.qid !== undefined && q.qid !== null ? q.qid : (q.id !== undefined && q.id !== null ? q.id : '')).trim();
+      // Allow searching by question id (qid) as well as text.
+      if (qid && (qid === t || qid.toLowerCase().indexOf(t) >= 0)){ hits.push({ q: q, where: 'id', pos: 0 }); continue; }
       const pos = stem.indexOf(t);
       if (pos >= 0){ hits.push({ q: q, where: 'stem', pos: pos }); continue; }
       const opos = opts.indexOf(t);
       if (opos >= 0) hits.push({ q: q, where: 'option', pos: opos });
     }
     hits.sort((a, b) => {
-      if (a.where !== b.where) return a.where === 'stem' ? -1 : 1;
+      const rank = w => (w === 'id' ? 0 : (w === 'stem' ? 1 : 2));
+      if (rank(a.where) !== rank(b.where)) return rank(a.where) - rank(b.where);
       return a.pos - b.pos;
     });
     return hits.slice(0, 60).map(h => h.q);
@@ -116,6 +120,7 @@ window.QSEARCH = {
     status.textContent = hits.length + ' result' + (hits.length === 1 ? '' : 's');
     const termLc = term.toLowerCase();
     box.innerHTML = hits.map((q, i) => {
+      const qid = String(q.qid !== undefined && q.qid !== null ? q.qid : (q.id !== undefined && q.id !== null ? q.id : '')).trim();
       const stemRaw = String(q.q || '');
       const pos = stemRaw.toLowerCase().indexOf(termLc);
       const snip = pos < 0

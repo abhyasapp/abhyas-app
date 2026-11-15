@@ -64,6 +64,28 @@ function _plainSearchText(q) {
   return String(q.q || '').trim() + (opts ? '  Options: ' + opts : '');
 }
 
+// ── QUESTION DETAILS (id, set, difficulty, year, source, topic, tags) ──
+const QMETA_KEY = 'abhyas_qmeta';
+function _metaStr(v) { return (v === undefined || v === null) ? '' : String(v).trim().slice(0, 60); }
+// On by default; the Settings switch writes '0' to hide it.
+function qMetaOn() { try { return localStorage.getItem(QMETA_KEY) !== '0'; } catch (e) { return true; } }
+function qMetaHtml(q) {
+  if (!q || !qMetaOn()) return '';
+  const chips = [];
+  const add = (label, val, cls) => { if (val) chips.push('<span class="qmeta-chip' + (cls ? ' ' + cls : '') + '">' + (label ? '<b>' + esc(label) + '</b> ' : '') + esc(String(val)) + '</span>'); };
+  add('ID', q.qid !== undefined && q.qid !== null && q.qid !== '' ? q.qid : '', 'mono');
+  const fid = q.fileId && q.fileId !== 'local' ? q.fileId : '';
+  const pos = String(q.uid || '').match(/_(\d+)$/);
+  add('Set', fid ? fid + (pos ? ' #' + (Number(pos[1]) + 1) : '') : '', 'mono');
+  add('', q.difficulty);
+  add('', q.year);
+  add('', q.source);
+  add('', q.subject);
+  add('', q.topic);
+  (q.tags || []).forEach(t => add('', '#' + t));
+  return chips.length ? '<div class="qmeta" aria-label="Question details">' + chips.join('') + '</div>' : '';
+}
+
 // ── SEARCH BUTTON HTML ──
 function qSearchHtml(q) {
   // 1. Text for the extension, escaped with the app's esc() (covers & < > " ' — not just quotes)
@@ -155,7 +177,14 @@ function normQ(raw, fid) {
       /* Stable database id exported by the content pipeline (questions.id).
          `uid` above is positional and changes whenever a set is re-exported;
          reports and corrections key on qid when it exists. */
-      qid: (q.id !== undefined && q.id !== null && q.id !== '' && Number.isFinite(Number(q.id))) ? Number(q.id) : undefined
+      qid: (q.id !== undefined && q.id !== null && q.id !== '' && Number.isFinite(Number(q.id))) ? Number(q.id) : undefined,
+      /* Optional descriptive fields, shown as chips when "Question details" is on. */
+      difficulty: _metaStr(q.difficulty || q.level),
+      year: _metaStr(q.year || q.exam_year),
+      source: _metaStr(q.source || q.exam || q.paper),
+      subject: _metaStr(q.subject),
+      topic: _metaStr(q.topic || q.chapter),
+      tags: Array.isArray(q.tags) ? q.tags.map(_metaStr).filter(Boolean).slice(0, 4) : undefined
     });
   });
   if (skipped > 0) console.warn(`[normQ] ${skipped}/${a.length} questions skipped in ${fid}`);

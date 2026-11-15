@@ -833,6 +833,13 @@ const QUIZ = {
       document.getElementById('fc-ctr').textContent = `${S.quiz.idx+1}/${S.quiz.qs.length}`;
       document.getElementById('fc-pf').style.width = `${((S.quiz.idx)/S.quiz.qs.length)*100}%`;
       document.getElementById('fc-qn').textContent = 'Q'+(S.quiz.idx+1);
+      (function(){
+        const qnEl = document.getElementById('fc-qn');
+        if (!qnEl || !qnEl.parentNode) return;
+        let metaEl = document.getElementById('fc-meta');
+        if (!metaEl) { metaEl = document.createElement('div'); metaEl.id = 'fc-meta'; qnEl.parentNode.insertAdjacentElement('afterend', metaEl); }
+        metaEl.innerHTML = qMetaHtml(q);
+      })();
       document.getElementById('fc-q').textContent = q.q;
       const fcImgWrap = document.getElementById('fc-img-wrap');
       const fcImg = document.getElementById('fc-img');
@@ -1280,8 +1287,9 @@ const QUIZ = {
         const savedAns = S.quiz.ans[qi];
         return `
         <div class="eqc${savedAns!==null?' answered':''}" id="eqc-${qi}">
-          <div class="qm"><span class="qn mono">Q${qi+1}</span><span style="display:inline-flex;gap:.3rem;align-items:center"><button type="button" class="ib mark-btn${S.quiz.marked && S.quiz.marked.has(qi) ? ' fl-on' : ''}" data-on-click="QUIZ.toggleMark(${qi})" title="Mark for review" aria-label="Mark question ${qi+1} for review"><i class="ph ph-flag"></i></button>${qReportHtml(q, `USER_REPORT.exam(${qi})`, `Report an issue with question ${qi+1}`)}${qSearchHtml(q)}</span></div>
-          <div class="qt" style="font-size:.85rem">${esc(q.q)}</div>
+                     <div class="qm"><span class="qn mono">Q${qi+1}</span><span style="display:inline-flex;gap:.3rem;align-items:center"><button type="button" class="ib mark-btn${S.quiz.marked && S.quiz.marked.has(qi) ? ' fl-on' : ''}" data-on-click="QUIZ.toggleMark(${qi})" title="Mark for review" aria-label="Mark question ${qi+1} for review"><i class="ph ph-flag"></i></button>${qReportHtml(q, `USER_REPORT.exam(${qi})`, `Report an issue with question ${qi+1}`)}${qSearchHtml(q)}</span></div>
+          ${qMetaHtml(q)}
+           <div class="qt" style="font-size:.85rem">${esc(q.q)}</div>
           ${qImgHtml(q)}
           ${q.options.map((opt,oi)=>{
             const sel = savedAns===oi;
@@ -1778,8 +1786,9 @@ const QUIZ = {
         const isMarked = S.quiz.marked instanceof Set && S.quiz.marked.has(i);
         const chapter = chapterInfo[i] || QUIZ._chapterInfo(q);
         return `<div class="qcard" data-qi="${i}" data-state="${skipped ? 'skipped' : correctPick ? 'correct' : 'wrong'}" data-conf="${conf}" data-marked="${isMarked ? '1' : '0'}" data-chapter="${esc(chapter.key)}" data-chapter-label="${esc(chapter.label)}" style="border-left-color:${correctPick?'var(--ok)':'var(--bad)'}">
-          <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${status}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}<button class="ib" data-on-click="QNA.fromResult(${i})" title="Open notes and Q&A for this chapter" aria-label="Open notes and Q&A for this chapter"><i class="ph ph-text-columns"></i></button>${qSearchHtml(q)}</div>
-          ${showChapter ? '<div class="t-cap" style="color:var(--ink-3);margin:0 0 var(--sp-1)"><i class="ph ph-book-open"></i> ' + esc(chapter.label) + '</div>' : ''}
+                     <div class="qm"><span class="qn mono">Q${i+1}</span><span class="ctag ${correctPick?'tg':'tr'}">${status}</span>${qReportHtml(q, `USER_REPORT.result(${i})`, `Report an issue with question ${i+1}`)}<button class="ib" data-on-click="QNA.fromResult(${i})" title="Open notes and Q&A for this chapter" aria-label="Open notes and Q&A for this chapter"><i class="ph ph-text-columns"></i></button>${qSearchHtml(q)}</div>
+          ${qMetaHtml(q)}
+           ${showChapter ? '<div class="t-cap" style="color:var(--ink-3);margin:0 0 var(--sp-1)"><i class="ph ph-book-open"></i> ' + esc(chapter.label) + '</div>' : ''}
           <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
           ${qImgHtml(q)}
           ${q.options.map((opt,oi)=>{
