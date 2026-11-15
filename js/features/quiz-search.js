@@ -333,7 +333,8 @@ window.SIDEBAR_SEARCH = {
         'data-on-mousedown="SIDEBAR_SEARCH._pick(' + i + ');return false" ' +
         'data-on-click="return false">' +
           '<span class="sb-filter-badge">' + esc(correct) + '</span>' +
-          '<span class="sb-filter-stem">' + esc(snip) +
+          '<span class="sb-filter-body">' +
+            '<span class="sb-filter-stem">' + esc(snip) + '</span>' +
             (qid ? '<span class="sb-filter-qn">QN ' + esc(qid) + '</span>' : '') +
           '</span>' +
         '</button>';
