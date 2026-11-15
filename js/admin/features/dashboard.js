@@ -290,7 +290,12 @@ const MISSED = {
         const accuracy = r.accuracy != null ? r.accuracy : (r.wrongRate != null ? 100 - r.wrongRate : '—');
         return '<div class="miss">' +
           '<div class="miss-top">' +
-            '<div class="miss-q">' + (text ? esc(String(text).slice(0, 240)) : '<span class="mono dim">' + esc(r.uid || '') + '</span>') + '</div>' +
+            /* Without question text the row still has to name the question. The stable
+               public id is what a student would quote; a Drive id must not be on screen,
+               so it is kept in the tooltip where an admin can copy it. */
+            '<div class="miss-q" title="' + esc(String(r.uid || '')) + '">' + (text
+              ? esc(String(text).slice(0, 240))
+              : '<span class="dim">' + (r.qid ? 'QN ' + esc(String(r.qid)) : 'Question #' + (r.index != null ? Number(r.index) + 1 : '—')) + '</span>') + '</div>' +
             '<div class="miss-rate"><div class="v">' + wrongRate + '%</div><div class="l">' + (r.wrong || 0) + ' of ' + (r.total || 0) + ' wrong</div></div>' +
           '</div>' +
           '<div class="miss-tags">' +
