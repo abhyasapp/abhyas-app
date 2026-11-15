@@ -7,6 +7,13 @@ const PWA = {
       S.dpi = e;
       const btn = document.getElementById('installBtn');
       if (btn) { btn.style.display = ''; btn.title = 'Install App'; }
+      // Banner shows at most once (first login/prompt). After that, or once
+      // dismissed, install is available only via the menu button.
+      try {
+        if (localStorage.getItem('pwa_banner_dismissed') === '1') return;
+        if (localStorage.getItem('pwa_banner_shown') === '1') return;
+        localStorage.setItem('pwa_banner_shown', '1');
+      } catch (e) { window.warnCaught && window.warnCaught('js/features/pwa.js', e); }
       PWA._showInstallBanner();
     });
     window.addEventListener('appinstalled', () => {
@@ -26,6 +33,7 @@ const PWA = {
     }
   },
   _showInstallBanner() {
+    try { if (localStorage.getItem('pwa_banner_dismissed') === '1') return; } catch (e) {}
     if (document.getElementById('pwa-install-banner')) return;
     const bar = document.createElement('div');
     bar.id = 'pwa-install-banner';
@@ -41,7 +49,7 @@ const PWA = {
     document.body.appendChild(bar);
     requestAnimationFrame(() => { try { FLOATSPACE.sync('pwa-banner', bar); } catch (e) { window.warnCaught && window.warnCaught('js/features/pwa.js', e); } });
     document.getElementById('pwa-install-go').onclick = () => { PWA.install(); PWA._hideInstallBanner(); };
-    document.getElementById('pwa-install-x').onclick = () => PWA._hideInstallBanner();
+    document.getElementById('pwa-install-x').onclick = () => { try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch (e) {} PWA._hideInstallBanner(); };
   },
   _hideInstallBanner() {
     const bar = document.getElementById('pwa-install-banner');

@@ -426,17 +426,30 @@
   /* ================================================================ */
 
   async function _loadPublicInfo() {
+    // Public info (payment amounts, contact phone, QR url) changes rarely.
+    // Cache it for 30 min to avoid a second GAS round-trip on every login
+    // (GAS cold starts can take 2-4s). Force-refresh only when stale.
+    var TTL = 30 * 60 * 1000;
+    try {
+      var cached = localStorage.getItem('abhyas_public_info');
+      var ts = Number(localStorage.getItem('abhyas_public_info_ts') || 0);
+      if (cached && ts && (Date.now() - ts) < TTL) {
+        _publicInfo = JSON.parse(cached);
+        return _publicInfo;
+      }
+    } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     try {
       var res = await _post('getPublicInfo', {});
       if (res && res.success) {
         _publicInfo = res;
         try { localStorage.setItem('abhyas_public_info', JSON.stringify(res)); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
+        try { localStorage.setItem('abhyas_public_info_ts', String(Date.now())); } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
         return res;
       }
     } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     try {
-      var cached = localStorage.getItem('abhyas_public_info');
-      if (cached) _publicInfo = JSON.parse(cached);
+      var cached2 = localStorage.getItem('abhyas_public_info');
+      if (cached2) _publicInfo = JSON.parse(cached2);
     } catch (e) { window.warnCaught && window.warnCaught('js/app/index-page.js', e); }
     return _publicInfo;
   }
