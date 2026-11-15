@@ -5,6 +5,37 @@
 const ADMINS = {
   _list: [], _isOwner: false, _labels: {}, _selected: null,
 
+  /* Fallback labels keep the permission editor usable when an older backend
+     omits `labels` from adminListAdmins. Without these, every checkbox was
+     filtered out and the owner saw an empty grid. */
+  LABELS: {
+    dashboard: 'Dashboard',
+    users_view: 'View students',
+    users_manage: 'Manage students',
+    users_bulk: 'Bulk student actions',
+    payments_view: 'View payments',
+    payments_review: 'Review payments',
+    payments_bulk: 'Bulk payment actions',
+    screenshots: 'Payment screenshots',
+    weeklysets_view: 'View weekly sets',
+    weeklysets_manage: 'Manage weekly sets',
+    studydocs_view: 'View study PDFs',
+    studydocs_manage: 'Manage study PDFs',
+    qreports_view: 'View reports',
+    qreports_manage: 'Resolve reports',
+    subjective_view: 'View grading',
+    subjective_grade: 'Grade answers',
+    subjective_import: 'Import exam papers',
+    logs_view: 'View activity log',
+    settings_view: 'View settings',
+    settings_manage: 'Change settings',
+    maintenance: 'Run maintenance',
+    exports: 'Export data',
+    imports: 'Import data'
+  },
+
+  /* Keep this list in sync with the server's grantable features. Owner-only
+     features (admins_view, admins_manage) are intentionally absent. */
   GROUPS: [
     { name:'Overview',  keys:['dashboard'] },
     { name:'Students',  keys:['users_view','users_manage','users_bulk'] },
@@ -14,14 +45,15 @@ const ADMINS = {
     { name:'Reports',   keys:['qreports_view','qreports_manage'] },
     { name:'Grading',   keys:['subjective_view','subjective_grade','subjective_import'] },
     { name:'Activity & settings', keys:['logs_view','settings_view','settings_manage'] },
-    { name:'Admins',    keys:['admins_view'] },
     { name:'Data',      keys:['maintenance','exports','imports'] }
   ],
+
+  _label(key){ return this._labels[key] || this.LABELS[key] || key; },
 
   render(admins, isOwner, labels){
     this._list = admins || [];
     this._isOwner = !!isOwner;
-    this._labels = labels || this._labels || {};
+    this._labels = Object.assign({}, this.LABELS, this._labels, labels || {});
     const box = $('admins-list');
     if (!box) return;
     const addBtn = $('btn-add-admin');
@@ -41,7 +73,7 @@ const ADMINS = {
       const perms = a.permissions || [];
       const dual = (ADMIN.data.users || []).some(u => u.username.toLowerCase() === a.username.toLowerCase());
       const pills = (!isOwnerRow && perms.length)
-        ? perms.slice(0, 3).map(k => '<span class="perm-pill">' + esc(this._labels[k] || k) + '</span>').join('') +
+        ? perms.slice(0, 3).map(k => '<span class="perm-pill">' + esc(this._label(k)) + '</span>').join('') +
           (perms.length > 3 ? '<span class="perm-pill more">+' + (perms.length - 3) + '</span>' : '')
         : '';
       return '<div class="row" style="align-items:flex-start;flex-wrap:wrap">' +
@@ -67,12 +99,10 @@ const ADMINS = {
 
   _permEditor(username, granted, isOwnerRow){
     if (isOwnerRow) return '<p class="t-foot">The owner always has full access.</p>';
-    const has = new Set(granted);
+    const has = new Set(granted || []);
     return '<div class="perm-grid">' + this.GROUPS.map(g => {
-      const keys = g.keys.filter(k => this._labels[k]);
-      if (!keys.length) return '';
       return '<div><div class="perm-group-t">' + esc(g.name) + '</div>' +
-        keys.map(k => '<label class="perm-row"><input type="checkbox" data-admin="' + escAttrJs(username) + '" data-feat="' + escAttrJs(k) + '"' + (has.has(k) ? ' checked' : '') + '><span>' + esc(this._labels[k]) + '</span></label>').join('') +
+        g.keys.map(k => '<label class="perm-row"><input type="checkbox" data-admin="' + escAttrJs(username) + '" data-feat="' + escAttrJs(k) + '"' + (has.has(k) ? ' checked' : '') + '><span>' + esc(this._label(k)) + '</span></label>').join('') +
       '</div>';
     }).join('') + '</div>' +
     '<div class="flex g2 mt4"><button class="btn btn-primary btn-sm" data-on-click="ADMINS.savePerms(\'' + escAttrJs(username) + '\')">Save access</button>' +
@@ -89,8 +119,10 @@ const ADMINS = {
   },
 
   async savePerms(username){
+    const boxes = Array.from(document.querySelectorAll('input[data-admin="' + CSS.escape(username) + '"][data-feat]'));
+    if (!boxes.length) return TOAST.show('Permissions did not load — refresh the page and try again.', 'error');
     const features = {};
-    document.querySelectorAll('input[data-admin="' + CSS.escape(username) + '"][data-feat]').forEach(cb => { features[cb.dataset.feat] = cb.checked; });
+    boxes.forEach(cb => { features[cb.dataset.feat] = cb.checked; });
     BUSY.start();
     try {
       const r = await ADMIN.post('adminSetAdminPermissions', { username, features: JSON.stringify(features) });
@@ -127,12 +159,10 @@ const ADMINS = {
       '<div class="field mt4"><span class="field-label">What they can do</span>' +
         '<span class="field-hint">You can change this at any time.</span>' +
         '<div class="perm-grid mt2" id="promote-perms">' + (this.GROUPS.map(g => {
-          const keys = g.keys.filter(k => this._labels[k]);
-          if (!keys.length) return '';
           return '<div><div class="perm-group-t">' + esc(g.name) + '</div>' +
-            keys.map(k => '<label class="perm-row"><input type="checkbox" data-feat="' + escAttrJs(k) + '"' + (starter.includes(k) ? ' checked' : '') + '><span>' + esc(this._labels[k] || k) + '</span></label>').join('') +
+            g.keys.map(k => '<label class="perm-row"><input type="checkbox" data-feat="' + escAttrJs(k) + '"' + (starter.includes(k) ? ' checked' : '') + '><span>' + esc(this._label(k)) + '</span></label>').join('') +
           '</div>';
-        }).join('') || '<p class="t-foot">Permissions load with the admin list — refresh and try again.</p>') + '</div>' +
+        }).join('')) + '</div>' +
       '</div>' +
       '<div class="flex g2 mt4"><button class="btn btn-primary btn-block" id="ap-submit" data-on-click="ADMINS.submit()">Add admin</button></div>'
     );
@@ -200,8 +230,10 @@ const ADMINS = {
 
   async submit(){
     const btn = $('ap-submit');
+    const boxes = Array.from(document.querySelectorAll('#promote-perms input[data-feat]'));
+    if (!boxes.length) return TOAST.show('Permissions did not load — refresh the page and try again.', 'error');
     const features = {};
-    document.querySelectorAll('#promote-perms input[data-feat]').forEach(cb => { features[cb.dataset.feat] = cb.checked; });
+    boxes.forEach(cb => { features[cb.dataset.feat] = cb.checked; });
     btn.classList.add('loading');
     try {
       if (this._modeVal === 'new') {
