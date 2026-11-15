@@ -776,7 +776,11 @@ const ADMIN_REPORT = {
         : q;
       /* Reports made before questions had ids point at a position. If the
          file was re-ordered since, that position holds a different question. */
-      const moved = !draft && !questionMatchesSnapshot(q.q, r.questionSnapshot);
+      /* When the report carries a qid, the backend locates the question by id
+         (not by position), so a text mismatch here is not "wrong question" —
+         it usually means the question was already corrected. Only legacy
+         (qid-less) reports rely on position/text and need the warning. */
+      const moved = !draft && !r.qid && !questionMatchesSnapshot(q.q, r.questionSnapshot);
       this._eq = {
         reportId: id,
         uid: r.uid,
