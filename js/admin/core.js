@@ -558,6 +558,16 @@ const ADMIN = {
     const allowFallback = opts.fallback !== false;
     const canFallback = allowFallback && !!(fallbackUrl && fallbackUrl !== primaryUrl);
 
+    /* Content reads are not proof that the session is dead. GAS authenticates
+       getFile/getFiles with the *student* token unless it can hydrate the admin
+       session, so a perfectly valid admin was told "Session expired" and the
+       console wiped the session and reloaded to the sign-in gate — simply
+       opening Insights logged the admin out. Report the failure to the caller;
+       the next real admin action still ends the session if it is genuinely
+       gone. */
+    const CONTENT_READ = /^(getfile|getfiles|getcontentkey)$/i;
+    const sessionFatal = !opts.keepSession && !CONTENT_READ.test(String(action || ''));
+
     /* Normalize getFile so downstream code can keep reading res.result. */
     const _normalizeGetFile = (res) => {
       if (!res) return res;
@@ -590,7 +600,7 @@ const ADMIN = {
       }
       res = _normalizeGetFile(res);
       if (res && res.sessionInvalid) {
-        this._leaveAdminMode();
+        if (sessionFatal) this._leaveAdminMode();
         return { success: false, error: 'Your session has expired. Please sign in again.' };
       }
       return res || { success: false, error: 'The server sent an empty response.' };
@@ -607,7 +617,7 @@ const ADMIN = {
           try { window.dispatchEvent(new CustomEvent('abhyas:fallback')); } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
           const norm = _normalizeGetFile(res);
           if (norm && norm.sessionInvalid) {
-            this._leaveAdminMode();
+            if (sessionFatal) this._leaveAdminMode();
             return { success: false, error: 'Your session has expired. Please sign in again.' };
           }
           return norm;
