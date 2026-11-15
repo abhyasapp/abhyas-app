@@ -1852,8 +1852,17 @@ const QUIZ = {
         document.head.appendChild(s);
       }
     }
+    /* Record the stable qid beside the positional uid: uid changes whenever a
+       set is re-exported, so history keyed on it alone cannot follow a question.
+       Rows written before qid existed simply have no qid and are matched by
+       uid, which the indexes still accept. */
     const qres = S.quiz.qs
-      .map((q,i)=> S.quiz.ans[i]===null ? null : {uid:q.uid, ok:isOk(S.quiz.ans[i], q.correct)})
+      .map((q,i)=> {
+        if (S.quiz.ans[i] === null || S.quiz.ans[i] === undefined) return null;
+        const row = { uid: q.uid, ok: isOk(S.quiz.ans[i], q.correct) };
+        if (q.qid !== undefined && q.qid !== null && q.qid !== '') row.qid = q.qid;
+        return row;
+      })
       .filter(Boolean);
     if(typeof QSTATS !== 'undefined') QSTATS.recordSession(qres);
     const scope = S.quiz.scope || {};
