@@ -2,6 +2,26 @@
 // MUST load AFTER: core/state.js, core/format.js (shuf), core/question.js
 // (normQ), data/chapters-data.js (ChapterData), features/quiz-engine.js (QUIZ).
 
+/* Which questions the wrong-answer list already holds. Keyed by the stable qid
+   as well as the positional uid, because a re-exported set keeps its qid but
+   renumbers uid — matching on uid alone made the weak drill claim "no wrong
+   answers yet" while the list was full. */
+function weakKeys(list){
+  const keys = new Set();
+  (Array.isArray(list) ? list : []).forEach(w => {
+    if (!w || w._withdrawn) return;
+    if (w.uid) keys.add('u:' + w.uid);
+    if (w.qid !== undefined && w.qid !== null && w.qid !== '') keys.add('q:' + w.qid);
+  });
+  return keys;
+}
+
+function isWeakQuestion(q, keys){
+  if (!q || !keys) return false;
+  if (q.uid && keys.has('u:' + q.uid)) return true;
+  return q.qid !== undefined && q.qid !== null && q.qid !== '' && keys.has('q:' + q.qid);
+}
+
 const PSY = {
   LEVELS:[['level5','Level 5 — Diploma'],['level7','Level 7 — Civil Engineering'],['gk','General Knowledge']],
   init(){
@@ -72,8 +92,8 @@ const PSY = {
     let qsArr = shuf(all);
     if (type === 'exam') qsArr = qsArr.slice(0, 100);
     if (type === 'weak'){
-      const wu = new Set(S.wr.map(w=>w.uid));
-      const weak = qsArr.filter(q=>wu.has(q.uid));
+      const wKeys = weakKeys(S.wr);
+      const weak = qsArr.filter(q => isWeakQuestion(q, wKeys));
       qsArr = weak.length ? weak : qsArr.slice(0, 50);
       if (!weak.length) toast('ℹ️ No wrong answers yet — showing 50 random instead');
     }
