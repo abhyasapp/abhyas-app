@@ -357,21 +357,33 @@ window.QNOTE = {
 
 window.QHIST = {
   _cache: null,
+  /* One record per question, reachable by its stable qid and by the positional
+     uid it happened to have when each answer was recorded. A re-export
+     renumbers uid but never qid, so history used to vanish for any question
+     whose uid changed — and lookups made by qid found nothing at all. */
   _index(){
     if (this._cache) return this._cache;
-    const map = {};
+    const recs = {};   // identity -> record
+    const name = {};   // any uid/qid seen -> identity
     const sessions = (S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
     for (let i = 0; i < sessions.length; i++){
       const qres = sessions[i] && sessions[i].qres;
       if (!Array.isArray(qres)) continue;
       for (let j = 0; j < qres.length; j++){
         const r = qres[j];
-        if (!r || !r.uid) continue;
-        const rec = map[r.uid] || (map[r.uid] = { seen: 0, correct: 0 });
+        if (!r) continue;
+        const id = r.qid || r.uid;
+        if (!id) continue;
+        const key = name[id] || (name[id] = id);
+        const rec = recs[key] || (recs[key] = { seen: 0, correct: 0 });
         rec.seen++;
         if (r.ok) rec.correct++;
+        if (r.uid) name[r.uid] = key;
+        if (r.qid) name[r.qid] = key;
       }
     }
+    const map = {};
+    for (const id in name) map[id] = recs[name[id]];
     this._cache = map;
     return map;
   },

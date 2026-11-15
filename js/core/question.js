@@ -126,6 +126,28 @@ document.addEventListener('click', function(e) {
    sort or filter it without touching the cached one. */
 const NORM_CACHE = typeof WeakMap === 'function' ? new WeakMap() : null;
 
+/* Stable question id as the content file publishes it. The pipeline writes the
+   readable public id to `public_qn` (LCCCSSSFQQQQ: "50011.110001",
+   "G0011.110001", "5002mixedqn10001"); an export run with --public-qn puts the
+   same value in `id`, and older files carry the internal numeric id there. A
+   public id is a string, so it cannot be gated on Number.isFinite the way the
+   numeric id used to be — that check discarded every public id and silently
+   left the app keyed on the positional uid. */
+const QID_DIGITS_RE = /^\d+$/;
+const QID_PUBLIC_RE = /^[A-Za-z0-9][A-Za-z0-9._]{3,63}$/;
+
+function _stableQid(q) {
+  const candidates = [q.public_qn, q.publicQn, q.qnid, q.qid, q.id];
+  for (const raw of candidates) {
+    if (raw === undefined || raw === null) continue;
+    const s = String(raw).trim();
+    if (!s) continue;
+    if (QID_DIGITS_RE.test(s)) return Number(s);            // internal id, as before
+    if (QID_PUBLIC_RE.test(s) && /\d/.test(s)) return s;     // public qn id
+  }
+  return undefined;
+}
+
 function normQ(raw, fid) {
   if (NORM_CACHE && raw && typeof raw === 'object') {
     const hit = NORM_CACHE.get(raw);
@@ -174,10 +196,10 @@ function normQ(raw, fid) {
       imgCaption: String(q.imgCaption || q.imgAlt || q.figureCaption || q.caption || '').trim(),
       fileId: fid || 'local',
       uid: `${fid || 'local'}_${i}`,
-      /* Stable database id exported by the content pipeline (questions.id).
-         `uid` above is positional and changes whenever a set is re-exported;
-         reports and corrections key on qid when it exists. */
-      qid: (q.id !== undefined && q.id !== null && q.id !== '' && Number.isFinite(Number(q.id))) ? Number(q.id) : undefined,
+      /* Stable id exported by the content pipeline. `uid` above is positional
+         and changes whenever a set is re-exported; reports and corrections key
+         on qid whenever the file publishes one. */
+      qid: _stableQid(q),
       /* Optional descriptive fields, shown as chips when "Question details" is on. */
       difficulty: _metaStr(q.difficulty || q.level),
       year: _metaStr(q.year || q.exam_year),

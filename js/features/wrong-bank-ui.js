@@ -164,9 +164,14 @@ window.WRONGBY = {
   /* Build every uid's miss count in one pass. The old version walked every
      session for every uid, which made the hardest-20 and review-plan views
      quadratic as the session history grew. */
+  /* Misses counted per question, reachable by stable qid and by the positional
+     uid each answer was recorded under. Keying only on uid made a miss count
+     disappear as soon as a set was re-exported, and a lookup by qid (what
+     insights uses) always found zero. */
   _missIndex(){
     if (this._missCache) return this._missCache;
-    const out = Object.create(null);
+    const counts = Object.create(null);  // identity -> misses
+    const name = Object.create(null);    // any uid/qid seen -> identity
     const prog = S.prog;
     let sessions = prog && prog.sessions;
     if (!Array.isArray(sessions)) sessions = [];
@@ -175,9 +180,17 @@ window.WRONGBY = {
       if (!Array.isArray(qres)) continue;
       for (let j = 0; j < qres.length; j++){
         const r = qres[j];
-        if (r && r.uid && r.ok === false) out[r.uid] = (out[r.uid] || 0) + 1;
+        if (!r) continue;
+        const id = r.qid || r.uid;
+        if (!id) continue;
+        const key = name[id] || (name[id] = id);
+        if (r.ok === false) counts[key] = (counts[key] || 0) + 1;
+        if (r.uid) name[r.uid] = key;
+        if (r.qid) name[r.qid] = key;
       }
     }
+    const out = Object.create(null);
+    for (const id in name) out[id] = counts[name[id]] || 0;
     this._missCache = out;
     return out;
   },
