@@ -30,6 +30,21 @@ function qUidParts(uid) {
   return m ? { fid: m[1], index: Number(m[2]) } : null;
 }
 
+function qIdKey(q) {
+  if (!q) return '';
+  if (q.qid) return 'q' + q.qid;
+  if (q.uid) return 'u' + q.uid;
+  return '';
+}
+
+function qByIdOrUid(q, id) {
+  if (!q || !id) return false;
+  if (String(q.qid) === String(id)) return true;
+  if (String(q.uid) === String(id)) return true;
+  return false;
+}
+
+
 /* How alike are the answer options of two questions? 1 when both have
    none (nothing to compare). */
 function qOptionsSimilarity(a, b) {
@@ -70,7 +85,7 @@ function matchCorrectedQuestion(old, fresh) {
     return {
       index: (qUidParts(best.uid) || {}).index,
       question: best,
-      kind: best.uid === (old && old.uid) ? 'same' : 'moved'
+      kind: (best.uid === (old && old.uid) || (best.qid && old.qid === best.qid)) ? 'same' : 'moved'
     };
   }
   return { index: -1, question: null, kind: 'none' };
@@ -117,7 +132,8 @@ function applyCorrectionsToList(list, fid, fresh, nowMs, opts) {
   const o = opts || {};
   const items = Array.isArray(list) ? list : [];
   const mine = it => it && it.fileId === fid ||
-    (it && String(it.uid || '').indexOf(fid + '_') === 0);
+    (it && String(it.uid || '').indexOf(fid + '_') === 0) ||
+    (it && it.qid && String(it.qid).indexOf(fid + '_') === 0);
   const res = { list: items, updated: 0, moved: 0, merged: 0, withdrawn: 0 };
   if (!Array.isArray(fresh) || !fresh.length) return res;
 

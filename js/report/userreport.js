@@ -42,7 +42,7 @@ function _openSheet(q, ctx) {
   const reasons = REPORT_REASONS.map(r =>
     '<option value="' + r + '">' + esc(REPORT_REASON_LABELS[r] || r) + '</option>'
   ).join('');
-  const prior = _rqLoad().filter(x => x && x.uid === q.uid);
+      const prior = _rqLoad().filter(x => x && x.uid === q.uid && (q.qid ? !x.qid || x.qid === q.qid : true));
   const priorNote = prior.length
     ? '<div class="banner banner-warning mb3" style="align-items:flex-start"><i class="ph ph-info"></i><span>' +
         'You already reported this question on this device' +
@@ -147,6 +147,9 @@ function _histSave(list) {
 function _histMark(uid, reason, patch) {
   _histSave(reportHistoryUpdate(_histLoad(), uid, reason, patch));
 }
+function _histMarkQid(qid, reason, patch) {
+  _histSave(reportHistoryUpdateQid(_histLoad(), qid, reason, patch));
+}
 
 function _queue(rep, reason, note, quiet) {
   const q = rep.q;
@@ -159,7 +162,7 @@ function _queue(rep, reason, note, quiet) {
   };
   const saved = _rqSave(reportQueueAdd(_rqLoad(), item, Date.now()));
   if (saved) {
-    _histSave(reportHistoryAdd(_histLoad(), {
+    _histSave(reportHistoryAddQid(_histLoad(), {
       uid: q.uid, qid: q.qid, reason: reason, note: note,
       question: (q.q || '').slice(0, 1000),
       section: rep.section,
@@ -198,13 +201,13 @@ async function _flush(quiet) {
              this flush was in flight is not overwritten by an older copy. */
           _rqSave(reportQueueRemove(_rqLoad(), it));
           if (res.success || /already/i.test(resErr)) {
-            _histMark(it.uid, it.reason, {
+            _histMarkQid(it.qid || it.uid, it.reason, {
               status: 'sent', sentAt: Date.now(),
               reportId: (res && (res.reportId || res.id)) || ''
             });
             if (res.success) sent++;
           } else {
-            _histMark(it.uid, it.reason, { status: 'failed', error: resErr || 'The server rejected this report.' });
+            _histMarkQid(it.qid || it.uid, it.reason, { status: 'failed', error: resErr || 'The server rejected this report.' });
           }
         } else {
           failed++;
@@ -471,7 +474,7 @@ const USER_REPORT = {
   },
   reportList(kind, uid) {
     const store = kind === 'bk' ? S.bk : kind === 'fl' ? S.fl : S.wr;
-    const q = (store || []).find(x => x.uid === uid);
+    const q = (store || []).find(x => x.uid === uid || (x.qid && String(x.qid) === String(uid)));
     if (!q) return;
     _openSheet(q, {
       section: kind === 'bk' ? 'review-saved'

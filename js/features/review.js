@@ -51,12 +51,12 @@ const REV = {
   toggle(kind, question) {
     if (!question || !question.uid) return false;
     const arr = REV._store(kind);
-    const i = arr.findIndex(x => x && x.uid === question.uid);
+    const i = arr.findIndex(x => x && x.uid === question.uid && (question.qid ? !x.qid || x.qid === question.qid : true));
     if (i > -1) {
       arr.splice(i, 1);
       toast(kind === 'bk' ? '⭐ Removed bookmark' : '🚩 Removed flag');
     } else {
-      arr.push(kind === 'bk' ? { ...REV._stripHeavy(question), tag: '' } : REV._stripHeavy(question));
+      arr.push(kind === 'bk' ? { ...REV._stripHeavy(question), tag: q.qid ? question.qid : '' } : REV._stripHeavy(question));
       toast(kind === 'bk' ? '⭐ Bookmarked' : '🚩 Flagged');
     }
     _save(REV._lsKey(kind), arr);
@@ -72,9 +72,9 @@ const REV = {
   
   setTag(uid, tag, questionObj) {
     if (!uid) return;
-    let item = REV._store('bk').find(x => x && x.uid === uid);
+    let item = REV._store('bk').find(x => x && x.uid === uid && (uid.indexOf('qid') !== 0 || x.qid));
     if (!item && questionObj) { 
-      item = { ...REV._stripHeavy(questionObj), tag: '' }; 
+      item = { ...REV._stripHeavy(questionObj), tag: questionObj.qid || '' }; 
       S.bk.push(item); 
     }
     if (!item) return;

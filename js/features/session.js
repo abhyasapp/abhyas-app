@@ -29,9 +29,9 @@ window.SESSION = {
     const phase = this._phase();
     const out = [], seen = new Set();
     const push = q => {
-      if (!q || !q.uid || seen.has(q.uid)) return false;
+      if (!q || !q.qid || seen.has(q.qid)) return false;
       if (out.length >= this.COUNT) return false;
-      seen.add(q.uid); out.push(q); return true;
+      seen.add(q.qid); out.push(q); return true;
     };
     const breakdown = { reviews: 0, misconceptions: 0, fresh: 0, weak: 0, fill: 0 };
 
@@ -83,7 +83,7 @@ window.SESSION = {
         const raw = await QUIZ._fetch(s.ref.fid, s.ref.key);
         const qs = normQ(raw, s.ref.fid);
         const c = cov[s.ref.fid];
-        const unseen = qs.filter(q => {
+                const unseen = qs.filter(q => {
           const parts = q.uid.split('_');
           const idx = parseInt(parts[parts.length - 1], 10);
           return !c || !c.p || c.p[idx] === '0';

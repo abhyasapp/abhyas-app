@@ -41,21 +41,23 @@ const REPORT_HISTORY_KEY = 'abhyas_report_history_v1';
 const REPORT_HISTORY_MAX = 100;
 
 function reportHistoryKey(r) {
-  return String((r && r.uid) || '') + '|' + String((r && r.reason) || '');
+  return (r && r.qid ? 'q' + r.qid : '') + '|' + String((r && r.reason) || '');
 }
 
 function reportHistoryAdd(list, entry, now) {
   const src = Array.isArray(list) ? list : [];
-  if (!entry || !entry.uid || !entry.reason) return src.slice();
+  if (!entry || !entry.reason) return src.slice();
   const key = reportHistoryKey(entry);
   const t = Number(now) || Date.now();
   const out = src.filter(x => x && reportHistoryKey(x) !== key);
-  out.push(Object.assign({ status: 'queued', reportedAt: t }, entry));
+  const copy = Object.assign({ status: 'queued', reportedAt: t }, entry);
+  if (copy.qid === undefined || copy.qid === null) delete copy.qid;
+  out.push(copy);
   return out.slice(-REPORT_HISTORY_MAX);
 }
 
 function reportHistoryUpdate(list, uid, reason, patch) {
-  const key = reportHistoryKey({ uid: uid, reason: reason });
+  const key = reportHistoryKey({ uid: uid, reason: reason, qid: null });
   return (Array.isArray(list) ? list : []).map(x =>
     x && reportHistoryKey(x) === key ? Object.assign({}, x, patch || {}) : x
   );
@@ -83,6 +85,52 @@ function reportQueueAdd(queue, report, now) {
 function reportQueueRemove(queue, report) {
   return (Array.isArray(queue) ? queue : []).filter(
     x => !(x && report && x.uid === report.uid && x.reason === report.reason)
+  );
+}
+
+/* Prefer the stable public qid when it is present; otherwise fall back to
+   the positional uid. This keeps the offline queue and history dedup keyed
+   on the readable qn id once exports carry it, without breaking legacy
+   events that carry only uid. */
+function reportHistoryKeyQid(r) {
+  return (r && r.qid ? 'q' + r.qid : '') + '|' + String((r && r.reason) || '');
+}
+
+function reportHistoryAddQid(list, entry, now) {
+  const src = Array.isArray(list) ? list : [];
+  if (!entry || !entry.reason) return src.slice();
+  const key = reportHistoryKeyQid(entry);
+  const t = Number(now) || Date.now();
+  const out = src.filter(x => x && reportHistoryKeyQid(x) !== key);
+  const copy = Object.assign({ status: 'queued', reportedAt: t }, entry);
+  if (copy.qid === undefined || copy.qid === null) delete copy.qid;
+  out.push(copy);
+  return out.slice(-REPORT_HISTORY_MAX);
+}
+
+function reportHistoryUpdateQid(list, qid, reason, patch) {
+  const key = reportHistoryKeyQid({ reason: reason, qid: qid });
+  return (Array.isArray(list) ? list : []).map(x =>
+    x && reportHistoryKeyQid(x) === key ? Object.assign({}, x, patch || {}) : x
+  );
+}
+
+function reportHistoryAdd(list, entry, now) {
+  const src = Array.isArray(list) ? list : [];
+  if (!entry || !entry.reason) return src.slice();
+  const key = reportHistoryKey(entry);
+  const t = Number(now) || Date.now();
+  const out = src.filter(x => x && reportHistoryKey(x) !== key);
+  const copy = Object.assign({ status: 'queued', reportedAt: t }, entry);
+  if (copy.qid === undefined || copy.qid === null) delete copy.qid;
+  out.push(copy);
+  return out.slice(-REPORT_HISTORY_MAX);
+}
+
+function reportHistoryUpdate(list, uid, reason, patch) {
+  const key = reportHistoryKey({ uid: uid, reason: reason, qid: null });
+  return (Array.isArray(list) ? list : []).map(x =>
+    x && reportHistoryKey(x) === key ? Object.assign({}, x, patch || {}) : x
   );
 }
 
