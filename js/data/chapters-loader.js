@@ -69,6 +69,10 @@ function clearCache() {
   try { localStorage.removeItem(CACHE_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/data/chapters-loader.js', e); }
 }
 
+/* The page CSP must allow inline script for this to run: the source is executed
+   as an inline <script> element. v2.52 dropped 'unsafe-inline' from script-src
+   and every boot died with "Chapters data loaded but did not define
+   ChapterData"; tests/csp-chapters-loader.test.js guards the coupling. */
 function runSource(source) {
   var s = document.createElement('script');
   s.textContent = source;
