@@ -119,7 +119,7 @@
     const MAP = {
       home: 'home', offline: 'offline', downloads: 'offline', progress: 'progress',
       subjective: 'subj-qotd', written: 'subj-qotd', weekly: 'weekly',
-      chapters: 'online', wrong: 'wrong', bookmarks: 'bookmarks'
+      chapters: 'online', wrong: 'wrong', bookmarks: 'bookmarks', library: 'library'
     };
     function applyHash() {
       const key = String(location.hash || '').replace(/^#/, '').toLowerCase();

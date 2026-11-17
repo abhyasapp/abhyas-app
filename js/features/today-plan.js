@@ -354,7 +354,7 @@ window.DAILY10 = {
     return n;
   },
   _prioritize(list, weak){
-    return list.slice().sort((a, b) => (weak.has(b.uid) ? 1 : 0) - (weak.has(a.uid) ? 1 : 0));
+    return list.slice().sort((a, b) => (weak.has(QKEY.of(b)) ? 1 : 0) - (weak.has(QKEY.of(a)) ? 1 : 0));
   },
   async build(){
     const fids = this._openedFids();
@@ -378,7 +378,7 @@ window.DAILY10 = {
       if (all.length >= 200) break;
     }
     for (let i = all.length - 1; i > 0; i--){ const j = Math.floor(rng() * (i + 1)); const t = all[i]; all[i] = all[j]; all[j] = t; }
-    const weak = new Set(((S.wr) || []).filter(q => q && !q._withdrawn).map(q => q.uid));
+    const weak = new Set(((S.wr) || []).filter(q => q && !q._withdrawn).map(q => QKEY.of(q)));
     return this._prioritize(all, weak).slice(0, this.COUNT);
   },
   async start(){

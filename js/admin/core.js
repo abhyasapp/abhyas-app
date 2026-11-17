@@ -393,14 +393,27 @@ const ADMIN = {
   async _enterAdminMode() {
     const gate = $('gate'); if (gate) gate.hidden = true;
     const app  = $('app');  if (app)  app.classList.add('on');
+    /* Permissions and the data lists are independent requests, so they go out
+       together instead of one after the other. The screen opens as soon as the
+       permissions are known (the lists fill in and repaint when they arrive),
+       instead of staying blank until every list has loaded. */
+    const dataP = this.refresh().catch(err => {
+      console.warn('[ADMIN] first refresh failed:', err && err.message);
+      return false;
+    });
     await this.loadPermissions();
     this._applyPermissions();            // sidebar is correct before any data arrives
-    await this.refresh();
-    this._applyPermissions();            // refresh can promote us to owner (adminListAdmins.isOwner)
-    if (!this._perms) TOAST.show('Could not load your permissions, so admin sections are hidden. Reload to try again.', 'warning', 8000);
     if (this._forcedPwChange) this.changePassword();
     const land = (UI.current && this._viewAllowed(UI.current)) ? UI.current : this.firstAllowedView();
     if (land && typeof UI !== 'undefined' && UI.nav) UI.nav(land);
+    dataP.then(() => {
+      this._applyPermissions();          // refresh can promote us to owner (adminListAdmins.isOwner)
+      if (!this._perms) TOAST.show('Could not load your permissions, so admin sections are hidden. Reload to try again.', 'warning', 8000);
+      if (typeof UI !== 'undefined' && UI.nav && UI.current && !this._viewAllowed(UI.current)) {
+        const fix = this.firstAllowedView();
+        if (fix) UI.nav(fix);
+      }
+    });
   },
 
   async login() {

@@ -65,8 +65,8 @@
         let added = 0;
         marked.forEach(idx => {
           const q = S.quiz.qs[idx];
-          if (!q || !q.uid) return;
-          const existing = (S.bk || []).find(b => b.uid === q.uid);
+          if (!q || (!q.uid && !q.qid)) return;
+          const existing = QKEY.find(S.bk || [], q);
           if (!existing) { S.bk.push(Object.assign({}, q, { tag: 'Need Check' })); added++; }
           else if (!existing.tag) { existing.tag = 'Need Check'; added++; }
         });

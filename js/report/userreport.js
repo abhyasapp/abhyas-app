@@ -30,7 +30,7 @@ let _submitting = false;
 
 function _openSheet(q, ctx) {
   if (!q) { toast('No question to report.'); return; }
-  if (!q.uid || q.fileId === 'local' || String(q.uid).indexOf('local_') === 0) {
+  if ((!q.uid && !q.qid) || q.fileId === 'local' || String(q.uid || '').indexOf('local_') === 0) {
     toast('Questions from your own question bank cannot be reported.');
     return;
   }
@@ -42,7 +42,7 @@ function _openSheet(q, ctx) {
   const reasons = REPORT_REASONS.map(r =>
     '<option value="' + r + '">' + esc(REPORT_REASON_LABELS[r] || r) + '</option>'
   ).join('');
-      const prior = _rqLoad().filter(x => x && x.uid === q.uid && (q.qid ? !x.qid || x.qid === q.qid : true));
+      const prior = _rqLoad().filter(x => x && QKEY.same(x, q));
   const priorNote = prior.length
     ? '<div class="banner banner-warning mb3" style="align-items:flex-start"><i class="ph ph-info"></i><span>' +
         'You already reported this question on this device' +
@@ -144,11 +144,13 @@ function _histSave(list) {
   try { localStorage.setItem(REPORT_HISTORY_KEY, JSON.stringify(list)); return true; }
   catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); return false; }
 }
-function _histMark(uid, reason, patch) {
-  _histSave(reportHistoryUpdate(_histLoad(), uid, reason, patch));
+/* `who` is the queued report (or question): the permanent id decides which
+   history row to update; a bare string still works for older callers. */
+function _histMark(who, reason, patch) {
+  _histSave(reportHistoryUpdate(_histLoad(), who, reason, patch));
 }
-function _histMarkQid(qid, reason, patch) {
-  _histSave(reportHistoryUpdateQid(_histLoad(), qid, reason, patch));
+function _histMarkQid(who, reason, patch) {
+  _histSave(reportHistoryUpdateQid(_histLoad(), who, reason, patch));
 }
 
 function _queue(rep, reason, note, quiet) {
@@ -160,7 +162,12 @@ function _queue(rep, reason, note, quiet) {
     options: (q.options || []).slice(0, 6),
     correct: (isNaN(Number(q.correct)) ? '' : Number(q.correct))
   };
-  const saved = _rqSave(reportQueueAdd(_rqLoad(), item, Date.now()));
+  const queued = _rqLoad();
+  if (reportQueueIsFull(queued, item)) {
+    toast('\u274c ' + REPORT_QUEUE_MAX + ' reports are already waiting to be sent. Connect to the internet and they will go out; then report this one.', 6000);
+    return false;
+  }
+  const saved = _rqSave(reportQueueAdd(queued, item, Date.now()));
   if (saved) {
     _histSave(reportHistoryAddQid(_histLoad(), {
       uid: q.uid, qid: q.qid, reason: reason, note: note,
@@ -174,6 +181,18 @@ function _queue(rep, reason, note, quiet) {
 }
 
 let _flushBusy = false;
+let _retryTimer = null;
+/* A long offline session can leave up to 100 reports. They are sent one at a
+   time (the server limits how fast reports may arrive). If the connection
+   drops or the server asks us to slow down, the rest stay queued and a retry
+   is scheduled, so nothing waits for the student to reopen the app. */
+function _scheduleRetry(ms) {
+  if (_retryTimer) return;
+  _retryTimer = setTimeout(() => {
+    _retryTimer = null;
+    try { _flush(true); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
+  }, ms);
+}
 async function _flush(quiet) {
   if (_flushBusy) return;
   if (!S.user || !S.user.username || !S.user.token) return;
@@ -184,7 +203,11 @@ async function _flush(quiet) {
   let sent = 0;
   let failed = 0;
   try {
+    const total = list.length;
+    let done = 0;
     for (const it of list.slice()) {
+      if (total > 20 && done > 0 && done % 20 === 0) toast('Sending reports\u2026 ' + done + ' of ' + total, 2500);
+      done++;
       const rep = {
         q: { uid: it.uid, qid: it.qid, q: it.q, options: it.options, correct: it.correct },
         chosen: it.chosen, section: it.section
@@ -201,19 +224,19 @@ async function _flush(quiet) {
              this flush was in flight is not overwritten by an older copy. */
           _rqSave(reportQueueRemove(_rqLoad(), it));
           if (res.success || /already/i.test(resErr)) {
-            _histMarkQid(it.qid || it.uid, it.reason, {
+            _histMarkQid(it, it.reason, {
               status: 'sent', sentAt: Date.now(),
               reportId: (res && (res.reportId || res.id)) || ''
             });
             if (res.success) sent++;
           } else {
-            _histMarkQid(it.qid || it.uid, it.reason, { status: 'failed', error: resErr || 'The server rejected this report.' });
+            _histMarkQid(it, it.reason, { status: 'failed', error: resErr || 'The server rejected this report.' });
           }
         } else {
           failed++;
-          if (/too many/i.test(resErr)) break;
+          if (/too many/i.test(resErr)) { _scheduleRetry(90 * 1000); break; }
         }
-      } catch (e) { failed++; break; }
+      } catch (e) { failed++; _scheduleRetry(45 * 1000); break; }
     }
   } finally {
     _flushBusy = false;
@@ -325,6 +348,10 @@ async function _applyCorrections(fid) {
       S[kind] = r.list;
       _save(lsKey, S[kind]);
     }
+    /* Notes follow the question to its new id (see QNOTE.rekey). */
+    if (r.rekeys && r.rekeys.length && typeof QNOTE !== 'undefined' && QNOTE.rekey) {
+      r.rekeys.forEach(k => { try { QNOTE.rekey(k.from, k.to); } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); } });
+    }
     out.updated += r.updated;
     out.moved += r.moved;
     out.merged += r.merged;
@@ -350,9 +377,9 @@ async function _applyCorrections(fid) {
 
   if (out.updated || out.moved || out.merged || out.withdrawn) {
     try {
-      ['wrong', 'bookmarks', 'flagged'].forEach(v => {
+      ['wrong', 'library', 'flagged'].forEach(v => {
         if (UI.cur === v) {
-          REV.renderList(v === 'wrong' ? 'wr' : v === 'bookmarks' ? 'bk' : 'fl');
+          REV.renderList(v === 'wrong' ? 'wr' : v === 'library' ? 'bk' : 'fl');
         }
       });
     } catch (e) { window.warnCaught && window.warnCaught('js/report/userreport.js', e); }
@@ -474,7 +501,7 @@ const USER_REPORT = {
   },
   reportList(kind, uid) {
     const store = kind === 'bk' ? S.bk : kind === 'fl' ? S.fl : S.wr;
-    const q = (store || []).find(x => x.uid === uid || (x.qid && String(x.qid) === String(uid)));
+    const q = QKEY.find(store, uid);
     if (!q) return;
     _openSheet(q, {
       section: kind === 'bk' ? 'review-saved'

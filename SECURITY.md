@@ -36,8 +36,8 @@ Note: `getcontentkey` returns the content decryption key to trial accounts unles
 
 ## Known hardening work
 
-- The CSP still allows `'unsafe-inline'` and `'unsafe-eval'` in `script-src`
-  (needed today by the `data-on-*` dispatcher in `js/core/actions.js`, which
-  compiles handlers with `new Function`, and by inline scripts in the HTML).
+- `'unsafe-eval'` was removed in 2.48: `js/core/actions.js` now parses `data-on-*`
+  handlers with a small safe interpreter instead of `new Function`.
+- As of 2.49 `script-src` allows no `'unsafe-inline'`: inline scripts moved to `js/boot/` and inline `onclick`/`onload` attributes were replaced. `style-src` still allows `'unsafe-inline'` (about 140 inline `style=` attributes).
 - The session token is stored in `localStorage`, so XSS would expose it. Every
   `innerHTML` use must go through `esc()` (`js/core/text.js`).

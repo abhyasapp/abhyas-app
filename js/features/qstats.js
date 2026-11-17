@@ -29,17 +29,38 @@ const QSTATS = {
     keys.slice(0, keys.length - this.MAX).forEach(k => { delete d[k]; });
   },
 
-  get(uid){
-    if(!uid) return null;
-    const d = this._load(), r = d[String(uid)];
+  /* Keyed by the permanent id ('q:<qid>'); a question with no qid keeps its uid.
+     Counts recorded under the old positional uid are folded into the permanent
+     id the first time that question is seen with one. */
+  _keys(who){
+    return (typeof QKEY !== 'undefined') ? QKEY.mapKeys(who) : { primary: String((who && who.uid) || who || ''), legacy: '' };
+  },
+  _slot(d, who, create){
+    const k = this._keys(who);
+    if(!k.primary) return null;
+    let r = d[k.primary];
+    if(k.legacy && d[k.legacy]){
+      const o = d[k.legacy];
+      if(!r){ r = d[k.primary] = { a: o.a || 0, c: o.c || 0, t: o.t || 0 }; }
+      else { r.a = (r.a || 0) + (o.a || 0); r.c = (r.c || 0) + (o.c || 0); r.t = Math.max(r.t || 0, o.t || 0); }
+      delete d[k.legacy];
+    }
+    if(!r && create) r = d[k.primary] = { a: 0, c: 0, t: 0 };
+    return r || null;
+  },
+
+  get(who){
+    if(!who) return null;
+    const r = this._slot(this._load(), who, false);
     if(!r || !r.a) return null;
     return { attempts: r.a, correct: r.c, p: r.c / r.a, at: r.t || 0 };
   },
 
-  record(uid, ok){
-    if(!uid) return;
-    const d = this._load(), k = String(uid);
-    const r = d[k] || (d[k] = { a: 0, c: 0, t: 0 });
+  record(who, ok){
+    if(!who) return;
+    const d = this._load();
+    const r = this._slot(d, who, true);
+    if(!r) return;
     r.a++;
     if(ok) r.c++;
     r.t = Date.now();
@@ -51,9 +72,9 @@ const QSTATS = {
     if(!Array.isArray(qres) || !qres.length) return;
     const d = this._load(), now = Date.now();
     qres.forEach(q => {
-      if(!q || !q.uid) return;
-      const k = String(q.uid);
-      const r = d[k] || (d[k] = { a: 0, c: 0, t: 0 });
+      if(!q || (!q.uid && !q.qid)) return;
+      const r = this._slot(d, q, true);
+      if(!r) return;
       r.a++;
       if(q.ok) r.c++;
       r.t = now;
@@ -62,8 +83,8 @@ const QSTATS = {
     this._save(d);
   },
 
-  difficulty(uid){
-    const s = this.get(uid);
+  difficulty(who){
+    const s = this.get(who);
     if(!s || s.attempts < 3) return 'unknown';
     if(s.p <= 0.45) return 'hard';
     if(s.p >= 0.8) return 'easy';
@@ -79,7 +100,7 @@ const QSTATS = {
     const target = this._target(phase);
     const near = [], unknown = [], far = [];
     qs.forEach(q => {
-      const s = (q && q.uid) ? this.get(q.uid) : null;
+      const s = (q && (q.uid || q.qid)) ? this.get(q) : null;
       if(!s || s.attempts < 3){ unknown.push(q); return; }
       (Math.abs(s.p - target) <= 0.2 ? near : far).push(q);
     });

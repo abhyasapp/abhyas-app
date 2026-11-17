@@ -153,7 +153,7 @@ window.QSEARCH = {
       let pool;
       try { const raw = await QUIZ._fetch(ref.fid, ref.key); pool = normQ(raw, ref.fid); }
       catch(e){ pool = [q]; }
-      const i = pool.findIndex(x => x.uid === q.uid);
+      const i = pool.findIndex(x => QKEY.same(x, q));
       const reordered = i >= 0 ? [pool[i]].concat(pool.filter((_, j) => j !== i)) : [q].concat(pool);
       const chapName = ChapterData.chapterName(ref.lv, ref.ch) + ' \u2014 ' + ref.book;
       QUIZ.startWith(reordered, 'flashcard', 'Search: ' + chapName,

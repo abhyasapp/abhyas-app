@@ -212,5 +212,8 @@ function normQ(raw, fid) {
   if (skipped > 0) console.warn(`[normQ] ${skipped}/${a.length} questions skipped in ${fid}`);
   if (!result.length) console.warn('[normQ] Zero valid questions from', fid, '— raw sample:', JSON.stringify(a[0]).slice(0, 200));
   if (NORM_CACHE && result.length) NORM_CACHE.set(raw, { fid, list: result.slice() });
+  /* Saved items from before permanent ids learn theirs the first time their
+     question is parsed again (matched by text, never by position). */
+  if (result.length && typeof QKEY !== 'undefined' && QKEY.adoptSet) QKEY.adoptSet(result);
   return result;
 }

@@ -49,8 +49,8 @@ const S = {
   if (!isObj(S.cov)) S.cov = {};
 
   // 4. Prune invalid items from arrays (failsafe against partial writes)
-  S.bk = S.bk.filter(x => x && x.uid);
-  S.fl = S.fl.filter(x => x && x.uid);
-  S.wr = S.wr.filter(x => x && x.uid);
+  S.bk = S.bk.filter(x => x && (x.uid || x.qid));
+  S.fl = S.fl.filter(x => x && (x.uid || x.qid));
+  S.wr = S.wr.filter(x => x && (x.uid || x.qid));
   S.prog.sessions = S.prog.sessions.filter(x => x && typeof x === 'object');
 })();

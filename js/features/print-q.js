@@ -42,9 +42,9 @@ window.PRINT_Q = {
         '</div>'
       ).join('');
       const why = q._reason === 'concept' ? 'Concept gap' : q._reason === 'careless' ? 'Careless' : '';
-      const note = ((typeof QNOTE !== 'undefined' && QNOTE.get) ? QNOTE.get(q.uid) : '') || q._note || '';
+      const note = ((typeof QNOTE !== 'undefined' && QNOTE.get) ? QNOTE.get(q) : '') || q._note || '';
       let miss;
-      try { miss = (typeof WRONGBY !== 'undefined' && WRONGBY.missCount) ? WRONGBY.missCount(q.uid) : 0; }
+      try { miss = (typeof WRONGBY !== 'undefined' && WRONGBY.missCount) ? WRONGBY.missCount(q.qid || q.uid) : 0; }
       catch (e) { miss = 0; }
       const metaBits = [];
       if (why) metaBits.push(why);

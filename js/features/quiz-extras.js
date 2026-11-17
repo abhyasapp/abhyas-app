@@ -35,7 +35,7 @@ QUIZ.setConf = function(level){
      any future answer surface. A guessed-correct answer is not allowed to
      take the normal long interval. */
   if (typeof REV !== 'undefined' && REV.applyConfidence) {
-    REV.applyConfidence(q.uid, level, { correct: !wasWrong });
+    REV.applyConfidence(q, level, { correct: !wasWrong });
   }
   CONF.render();
   try { if (typeof QUIZ._paintFeedback === 'function') QUIZ._paintFeedback(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
@@ -260,41 +260,83 @@ window.QNOTE = {
     try { localStorage.setItem(this.KEY, JSON.stringify(this._cache || {})); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-extras.js', e); }
   },
 
-  get(uid){
-    if (!uid) return '';
+  /* Notes live under the question's permanent id ('q:<qid>'). Content that has
+     no qid yet keeps the old positional-uid key. `who` is a question, a note key
+     or a legacy uid string. A note found under the old uid is moved to the
+     permanent id the first time it is read or written with a question that has
+     one, so it stops depending on where the question sits in its set. */
+  _keys(who){
+    const k = (typeof QKEY !== 'undefined') ? QKEY.mapKeys(who) : { primary: String((who && who.uid) || who || ''), legacy: '' };
+    return k;
+  },
+  _has(k){ return !!k && Object.prototype.hasOwnProperty.call(this._load(), k); },
+
+  /* Move a note saved under the old positional uid to the permanent id. Done on
+     every question-based read, so a later clear/edit by key can never find (or
+     resurrect) a stale positional copy. */
+  _adopt(k){
+    if (k.legacy && k.primary && k.legacy !== k.primary && this._has(k.legacy)) this.rekey(k.legacy, k.primary);
+  },
+
+  get(who){
+    const k = this._keys(who);
+    if (!k.primary) return '';
+    this._adopt(k);
     const m = this._load();
+    const v = this._has(k.primary) ? m[k.primary] : '';
     /* Reads normalise what was damaged on the way in, so a note saved before
        this existed heals on the next render. Nothing needs the pristine value:
        exports and sync read localStorage directly, and set() repairs before
        it stores. */
-    return (typeof repairPasted === 'function')
-      ? repairPasted(m[uid] || '')
-      : String(m[uid] || '');
+    return (typeof repairPasted === 'function') ? repairPasted(v || '') : String(v || '');
   },
-  set(uid, text){
-    if (!uid) return;
+  set(who, text){
+    const k = this._keys(who);
+    if (!k.primary) return;
+    this._adopt(k);
     const m = this._load();
     const raw = (typeof repairPasted === 'function')
       ? repairPasted(text)
       : String(text == null ? '' : text);
     const t = raw.slice(0, this.MAX).trim();
-    if (t) m[uid] = t; else delete m[uid];
+    if (t) m[k.primary] = t; else delete m[k.primary];
+    if (k.legacy) delete m[k.legacy];          // the old positional copy is superseded
     this._save();
   },
-  remove(uid){ this.set(uid, ''); },
+  remove(who, containerId){
+    this.set(who, '');
+    if (containerId) this.render(containerId, who);
+  },
 
-  render(containerId, uid, opts){
+  /* Move a note from one key to another (a question moved, or learned its qid).
+     Never overwrites a note already at the destination, never loses one. */
+  rekey(from, to){
+    if (!from || !to || from === to) return false;
+    const m = this._load();
+    if (!this._has(from)) return false;
+    if (!this._has(to)) m[to] = m[from];
+    delete m[from];
+    this._save();
+    return true;
+  },
+
+  _inputId(key){ return 'qnote-input-' + String(key).replace(/[^a-zA-Z0-9]/g, '_'); },
+
+  render(containerId, who, opts){
     const box = document.getElementById(containerId);
     if (!box) return;
-    box.dataset.uid = uid || '';
-    if (!uid) { box.innerHTML = ''; return; }
+    const key = this._keys(who).primary;
+    this._adopt(this._keys(who));
+    box.dataset.uid = key || '';
+    if (!key) { box.innerHTML = ''; return; }
 
-    const note = this.get(uid);
+    const note = this.get(who);
     const readOnly = !!(opts && opts.readOnly);
     const editing  = !!(opts && opts.editing);
-    const safeUid  = escAttrJs(uid);
+    /* Handlers receive the NOTE KEY, never a position. */
+    const safeUid  = escAttrJs(key);
     const safeBox  = escAttrJs(containerId);
-    const inputId  = 'qnote-input-' + String(uid).replace(/[^a-zA-Z0-9]/g, '_');
+    const inputId  = this._inputId(key);
 
     if (editing) {
       box.innerHTML =
@@ -339,19 +381,20 @@ window.QNOTE = {
       '</button>';
   },
 
-  edit(uid, containerId){ this.render(containerId, uid, { editing: true }); },
+  /* The buttons carry the note key, so edit/commit/remove act on exactly the
+     question that was on screen even if the list re-sorts underneath. */
+  edit(key, containerId){ this.render(containerId, key, { editing: true }); },
   cancel(containerId){
     const box = document.getElementById(containerId);
-    const uid = box && box.dataset ? box.dataset.uid : '';
-    this.render(containerId, uid);
+    const key = box && box.dataset ? box.dataset.uid : '';
+    this.render(containerId, key);
   },
-  commit(uid, containerId){
-    const inputId = 'qnote-input-' + String(uid).replace(/[^a-zA-Z0-9]/g, '_');
-    const ta = document.getElementById(inputId);
+  commit(key, containerId){
+    const ta = document.getElementById(this._inputId(key));
     const txt = ta ? ta.value : '';
-    this.set(uid, txt);
-    toast(this.get(uid) ? 'Note saved' : 'Note cleared');
-    this.render(containerId, uid);
+    this.set(key, txt);
+    toast(this.get(key) ? 'Note saved' : 'Note cleared');
+    this.render(containerId, key);
   }
 };
 

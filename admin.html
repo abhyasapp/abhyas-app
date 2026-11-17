@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://*.supabase.co https://script.googleusercontent.com https://accounts.google.com https://*.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; frame-src https://accounts.google.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://*.supabase.co https://script.googleusercontent.com https://accounts.google.com https://*.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; frame-src https://accounts.google.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="theme-color" content="#F6F7F6" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1213" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
@@ -885,6 +885,7 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 .rows .row{padding:10px 0}
 @media (max-width:640px){.panel{padding:var(--sp-3)}#content{padding-left:10px;padding-right:10px}}
 </style>
+<script src="js/boot/async-css.js"></script>
 </head>
 <body>
 
@@ -914,7 +915,7 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
         <label for="ad-pass">Password</label>
         <div class="pw-field">
           <input class="input" type="password" id="ad-pass" placeholder="Your password" autocomplete="current-password" enterkeyhint="go">
-          <button type="button" onclick="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button>
+          <button type="button" data-on-click="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button>
         </div>
       </div>
       <button class="btn btn-primary btn-lg btn-block" id="btn-login" type="submit">Sign in</button>
@@ -1600,13 +1601,13 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
     <div class="dialog-body">
       <div class="banner banner-warning" id="pwd-forced-note" hidden><i class="ph ph-warning"></i><span>This account is still on the default password. Set a new one to continue.</span></div>
       <div class="field"><label for="pwd-current">Current password</label>
-        <div class="pw-field"><input class="input" type="password" id="pwd-current" autocomplete="current-password"><button type="button" onclick="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
+        <div class="pw-field"><input class="input" type="password" id="pwd-current" autocomplete="current-password"><button type="button" data-on-click="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
       </div>
       <div class="field"><label for="pwd-new">New password</label>
-        <div class="pw-field"><input class="input" type="password" id="pwd-new" placeholder="At least 6 characters" autocomplete="new-password"><button type="button" onclick="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
+        <div class="pw-field"><input class="input" type="password" id="pwd-new" placeholder="At least 6 characters" autocomplete="new-password"><button type="button" data-on-click="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
       </div>
       <div class="field"><label for="pwd-confirm">Repeat new password</label>
-        <div class="pw-field"><input class="input" type="password" id="pwd-confirm" autocomplete="new-password"><button type="button" onclick="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
+        <div class="pw-field"><input class="input" type="password" id="pwd-confirm" autocomplete="new-password"><button type="button" data-on-click="togglePw(this)" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye"></i></button></div>
       </div>
     </div>
     <div class="dialog-foot">
@@ -1702,99 +1703,8 @@ th.sortable:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 
 <!-- final exposure pass -->
 <script src="js/core/expose.js"></script>
-<script>
-/* ═══════════════════════════════════════════════════════════════════════
-   admin.html — final paint pass. Everything here is a small, idempotent
-   enhancement on top of what core.js / router.js / features/* already do.
-   Nothing here introduces new behaviour; it only fills the gaps in the
-   static markup so the operator always sees accurate state.
-   ═══════════════════════════════════════════════════════════════════════ */
-(function adminFinalize(){
-  'use strict';
-
-  /* ── 1. Account name / role in the menu ── */
-  function paintAccount(){
-    if (typeof ADMIN === 'undefined' || !ADMIN.creds) return;
-    const nameEl = document.getElementById('account-name');
-    if (nameEl && nameEl.textContent !== ADMIN.creds.user) {
-      nameEl.textContent = ADMIN.creds.user || 'admin';
-    }
-    const roleEl = document.getElementById('account-role');
-    if (roleEl) {
-      const isOwner = ADMIN._perms && ADMIN._perms.role === 'owner';
-      const text = isOwner ? 'Owner' : 'Admin';
-      if (roleEl.textContent !== text) roleEl.textContent = text;
-    }
-    /* The avatar in the topbar starts as "AD" — keep it in sync. */
-    const av = document.getElementById('account-avatar');
-    if (av && ADMIN.creds.user) {
-      const initials = String(ADMIN.creds.user).slice(0, 2).toUpperCase();
-      if (av.textContent !== initials) av.textContent = initials;
-    }
-    /* Populate the settings "your account" line if that view is open. */
-    const line = document.getElementById('settings-account-line');
-    if (line) {
-      const isOwner = ADMIN._perms && ADMIN._perms.role === 'owner';
-      const text = ADMIN.creds.user + ' · ' + (isOwner ? 'Owner' : 'Admin');
-      if (line.textContent !== text) line.textContent = text;
-    }
-  }
-
-  /* ── 2. Backend-version + last-sync line in the menu ── */
-  function paintBackend(){
-    const versionEl = document.getElementById('backend-version');
-    if (versionEl) {
-      const v = (typeof APP_VERSION !== 'undefined') ? 'v' + APP_VERSION : '';
-      const text = 'Backend ' + (v || '—');
-      if (versionEl.textContent !== text) versionEl.textContent = text;
-    }
-    const syncEl = document.getElementById('backend-sync');
-    if (syncEl) {
-      const last = (typeof ADMIN !== 'undefined' && ADMIN._lastSync) || 0;
-      if (!last) {
-        if (syncEl.textContent !== 'Not synced yet') syncEl.textContent = 'Not synced yet';
-        return;
-      }
-      const mins = Math.floor((Date.now() - last) / 60000);
-      let text;
-      if (mins < 1) text = 'Synced just now';
-      else if (mins < 60) text = 'Synced ' + mins + 'm ago';
-      else text = 'Synced ' + Math.floor(mins / 60) + 'h ago';
-      if (syncEl.textContent !== text) syncEl.textContent = text;
-    }
-  }
-
-  /* ── 3. Fallback banner colour shift while a fallback is active ── */
-  window.addEventListener('abhyas:fallback', () => {
-    const bar = document.getElementById('fallback-banner');
-    if (!bar) return;
-    bar.setAttribute('data-fallback-active', '1');
-    setTimeout(() => bar.removeAttribute('data-fallback-active'), 24000);
-  });
-
-  /* ── 4. Paint immediately, then on a slow interval ── */
-  paintAccount();
-  paintBackend();
-  setTimeout(paintAccount, 500);
-  setTimeout(paintBackend, 500);
-  setTimeout(paintBackend, 3000);
-  setInterval(paintAccount, 2000);
-  setInterval(paintBackend, 3000);
-
-  /* ── 5. Populate the forced-password note when that dialog opens ── */
-  const _origChangePassword = (typeof ADMIN !== 'undefined' && ADMIN.changePassword)
-    ? ADMIN.changePassword.bind(ADMIN) : null;
-  if (_origChangePassword && ADMIN) {
-    ADMIN.changePassword = function () {
-      _origChangePassword();
-      const note = document.getElementById('pwd-forced-note');
-      if (note) note.hidden = !this._forcedPwChange;
-      const cancel = document.getElementById('pwd-cancel');
-      if (cancel) cancel.hidden = !!this._forcedPwChange;
-    };
-  }
-})();
-</script>
+<script src="js/boot/admin-boot.js"></script>
+<script defer src="js/core/no-autofill.js"></script>
 </body>
 </html>
 <!-- abhyas-hourly-challenge-v1 -->

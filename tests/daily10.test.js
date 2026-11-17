@@ -41,7 +41,7 @@ describe('Daily 10', () => {
   it('puts missed questions ahead of the rest of the pool', () => {
     const order = p.ev(`DAILY10._prioritize(
       [{ uid: 'a_1' }, { uid: 'b_2' }, { uid: 'a_3' }],
-      new Set(['b_2'])
+      new Set(['u:b_2'])   // weak set is keyed by QKEY.of(): 'q:<qid>' or 'u:<uid>'
     ).map(q => q.uid)`);
     expect(order).toEqual(['b_2', 'a_1', 'a_3']);
   });

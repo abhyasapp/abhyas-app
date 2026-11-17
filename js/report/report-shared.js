@@ -60,12 +60,22 @@ function reportHistoryAdd(list, entry, now) {
   return out.slice(-REPORT_HISTORY_MAX);
 }
 
+/* `id` is a report/question object (preferred) or a bare qid/uid string.
+   With an object the permanent id decides: two rows that both carry a qid are
+   the same question only when the qids match, whatever their uids say. */
 function reportHistoryUpdate(list, id, reason, patch) {
-  const want = String(id == null ? '' : id);
+  const ref = (id && typeof id === 'object') ? id : null;
+  const want = ref ? '' : String(id == null ? '' : id);
   const why = String(reason || '');
   return (Array.isArray(list) ? list : []).map(x => {
-    if (!x || !want) return x;
-    const mine = String(x.qid) === want || String(x.uid) === want;
+    if (!x || (!ref && !want)) return x;
+    let mine;
+    if (ref) {
+      if (ref.qid && x.qid) mine = String(ref.qid) === String(x.qid);
+      else mine = !!ref.uid && String(x.uid) === String(ref.uid);
+    } else {
+      mine = String(x.qid) === want || String(x.uid) === want;
+    }
     return (mine && String(x.reason || '') === why)
       ? Object.assign({}, x, patch || {})
       : x;
@@ -79,7 +89,10 @@ function reportHistoryUpdate(list, id, reason, patch) {
    once. The queue is capped so it can never grow without limit.
    ═══════════════════════════════════════════════════════════════════════ */
 const REPORT_REASONS = ['wrong_answer', 'unclear', 'typo', 'incomplete', 'image_problem', 'other'];
-const REPORT_QUEUE_MAX = 20;
+/* 100 reports can wait on the device (a long offline revision session). When
+   the queue is full the NEW report is refused with a message (see
+   reportQueueIsFull); an older, unsent report is never silently dropped. */
+const REPORT_QUEUE_MAX = 100;
 
 /* The queue sends reports, so it has to agree with the server on what "the
    same question" means: the stable qid when the export carries one, the
@@ -104,6 +117,15 @@ function reportQueueAdd(queue, report, now) {
   const entry = Object.assign({}, report, { note, queuedAt: Number(now) || Date.now() });
   if (dup !== -1) q[dup] = entry; else q.push(entry);
   return q.slice(-REPORT_QUEUE_MAX);
+}
+
+/* True when adding `report` would push out an unsent one. Re-reporting a
+   question+reason that is already queued just replaces it, so that is fine. */
+function reportQueueIsFull(queue, report) {
+  const q = Array.isArray(queue) ? queue.filter(x => x && reportQueueId(x)) : [];
+  if (q.length < REPORT_QUEUE_MAX) return false;
+  const key = reportQueueKey(report);
+  return !q.some(x => reportQueueKey(x) === key);
 }
 
 function reportQueueRemove(queue, report) {

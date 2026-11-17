@@ -10,8 +10,11 @@ function weakKeys(list){
   const keys = new Set();
   (Array.isArray(list) ? list : []).forEach(w => {
     if (!w || w._withdrawn) return;
-    if (w.uid) keys.add('u:' + w.uid);
+    /* A record with a permanent id is matched by it ALONE. Its uid is only where
+       the question happened to sit when it was saved, and a re-export can hand
+       that position to a different question. */
     if (w.qid !== undefined && w.qid !== null && w.qid !== '') keys.add('q:' + w.qid);
+    else if (w.uid) keys.add('u:' + w.uid);
   });
   return keys;
 }

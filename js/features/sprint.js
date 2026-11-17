@@ -873,8 +873,8 @@
           for (const w of weak) {
             const ref = _eligibleRefs().find((r) => ChapterData.chapterName(r.lv, r.ch) === w.chapter);
             if (!ref) continue;
-            const have = new Set(pool.map((q) => q.uid));
-            const more = shuf((await RUN._load(ref)).filter((q) => !have.has(q.uid)));
+            const have = new Set(pool.map((q) => QKEY.of(q)));
+            const more = shuf((await RUN._load(ref)).filter((q) => !have.has(QKEY.of(q))));
             pool = pool.concat(more.slice(0, n - pool.length));
             if (pool.length >= n) break;
           }

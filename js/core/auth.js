@@ -21,6 +21,18 @@ const AUTH = {
     const age = Date.now() - (Number(u.lastVerified) || 0);
     if (age >= 0 && age < 30 * 1000 && AUTH._isValidOffline(u)) { AUTH._enter(u); return; }
 
+    /* Don't make the student stare at a blank screen while the server wakes up
+       (an Apps Script cold start can take several seconds). A session that is
+       still inside its trial / licence window opens the app at once and is
+       verified in the background. The server stays the authority: every data
+       call carries the token, and a session the server rejects signs the
+       student out as soon as the check returns. */
+    if (AUTH._isValidOffline(u)) {
+      AUTH._enter(u);
+      AUTH._verifyInBackground(u);
+      return;
+    }
+
     try {
       const { res } = await AUTH._checkSessionOnce(u);
       if (!res.success) {
@@ -40,6 +52,23 @@ const AUTH = {
     } catch {
       if (AUTH._isValidOffline(u)) AUTH._enter(u); else AUTH._bounce();
     }
+  },
+
+  async _verifyInBackground(u) {
+    try {
+      const { res } = await AUTH._checkSessionOnce(u);
+      if (res && res.success) {
+        const updated = AUTH._buildSession(S.user || u, res);
+        _save(LS.USER, updated);
+        S.user = updated;
+        AUTH._updateSidebarCard(updated);
+        if (updated.needsPayment) AUTH._notifyPaymentNeeded();
+      } else if (res && res.sessionInvalid) {
+        try { localStorage.setItem('abhyas_notice', 'Your session expired. Please sign in again.'); } catch (e) { window.warnCaught && window.warnCaught('js/core/auth.js', e); }
+        localStorage.removeItem(LS.USER);
+        AUTH._bounce();
+      }
+    } catch (e) { /* offline or slow: stay signed in, the periodic recheck retries */ }
   },
 
   async _checkSessionOnce(u) {

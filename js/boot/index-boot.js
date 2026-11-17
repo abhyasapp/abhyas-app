@@ -1,0 +1,1 @@
+/* Gate the sign-in form only for returning users, and before first paint, so the page never collapses and re-expands. */try{var _s=JSON.parse(localStorage.getItem('abhyas_session')||'null');if(_s&&_s.type==='user'&&_s.username&&_s.token)document.documentElement.classList.add('boot-session')}catch(e){}

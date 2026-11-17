@@ -15,11 +15,9 @@ const APP = {
 
       /* v1.36: flags merged into bookmarks. One-time migration. */
       if(Array.isArray(S.fl) && S.fl.length){
-        const seen = new Set((S.bk || []).map(b => b.uid));
         S.fl.forEach(item => {
-          if(!item || !item.uid || seen.has(item.uid)) return;
+          if(!item || (!item.uid && !item.qid) || QKEY.has(S.bk, item)) return;
           S.bk.push(Object.assign({}, item, { tag: item.tag || 'Need Check' }));
-          seen.add(item.uid);
         });
         _save(LS.BK, S.bk);
         S.fl = [];

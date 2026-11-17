@@ -89,19 +89,31 @@ window.WRONGBY = {
     if (!items.length) { toast(dueOnly ? 'Nothing due here right now.' : 'No missed questions here.'); return; }
     const useFids = (fids && fids.length) ? fids : [...new Set(items.map(q => this._fidOf(q)).filter(Boolean))];
     QUIZ._showLoader('Getting your missed questions…');
-    const fresh = {};
+    /* Fresh copies are looked up by the permanent id first (a teacher may have
+       rewritten the stem or moved the question); position is only the fallback
+       for questions that have no qid. */
+    const fresh = {}, freshById = {};
     for (const fid of useFids) {
       const ref = this._ref(fid);
       if (!ref) continue;
       try {
         const raw = await QUIZ._fetch(ref.fid, ref.key);
-        normQ(raw, ref.fid).forEach(q => { fresh[q.uid] = q; });
+        normQ(raw, ref.fid).forEach(q => {
+          fresh[q.uid] = q;
+          if (q.qid !== undefined && q.qid !== null && q.qid !== '') freshById[String(q.qid)] = q;
+        });
       } catch (e) { window.warnCaught && window.warnCaught('js/features/wrong-bank-ui.js', e); }
     }
     QUIZ._hideLoader();
     const merged = items.map(q => {
-      const f = fresh[q.uid];
-      if (!f || !sameQuestionAfterCorrection(q, f, 0.6)) return q;
+      const hasId = q.qid !== undefined && q.qid !== null && q.qid !== '';
+      const byId = hasId ? freshById[String(q.qid)] : null;
+      const f = byId || fresh[q.uid];
+      if (!f) return q;
+      /* Same permanent id: it IS this question, whatever its text or position
+         is now. Otherwise the position match must also agree on the text. */
+      if (!byId && !sameQuestionAfterCorrection(q, f, 0.6)) return q;
+      if (!byId && hasId && f.qid !== undefined && f.qid !== null && f.qid !== '' && String(f.qid) !== String(q.qid)) return q;
       /* Keep every local review field, not only the four we knew about when
          this was written. New scheduling data must survive a corrected fetch. */
       const carry = {};
@@ -202,7 +214,8 @@ window.WRONGBY = {
     return r === 'concept' ? 'Concept gap' : r === 'careless' ? 'Careless' : '';
   },
 
-  async practiceSimilar(uid){
+  /* `uid` only tells us which file to load; `key` (QKEY.of) says which question. */
+  async practiceSimilar(uid, key){
     if (!uid) return;
     const fid = fidFromUid(String(uid));
     const ref = this._ref(fid);
@@ -215,7 +228,7 @@ window.WRONGBY = {
     } catch(e){ QUIZ._hideLoader(); toast('Could not load the chapter.'); return; }
     QUIZ._hideLoader();
     if (pool.length < 2){ toast('Not enough questions in this file.'); return; }
-    const current = pool.find(q => q.uid === uid);
+    const current = pool.find(q => QKEY.same(q, key || uid));
     if (!current){ toast('Could not find this question.'); return; }
     const STOP = new Set(['which','whose','what','where','when','there',
       'their','these','those','about','following','correct','choose',
@@ -226,7 +239,7 @@ window.WRONGBY = {
     const tok = s => String(s||'').toLowerCase().split(/[^a-z0-9]+/)
       .filter(w => w.length >= 5 && !STOP.has(w));
     const curTok = new Set(tok(current.q));
-    const scored = pool.filter(q => q.uid !== uid).map(q => {
+    const scored = pool.filter(q => q !== current).map(q => {
       const t = tok(q.q);
       let hits = 0;
       for (const w of t) if (curTok.has(w)) hits++;
@@ -240,16 +253,16 @@ window.WRONGBY = {
       { lv: ref.lv, ch: ref.ch, book: ref.book, sub: ref.subtopic, fid: ref.fid });
   },
 
-  setNote(uid, note){
-    if (typeof QNOTE !== 'undefined') { QNOTE.set(uid, note); return; }
-    const q = (S.wr || []).find(x => x.uid === uid);
+  setNote(who, note){
+    if (typeof QNOTE !== 'undefined') { QNOTE.set(who, note); return; }
+    const q = QKEY.find(S.wr || [], who);
     if (!q) return;
     q._note = String(note || '').slice(0, 160).trim();
     _save(LS.WR, S.wr);
   },
 
-  setReason(uid, reason){
-    const q = (S.wr || []).find(x => x.uid === uid);
+  setReason(who, reason){
+    const q = QKEY.find(S.wr || [], who);
     if (!q) return;
     q._reason = reason || '';
     if (reason === 'careless') q._misconception = true;
@@ -299,7 +312,7 @@ window.WRONGBY = {
     WRONGBY.startList(items, (want === 'concept' ? 'Concept gaps' : want === 'careless' ? 'Careless mistakes' : 'Not sorted yet') + ' \u00b7 Missed');
   },
   _hardest(){
-    return WRONGBY._items().map(q => ({ q: q, n: WRONGBY.missCount(q.uid) })).filter(x => x.n > 0)
+    return WRONGBY._items().map(q => ({ q: q, n: WRONGBY.missCount(q.qid || q.uid) })).filter(x => x.n > 0)
       .sort((a, b) => b.n - a.n || (a.q._streak || 0) - (b.q._streak || 0)).slice(0, 20);
   },
   startHardest(){ WRONGBY.startList(WRONGBY._hardest().map(x => x.q), 'Hardest 20 \u00b7 Missed'); },
@@ -314,7 +327,7 @@ window.WRONGBY = {
     const ranked = this._items().filter(q => this._due(q)).map(q => {
       const overdueDays = q._nextDue == null ? 0 : Math.max(0, Math.floor((now - q._nextDue) / day));
       const reason = this._reason(q);
-      const missed = this.missCount(q.uid);
+      const missed = this.missCount(q.qid || q.uid);
       return {
         q: q, overdueDays: overdueDays, reason: reason, missed: missed,
         score: overdueDays * 100 + missed * 10 + (reason === 'concept' ? 5 : reason === 'careless' ? 2 : 0)
@@ -444,7 +457,7 @@ window.WRONGBY = {
       '<div class="card" style="margin-bottom:var(--sp-3);background:var(--accent-soft);border-color:var(--accent-line)">' +
         '<div class="t-callout" style="color:var(--ink)">' + total + ' missed question' + (total === 1 ? '' : 's') +
         ' across ' + this._last.length + ' chapter' + (this._last.length === 1 ? '' : 's') + '.' +
-        (dueTotal ? ' <b>' + dueTotal + '</b> ready for review now.' : '') + '</div>' +
+        (dueTotal ? ' <button type="button" class="btn btn-sm btn-quiet" data-on-click="WRONGBY.tab(\'due\')"><b>' + dueTotal + '</b> due now</button>' : '') + '</div>' +
         (careless || concept
           ? '<div class="t-foot mt2" style="color:var(--ink-2)">' +
               (careless ? '<i class="ph ph-lightning"></i> ' + careless + ' careless' : '') +
@@ -454,7 +467,6 @@ window.WRONGBY = {
           : '') +
         (withdrawn ? '<div class="t-foot mt2" style="color:var(--ink-2)"><i class="ph ph-prohibit"></i> ' + withdrawn + ' withdrawn question' + (withdrawn === 1 ? '' : 's') + ' (removed from the question bank) ' + (withdrawn === 1 ? 'is' : 'are') + ' kept in the full list and left out of practice.</div>' : '') +
         '<div class="bg" style="margin-top:var(--sp-3)">' +
-          (dueTotal ? '<button class="btn btn-solid" data-on-click="WRONGBY.dueAll()"><i class="ph ph-repeat"></i> Review all ' + dueTotal + ' due now</button>' : '') +
           '<button class="btn btn-quiet" data-on-click="WRONGBY.downloadAll()" title="Download every missed question as one printable sheet" aria-label="Download all missed questions"><i class="ph ph-download-simple"></i> Download all ' + total + '</button>' +
         '</div>' +
       '</div>';

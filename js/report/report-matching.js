@@ -67,12 +67,37 @@ function sameQuestionAfterCorrection(old, fresh, minStem) {
    enough (0.6); anywhere else it must be near-identical (0.9), so a
    question that was removed is never mistaken for a similar-looking
    neighbour. */
+function _hasQid(q) { return !!q && q.qid !== undefined && q.qid !== null && String(q.qid) !== ''; }
+
+/* Key of a note in the notes map: the permanent id when there is one, else the
+   legacy positional uid (the shape notes were saved in before qids existed). */
+function qNoteKeyOf(q) {
+  if (_hasQid(q)) return 'q:' + q.qid;
+  return q && q.uid ? String(q.uid) : '';
+}
+
 function matchCorrectedQuestion(old, fresh) {
   const parts = qUidParts(old && old.uid);
   const list = Array.isArray(fresh) ? fresh : [];
+  /* The permanent id decides. A teacher may rewrite the stem completely or the
+     set may be re-ordered; neither makes it a different question, and neither
+     may make a saved question look "withdrawn". */
+  if (_hasQid(old)) {
+    const byId = list.find(q => _hasQid(q) && String(q.qid) === String(old.qid));
+    if (byId) {
+      return {
+        index: (qUidParts(byId.uid) || {}).index,
+        question: byId,
+        kind: byId.uid === old.uid ? 'same' : 'moved'
+      };
+    }
+  }
   if (parts) {
     const here = list.find(q => q && q.uid === old.uid);
-    if (here && sameQuestionAfterCorrection(old, here, 0.6)) {
+    /* Another permanent id at this position means a different question now
+       holds the slot: never match on position alone. */
+    const slotTaken = here && _hasQid(old) && _hasQid(here) && String(here.qid) !== String(old.qid);
+    if (here && !slotTaken && sameQuestionAfterCorrection(old, here, 0.6)) {
       return { index: parts.index, question: here, kind: 'same' };
     }
   }
@@ -134,7 +159,10 @@ function applyCorrectionsToList(list, fid, fresh, nowMs, opts) {
   const mine = it => it && it.fileId === fid ||
     (it && String(it.uid || '').indexOf(fid + '_') === 0) ||
     (it && it.qid && String(it.qid).indexOf(fid + '_') === 0);
-  const res = { list: items, updated: 0, moved: 0, merged: 0, withdrawn: 0 };
+  /* rekeys: notes are saved under a question's id, so when a question's id
+     changes (it moved, or it just learned its permanent id) its note has to
+     follow. The caller applies them; this function stays free of storage. */
+  const res = { list: items, updated: 0, moved: 0, merged: 0, withdrawn: 0, rekeys: [] };
   if (!Array.isArray(fresh) || !fresh.length) return res;
 
   const planned = items.map(it =>
@@ -147,7 +175,7 @@ function applyCorrectionsToList(list, fid, fresh, nowMs, opts) {
   const seen = new Set();
   const out = [];
   planned.forEach(p => {
-    if (!p.m) { out.push(p.it); seen.add(p.it && p.it.uid); return; }
+    if (!p.m) { out.push(p.it); seen.add(qIdKey(p.it)); return; }
     if (p.m.kind === 'none') {
       if (suspicious) { out.push(p.it); return; }
       if (!p.it._withdrawn) res.withdrawn++;
@@ -156,9 +184,11 @@ function applyCorrectionsToList(list, fid, fresh, nowMs, opts) {
     }
     const upd = applyQuestionCorrection(p.it, p.m.question, nowMs);
     if (upd.uid !== p.it.uid) res.moved++;
-    if (!o.keepAll && seen.has(upd.uid)) { res.merged++; return; }
+    const from = qNoteKeyOf(p.it), to = qNoteKeyOf(upd);
+    if (from && to && from !== to) res.rekeys.push({ from: from, to: to });
+    if (!o.keepAll && seen.has(qIdKey(upd))) { res.merged++; return; }
     if (questionContentChanged(p.it, p.m.question)) res.updated++;
-    seen.add(upd.uid);
+    seen.add(qIdKey(upd));
     out.push(upd);
   });
   res.list = out;

@@ -45,8 +45,8 @@ with sync_playwright() as p:
     pg.locator('#quiz-wrap button:has-text("Home")').first.click(); pg.wait_for_timeout(800)
     bk=pg.evaluate("JSON.parse(localStorage.getItem('abhyas_bk')||'[]').length")
     check('saved question lands in bookmarks',bk==1,bk)
-    pg.evaluate("UI.go('bookmarks')"); pg.wait_for_timeout(600)
-    check('bookmarks screen lists it','Sample question' in pg.evaluate("document.getElementById('view-bookmarks').innerText"))
+    pg.evaluate("UI.go('bookmarks')"); pg.wait_for_timeout(600)   # opens Library > Saved
+    check('library (Saved) lists it','Sample question' in pg.evaluate("document.getElementById('view-library').innerText"))
     # --- progress saved
     prog=pg.evaluate("JSON.parse(localStorage.getItem('abhyas_prog')||'null')")
     check('progress recorded locally', bool(prog) and prog.get('total',0)>0 if prog else False, prog if not prog else {k:prog[k] for k in ('total','correct') if k in prog})

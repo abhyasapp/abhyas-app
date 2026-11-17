@@ -243,33 +243,6 @@ const ADMIN_DRAFTS = {
       const r2 = await ADMIN.post('adminUpdateQuestionReportStatus', { id: ev.reportId, status: 'resolved' });
       if (!r2 || !r2.success) throw new Error((r2 && r2.error) || 'Saved, but the report was not closed.');
     }
-    await this._neonMirror(d);
-  },
-
-  /* The report lives in Supabase; the question itself lives in Neon, where the
-     pipeline exports it from. Once the fix is saved, the same question is found
-     in Neon by its public qn id and the correction is applied there too. A Neon
-     failure does not undo the save, but it is recorded and reported. */
-  async _neonMirror(d) {
-    const ev = adminDraftEvent(d);
-    const qn = String(ev.qid || '').trim();
-    if (!qn) { d.neon = { ok: false, skipped: 'This report carries no question id.' }; return; }
-    try {
-      const res = await ADMIN.post('adminNeonCorrect', {
-        qn: qn,
-        correctIndex: ev.after.correctIndex,
-        explanation: ev.after.explanation,
-        uid: ev.uid,
-        fileId: ev.fileId,
-        index: ev.index,
-        note: 'Console correction for report ' + (ev.reportId || 'none')
-      });
-      if (res && res.neonMissing) { d.neon = { ok: false, skipped: 'Neon is not connected on this deployment.' }; return; }
-      if (!res || !res.success) { d.neon = { ok: false, error: String((res && res.error) || 'Neon gave no answer.') }; return; }
-      d.neon = { ok: true, matchedBy: res.matchedBy, before: res.before, after: res.after };
-    } catch (e) {
-      d.neon = { ok: false, error: String((e && e.message) || 'Neon could not be reached.') };
-    }
   },
 
   _done(d) {
@@ -310,11 +283,11 @@ const ADMIN_DRAFTS = {
       } else {
         const byKey = {};
         results.forEach(x => { if (x && x.key) byKey[x.key] = x; });
-        for (const d of batch) {
+        batch.forEach(d => {
           const x = byKey[d.key];
-          if (x && x.ok) { this._done(d); ok++; await this._neonMirror(d); }
+          if (x && x.ok) { this._done(d); ok++; }
           else { this._fail(d, new Error((x && x.error) || 'The server returned no result for this fix.'), !!(x && x.conflict)); bad++; }
-        }
+        });
       }
     } finally {
       this.busy = false;
@@ -324,11 +297,6 @@ const ADMIN_DRAFTS = {
     ADMIN_REPORT._qcache = {};
     if (ok) await ADMIN_REPORT.load(true); else ADMIN_REPORT.render(ADMIN_REPORT.all);
     this.renderBar();
-    const neonBad = batch.filter(d => d.neon && !d.neon.ok && !d.neon.skipped);
-    if (neonBad.length) {
-      TOAST.show('Saved, but Neon did not take ' + neonBad.length + ' of them: ' +
-        String(neonBad[0].neon.error || 'no answer'), 'error', 8000);
-    }
     if (ok || bad) {
       TOAST.show('Pushed ' + ok + ' fix' + (ok === 1 ? '' : 'es') + (bad ? ' \u00b7 ' + bad + ' need attention' : '') +
         (ok ? '. Students get them next time they open the app online.' : ''),
@@ -456,12 +424,12 @@ const ADMIN_REPORT = {
     if (this._prefetching) return;
     this._prefetching = true;
     try {
-      const todo = this.all.filter(r => r.status === 'open' && r.uid && !this._qcache[r.id]).slice(0, 80);
+      const todo = this.all.filter(r => r.status === 'open' && (r.uid || r.qid) && !this._qcache[r.id]).slice(0, 80);
       let next = 0;
       const worker = async () => {
         while (next < todo.length) {
           const r = todo[next++];
-          const m = String(r.uid).match(/^(.+)_(\d+)$/);
+          const m = ADMIN_REPORT._ref(r);
           if (!m) continue;
           try {
             const res = await ADMIN.post('adminGetQuestion', { fileId: m[1], index: Number(m[2]), qid: r.qid });
@@ -471,6 +439,16 @@ const ADMIN_REPORT = {
       };
       await Promise.all([worker(), worker(), worker()]);
     } finally { this._prefetching = false; }
+  },
+
+  /* [_, fileId, index] for a report. The permanent qid is what finds the question
+     (the backend looks it up by id); the position is only a hint, so a report
+     whose uid carries no usable position still opens when it has a qid and a file. */
+  _ref(r) {
+    const m = String((r && r.uid) || '').match(/^(.+)_(\d+)$/);
+    if (m) return m;
+    if (r && r.qid && r.fileId) return [null, String(r.fileId), -1];
+    return null;
   },
 
   metaFor(fileId) {
@@ -773,7 +751,7 @@ const ADMIN_REPORT = {
   async editQ(id) {
     const r = this.all.find(x => x.id === id);
     if (!r) return;
-    const m = String(r.uid || '').match(/^(.+)_(\d+)$/);
+    const m = this._ref(r);
     if (!m) return TOAST.show('This report has no question reference', 'error');
     MODAL.sheet('Fix the question',
       '<div class="banner banner-info"><i class="ph ph-spinner"></i>' +
@@ -836,9 +814,9 @@ const ADMIN_REPORT = {
         '<p class="t-foot mb3">Saving queues your fix; it goes live when you push. ' +
         'Drive keeps the previous version in its version history. ' +
         'Every student\'s app replaces its copy within minutes of opening online, and updates ' +
-        'the questions they saved for review. Correct questions in place: do not delete or ' +
-        'reorder questions in the file, because students\' progress is tied to each ' +
-        'question\'s position.</p>' +
+        'the questions they saved for review. Students\' saved questions, notes and progress follow each question\'s permanent id, ' +
+        'so editing the text or reordering the file is safe. Keep every question\'s id ' +
+        'when you edit, and do not delete questions students may have saved.</p>' +
         (r.note
           ? '<div class="banner banner-info"><i class="ph ph-chat-text"></i>' +
             '<span>Student note: ' + esc(r.note) + '</span></div>'
@@ -848,8 +826,6 @@ const ADMIN_REPORT = {
             '<span><b>' + r.openReporters + ' students</b> reported this question — the fix will ' +
             'close all of their reports.</span></div>'
           : '') +
-        '<div class="t-foot mb2" id="neon-line">' +
-          '<i class="ph ph-circle-notch"></i> Looking for this question in Neon\u2026</div>' +
         '<div class="field"><label for="eq-q">Question</label>' +
           '<textarea class="textarea" id="eq-q" style="min-height:96px">' +
           esc(cur.q) + '</textarea></div>' +
@@ -880,46 +856,11 @@ const ADMIN_REPORT = {
           '<button class="btn btn-primary" style="flex:1" id="eq-save" ' +
             'data-on-click="ADMIN_REPORT.saveQ()">Queue the fix</button>' +
         '</div>';
-      this._neonLookup(r);
     } catch (e) {
       $('bd-sheet').innerHTML =
         '<div class="banner banner-danger"><i class="ph ph-warning-circle"></i>' +
         '<span>' + esc(e.message) + '</span></div>';
     }
-  },
-
-  /* The report comes from Supabase; the question it is about lives in Neon.
-     Looking it up by qn id shows, before anything is saved, whether Neon holds
-     the same question and what it currently marks correct. */
-  async _neonLookup(r) {
-    const qn = String((r && r.qid) || '').trim();
-    const paint = html => { const el = document.getElementById('neon-line'); if (el) el.innerHTML = html; };
-    if (!qn) {
-      paint('<i class="ph ph-info"></i> This report carries no question id, so Neon cannot be searched.');
-      return;
-    }
-    let res = null;
-    try { res = await ADMIN.post('adminNeonQuestion', { qn: qn }); }
-    catch (e) { res = { success: false, error: String((e && e.message) || 'Neon gave no answer.') }; }
-    if (res && res.neonMissing) {
-      paint('<i class="ph ph-info"></i> Neon is not connected on this deployment, so the fix will only reach Drive.');
-      return;
-    }
-    if (!res || !res.success) {
-      paint('<i class="ph ph-warning"></i> Neon could not be read: ' + esc(String((res && res.error) || 'no answer')));
-      return;
-    }
-    if (!res.found) {
-      paint('<i class="ph ph-info"></i> Not in Neon: no question carries <b class="mono">' + esc(qn) + '</b>.');
-      return;
-    }
-    const q = res.question || {};
-    const mark = q.correctIndex === null || q.correctIndex === undefined
-      ? 'no answer'
-      : String.fromCharCode(65 + Number(q.correctIndex));
-    paint('<i class="ph ph-check-circle"></i> Found in Neon, currently marked correct <b>' + esc(mark) + '</b>' +
-      (q.correctedAt ? ' \u00b7 last corrected ' + esc(relTime(q.correctedAt)) : ' \u00b7 never corrected') +
-      '. Pushing writes the fix there too.');
   },
 
   /* Queues the fix as a draft. No network call: the admin moves straight on to

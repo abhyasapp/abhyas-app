@@ -83,7 +83,6 @@ const UI = {
         online:     () => typeof ONPROG !== 'undefined' && ONPROG.render(),
         library:    () => typeof LIBRARY !== 'undefined' && LIBRARY.render(),
         offline:    () => typeof CACHE !== 'undefined' && CACHE.render(),
-        bookmarks:  () => typeof REV !== 'undefined' && REV.renderList('bk'),
         wrong:      () => typeof REV !== 'undefined' && REV.renderList('wr'),
         timetable:  () => typeof TT !== 'undefined' && TT.render(),
         psycho:     () => typeof PSY !== 'undefined' && PSY.init()
@@ -118,6 +117,12 @@ const UI = {
   },
 
   go(v) {
+    /* Saved questions live in My library now. Old links, shortcuts and #bookmarks
+       still work: they open the Saved tab. */
+    if (v === 'bookmarks') {
+      v = 'library';
+      if (typeof LIBRARY !== 'undefined') LIBRARY.TAB = 'saved';
+    }
     const qw = document.getElementById('quiz-wrap');
     if (S.quiz.active && qw && qw.style.display !== 'none') {
       QUIZ._exitGuard(() => UI._goRaw(v));

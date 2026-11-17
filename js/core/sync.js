@@ -137,7 +137,21 @@ function mergeSyncData(local, remote) {
     });
     return out;
   };
-  const uidOf = x => (x && x.uid !== undefined) ? 'u:' + x.uid : 'j:' + JSON.stringify(x);
+  /* A saved question is the SAME question when its permanent id matches; its uid
+     is only a position, and positions are reused when a set is re-exported. Rows
+     from before qids existed fall back to the uid. */
+  const hasQid = x => x && x.qid !== undefined && x.qid !== null && String(x.qid) !== '';
+  const uidOf = x => hasQid(x) ? 'q:' + x.qid
+    : (x && x.uid !== undefined) ? 'u:' + x.uid : 'j:' + JSON.stringify(x);
+  const stemOf = x => String((x && x.q) || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  /* One device may already have upgraded a row to its qid while another still
+     holds the legacy copy. Keep one: the upgraded row. */
+  const unionQuestions = (a, b) => {
+    const out = unionBy(a, b, uidOf);
+    const upgraded = new Set();
+    out.forEach(x => { if (hasQid(x) && x.uid !== undefined) upgraded.add(x.uid + '|' + stemOf(x)); });
+    return out.filter(x => hasQid(x) || x.uid === undefined || !upgraded.has(x.uid + '|' + stemOf(x)));
+  };
 
   const lp = isObj(L.prog) ? L.prog : {};
   const rp = isObj(R.prog) ? R.prog : {};
@@ -225,9 +239,9 @@ function mergeSyncData(local, remote) {
 
   return {
     prog, chapStats, cov, stk, qnotes, sprint, sprintLog, resets,
-    bk: unionBy(L.bk, R.bk, uidOf),
-    fl: unionBy(L.fl, R.fl, uidOf),
-    wr: unionBy(L.wr, R.wr, uidOf)
+    bk: unionQuestions(L.bk, R.bk),
+    fl: unionQuestions(L.fl, R.fl),
+    wr: unionQuestions(L.wr, R.wr)
   };
 }
 

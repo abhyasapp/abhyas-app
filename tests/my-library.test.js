@@ -13,7 +13,7 @@ describe('My library', () => {
   }, 120000);
   afterAll(() => p && p.close());
 
-  it('joins a bookmark, a missed question and a note-only entry', async () => {
+  it('joins a bookmark and a note-only entry; a missed question stays in Weak spots', async () => {
     p.ev(`
       S.bk.push({ uid: 'f1_0', q: 'A simply supported beam has what reaction?', options: ['Vertical only', 'Vertical and moment'], correct: 0 });
       S.wr.push({ uid: 'f1_1', q: 'What is the unit of torsion?', options: ['Nm', 'N/m'], correct: 0, _nextDue: Date.now(), _addedAt: Date.now() });
@@ -22,8 +22,10 @@ describe('My library', () => {
     `);
     await tick();
 
-    expect(p.ev(`document.querySelectorAll('#lib-list .lib-card').length`)).toBe(3);
-    expect(p.ev(`document.querySelector('#lib-summary').textContent`)).toContain('3 items');
+    /* f1_1 is only in the wrong bank, so it is NOT a library entry any more. */
+    expect(p.ev(`document.querySelectorAll('#lib-list .lib-card').length`)).toBe(2);
+    expect(p.ev(`document.querySelector('#lib-summary').textContent`)).toContain('2 items');
+    expect(p.ev(`document.getElementById('lib-list').textContent`)).not.toContain('unit of torsion');
   });
 
   it('searches the note text, not only the question text', async () => {
@@ -36,7 +38,7 @@ describe('My library', () => {
     p.ev(`LIBRARY.clearSearch(); LIBRARY.setTab('notes')`);
     expect(p.ev(`document.querySelectorAll('#lib-list .lib-card').length`)).toBe(1);
     p.ev(`LIBRARY.setTab('all')`);
-    expect(p.ev(`document.querySelectorAll('#lib-list .lib-card').length`)).toBe(3);
+    expect(p.ev(`document.querySelectorAll('#lib-list .lib-card').length`)).toBe(2);
   });
 
   it('reviews the selected question through the normal quiz engine', () => {

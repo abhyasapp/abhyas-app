@@ -53,6 +53,26 @@ The server code lives in [`../backend`](../backend).
 
 ### Things to know before editing
 
+- **Saved things follow the permanent question id.** Bookmarks, the wrong bank, notes
+  (`abhyas_qnotes`, key `q:<qid>`) and question stats are matched through `QKEY`
+  (`js/core/qkey.js`): same `qid` = same question, whatever its position. `uid`
+  (`fileId_position`) is only a fallback for content with no `qid`, and then only when the
+  question text still agrees. Never compare `uid` directly. Legacy rows and notes upgrade
+  themselves when their set is parsed (`QKEY.adoptSet`). Tests: `tests/qkey-identity.test.js`,
+  `tests/saved-by-qid.test.js`.
+- **Reporting is id-first end to end.** A report carries the `qid` (the `uid` is a hint).
+  The offline queue holds up to 100 reports on the device, keyed by `qid + reason`; when it
+  is full the NEW report is refused with a message, an unsent one is never dropped. A flush
+  sends them one by one, retries by itself after a dropped connection or a rate limit, and
+  marks the report-history row by `qid`. The admin screen opens a report from its `qid` +
+  file even when the `uid` has no usable position. Tests: `tests/report-qid-queue.test.js`.
+- **Sign-in speed.** A student whose stored session is still inside its trial/licence
+  window opens the app immediately and is verified in the background (a rejected session
+  signs out as soon as the answer arrives). Admin sign-in requests permissions and data
+  together and opens the first screen as soon as permissions are known.
+- **One home per idea.** Saved questions and notes live in *My library*; missed questions
+  live in *Weak spots*. `UI.go('bookmarks')` / `#bookmarks` open Library → Saved.
+
 - **Script load order matters.** `js/core/config.js` must load first and exactly once;
   `constants.js`, `text.js`, `format.js` etc. follow. Everything shares globals.
 - **Always escape.** Any dynamic value put into `innerHTML` must go through `esc()`.
@@ -119,7 +139,7 @@ feature with it — so this is the check that catches it.
 1. Tests for scoring and the quiz engine (`js/features/quiz-engine.js`). Progress sync is covered by `tests/psync.test.js`.
 2. ~~Replace the ~300 empty `catch {}` blocks with a tiny `warn()` helper~~ (done: they call `window.warnCaught` from `js/core/config.js`, silent unless `localStorage.abhyas_debug = '1'`; `no-empty` now flags empty non-catch blocks).
 3. ~~Remove `document.write` shims in `js/app/`~~ (done in 1.48.0).
-4. Move inline CSS/JS out of `user.html` / `admin.html`; then drop `'unsafe-inline'` from the CSP.
-5. Replace the `new Function` dispatcher with `addEventListener`-based delegation; then drop `'unsafe-eval'`.
+4. ~~Move inline JS out; drop `'unsafe-inline'` from `script-src`~~ (done in 2.49, scripts live in `js/boot/`). Remaining: inline CSS and `style=` attributes.
+5. ~~Replace the `new Function` dispatcher; drop `'unsafe-eval'`~~ (done in 2.48: safe interpreter in `js/core/actions.js`, covered by `tests/actions-safe.test.js`).
 6. ~~Add a licence~~ (done: proprietary, all rights reserved; a buyer needs a
    written assignment).

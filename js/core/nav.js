@@ -37,8 +37,7 @@
     sprint:     { icon: 'ph-rocket',          label: '60-day sprint',            text: 'A structured 60-day plan with daily targets — new topics, reviews and drills — plus an exam date to track your pace against.' },
     local:      { icon: 'ph-folder-open',     label: 'Open a file',              text: 'Load a question bank saved on this device. Works with no connection at all.' },
     psycho:     { icon: 'ph-lightning',       label: 'Mixed practice',           text: 'Draw from several chapters at once — closer to what the real paper feels like.' },
-    bookmarks:  { icon: 'ph-star',            label: 'Saved',                    text: 'Questions you starred to come back to.' },
-    library:    { icon: 'ph-books',           label: 'My library',               text: 'Everything you have written, saved or missed, in one searchable place.' },
+    library:    { icon: 'ph-books',           label: 'My library',               text: 'Your notes and the questions you starred, in one searchable place. Missed questions are in Weak spots.' },
     wrong:      { icon: 'ph-target',          label: 'Weak spots',               text: 'Your missed questions, grouped four ways. Due now is the default — nothing else needs your attention today.' },
     progress:   { icon: 'ph-chart-bar',       label: 'Your progress',            text: 'Accuracy, heatmap and coverage in one place. Switch tabs to change the view.' },
     offline:    { icon: 'ph-download-simple', label: 'Downloads',                text: 'Save question sets to this device so they open during load-shedding or with no signal.' },
@@ -66,9 +65,8 @@
       { view: 'subj-mine', sub: 'What you sent, and your score',    hint:  { id: 'subj-mine-hint', text: 'Nothing submitted yet' }, badge: { id: 'subj-mine-badge', cls: '', text: '0', hidden: true } }
     ]},
     { key: 'review', label: 'Review', tab: 'progress', items: [
-      { view: 'library',   sub: 'Notes, saved and missed' },
-      { view: 'wrong',     label: 'Weak spots', icon: 'ph-target', sub: 'What to work on next', count: { id: 'wrc', cls: '' } },
-      { view: 'bookmarks', sub: 'Starred for later',              count: { id: 'bkc', cls: 'ok' } }
+      { view: 'library',   sub: 'Notes and saved questions',      count: { id: 'bkc', cls: 'ok' } },
+      { view: 'wrong',     label: 'Weak spots', icon: 'ph-target', sub: 'What to work on next', count: { id: 'wrc', cls: '' } }
     ]},
     { key: 'progress', label: 'Progress & plan', tab: 'progress', items: [
       { view: 'progress',  sub: 'Accuracy, heatmap, coverage' },

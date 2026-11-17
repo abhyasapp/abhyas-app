@@ -1,6 +1,6 @@
 {
   "name": "abhyas",
-  "version": "2.48",
+  "version": "2.52",
   "private": true,
   "description": "Abhyas: Loksewa Civil Engineering exam prep (static PWA; backend in ../backend)",
   "scripts": {
@@ -23,13 +23,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/abhyasapp/sub.git",
-    "directory": "frontend"
+    "url": "git+https://github.com/abhyasapp/abhyas-app.git"
   },
   "bugs": {
-    "url": "https://github.com/abhyasapp/sub/issues"
+    "url": "https://github.com/abhyasapp/abhyas-app/issues"
   },
-  "homepage": "https://github.com/abhyasapp/sub/tree/main/frontend",
+  "homepage": "https://github.com/abhyasapp/abhyas-app",
   "author": "abhyasapp",
   "devDependencies": {
     "@eslint/js": "10.0.1",

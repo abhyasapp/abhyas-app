@@ -36,7 +36,9 @@ window.LIBRARY = {
     try {
       if (typeof QSEARCH !== 'undefined' && typeof QSEARCH._build === 'function') {
         const all = await QSEARCH._build();
-        (all || []).forEach(q => { if (q && q.uid) map.set(q.uid, q); });
+        /* Indexed by identity ('q:<qid>' or the uid), so a saved row finds its
+           question even after the set was re-exported and positions moved. */
+        (all || []).forEach(q => { if (q && (q.uid || q.qid)) map.set(QKEY.of(q), q); });
       }
     } catch (e) { window.warnCaught && window.warnCaught('js/features/my-library.js', e); }
     this._pool = map;
@@ -44,7 +46,8 @@ window.LIBRARY = {
     return map;
   },
 
-  _chapter(uid) {
+  _chapter(e) {
+    const uid = e && typeof e === 'object' ? e.uid : e;
     const fid = String(uid || '').replace(/_\d+$/, '');
     try {
       if (typeof chapterRef === 'function') {
@@ -63,13 +66,15 @@ window.LIBRARY = {
     const map = new Map();
 
     const add = (q, source) => {
-      const uid = q && q.uid;
-      if (!uid) return;
-      let e = map.get(uid);
+      if (!q || (!q.uid && !q.qid)) return;
+      const key = QKEY.of(q);
+      let e = map.get(key);
       if (!e) {
-        const full = pool.get(uid) || q;
+        const full = pool.get(key) || q;
         e = {
-          uid: uid,
+          key: key,
+          uid: full.uid || q.uid || '',
+          qid: full.qid !== undefined && full.qid !== null ? full.qid : q.qid,
           q: full.q || full.question || q.q || '',
           options: Array.isArray(full.options) ? full.options : (Array.isArray(q.options) ? q.options : []),
           explanation: full.explanation || q.explanation || '',
@@ -78,7 +83,7 @@ window.LIBRARY = {
           source: {},
           note: ''
         };
-        map.set(uid, e);
+        map.set(key, e);
       }
       e.source[source] = true;
       if (q.tag && !e.tag) e.tag = q.tag;
@@ -86,10 +91,14 @@ window.LIBRARY = {
 
     (S.bk || []).forEach(q => add(q, 'bookmark'));
     (S.fl || []).forEach(q => add(q, 'flag'));
-    (S.wr || []).forEach(q => { if (!q._withdrawn) add(q, 'missed'); });
-    Object.keys(notes).forEach(uid => add({ uid: uid }, 'note'));
+    /* A note is keyed 'q:<qid>' (or by legacy uid). Turn the key back into a
+       question reference so notes-only entries join the same card. */
+    Object.keys(notes).forEach(k => add(k.indexOf('q:') === 0 ? { qid: k.slice(2) } : { uid: k }, 'note'));
 
-    map.forEach(e => { e.note = notes[e.uid] || ''; e.chapter = this._chapter(e.uid); });
+    /* Missed questions have their own home (Weak spots). Here they only get a
+       chip when the question is in the library for another reason. */
+    map.forEach(e => { if (QKEY.has((S.wr || []).filter(q => q && !q._withdrawn), e)) e.source.missed = true; });
+    map.forEach(e => { e.note = (typeof QNOTE !== 'undefined') ? QNOTE.get(e) : (notes[e.key] || notes[e.uid] || ''); e.chapter = this._chapter(e); });
     return [...map.values()];
   },
 
@@ -108,14 +117,14 @@ window.LIBRARY = {
     return (this._entries || []).filter(e => {
       if (tab === 'notes' && !e.note) return false;
       if (tab === 'saved' && !(e.source.bookmark || e.source.flag)) return false;
-      if (tab === 'missed' && !e.source.missed) return false;
       return this._match(e, term);
     });
   },
 
   setTab(tab) {
-    this.TAB = ['all', 'notes', 'saved', 'missed'].includes(tab) ? tab : 'all';
+    this.TAB = ['all', 'notes', 'saved'].includes(tab) ? tab : 'all';
     this._syncTabs();
+    if (this.TAB !== 'saved' && !this._entries) { this.render(); return; }
     this._paint();
   },
 
@@ -144,14 +153,14 @@ window.LIBRARY = {
     if (e.note) out.push(['note', 'Note', 'ph-note']);
     if (e.source.bookmark) out.push(['bookmark', 'Saved', 'ph-star']);
     if (e.source.flag) out.push(['flag', 'Flagged', 'ph-flag']);
-    if (e.source.missed) out.push(['missed', 'Missed', 'ph-x-circle']);
+    if (e.source.missed) out.push(['missed', 'Weak spot', 'ph-target']);
     return out.map(s =>
       '<span class="ctag lib-src-' + s[0] + '"><i class="ph ' + s[2] + '"></i> ' + s[1] + '</span>'
     ).join('');
   },
 
   _card(e, i) {
-    const uid = escAttrJs(e.uid);
+    const uid = escAttrJs(e.key);
     const opts = (e.options || []).slice(0, 4).map((o, j) =>
       '<div class="eo' + (Number(e.correct) === j ? ' shc' : '') + '">' +
         String.fromCharCode(65 + j) + ') ' + esc(String(o)) +
@@ -180,9 +189,35 @@ window.LIBRARY = {
     '</div>';
   },
 
+  /* The Saved tab IS the saved-questions list (tags, report, remove, practise),
+     drawn by the same card the old Saved screen used, so nothing was lost when
+     the duplicate screen went away. */
+  _paintSaved(box) {
+    const term = String(this.TERM || '').toLowerCase().trim();
+    const list = (S.bk || []).filter(q => q && REV._matches(q, term) || (q && term && (this._noteFor(q) || '').toLowerCase().indexOf(term) !== -1));
+    const sum = document.getElementById('lib-summary');
+    if (sum) sum.textContent = list.length + ' saved question' + (list.length === 1 ? '' : 's');
+    if (!list.length) {
+      box.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-star"></i></div>' +
+        '<p>' + (term ? 'Nothing matches' : 'No saved questions yet') + '</p>' +
+        '<p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">' +
+        (term ? 'Try a shorter word.' : 'Tap the star on any question while studying to save it here.') + '</p></div>';
+      return;
+    }
+    box.innerHTML = list.slice(0, 200).map((q, i) => REV._cardHtml('bk', q, i)).join('') +
+      (list.length > 200 ? '<p class="t-foot" style="text-align:center">Showing 200 of ' + list.length + '. Search to narrow.</p>' : '');
+    try { if (typeof renderMath === 'function') renderMath(box); } catch (e) { window.warnCaught && window.warnCaught('js/features/my-library.js', e); }
+  },
+  _noteFor(q) { return (typeof QNOTE !== 'undefined') ? QNOTE.get(q) : ''; },
+
   _paint() {
     const box = document.getElementById('lib-list');
     if (!box) return;
+    const bar = document.getElementById('lib-saved-bar');
+    if (bar) bar.hidden = this.TAB !== 'saved' || !(S.bk || []).length;
+    const wk = document.getElementById('lib-weak-count');
+    if (wk) { const n = (S.wr || []).filter(q => q && !q._withdrawn).length; wk.textContent = n ? '(' + n + ')' : ''; }
+    if (this.TAB === 'saved') { this._paintSaved(box); return; }
     const rows = this._filtered();
     const sum = document.getElementById('lib-summary');
     if (sum) {
@@ -215,6 +250,8 @@ window.LIBRARY = {
     const box = document.getElementById('lib-list');
     if (!box) return;
     this._syncTabs();
+    /* Saved needs no question pool, so it opens instantly. */
+    if (this.TAB === 'saved') { box.dataset.loaded = '1'; this._paint(); return; }
     if (!this._entries) {
       box.innerHTML = '<div class="card"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div></div>';
     }
@@ -225,11 +262,11 @@ window.LIBRARY = {
   },
 
   review(uid) {
-    const e = (this._entries || []).find(x => x.uid === uid);
+    const e = (this._entries || []).find(x => x.key === uid || x.uid === uid);
     if (!e || !e.q || !e.options.length) { toast('Question details are not downloaded yet.'); return; }
     if (typeof QUIZ === 'undefined' || typeof QUIZ.startWith !== 'function') { toast('Practice is not available right now.'); return; }
     QUIZ.startWith([{
-      uid: e.uid, q: e.q, options: e.options.slice(),
+      uid: e.uid, qid: e.qid, q: e.q, options: e.options.slice(),
       correct: e.correct, explanation: e.explanation
     }], 'flashcard', 'My library', null);
   },
@@ -239,7 +276,7 @@ window.LIBRARY = {
     if (!rows.length) { toast('Nothing here can be practised yet.'); return; }
     if (typeof QUIZ === 'undefined' || typeof QUIZ.startWith !== 'function') { toast('Practice is not available right now.'); return; }
     QUIZ.startWith(rows.map(e => ({
-      uid: e.uid, q: e.q, options: e.options.slice(),
+      uid: e.uid, qid: e.qid, q: e.q, options: e.options.slice(),
       correct: e.correct, explanation: e.explanation
     })), 'flashcard', 'My library \u00b7 ' + rows.length + ' items', null);
   },

@@ -49,9 +49,9 @@ const REV = {
   },
 
   toggle(kind, question) {
-    if (!question || !question.uid) return false;
+    if (!question || (!question.uid && !question.qid)) return false;
     const arr = REV._store(kind);
-    const i = arr.findIndex(x => x && x.uid === question.uid && (question.qid ? !x.qid || x.qid === question.qid : true));
+    const i = QKEY.indexOf(arr, question);
     if (i > -1) {
       arr.splice(i, 1);
       toast(kind === 'bk' ? '⭐ Removed bookmark' : '🚩 Removed flag');
@@ -64,17 +64,18 @@ const REV = {
     return i === -1;
   },
   
-  has(kind, uid) {
-    return REV._store(kind).some(x => x && (x.uid === uid || (x.qid && String(x.qid) === String(uid))));
+  /* `who` is a question, a key from QKEY.of(), or a legacy uid/qid string. */
+  has(kind, who) {
+    return QKEY.has(REV._store(kind), who);
   },
-  getTag(uid) { 
-    const item = REV._store('bk').find(x => x && (x.uid === uid || (x.qid && String(x.qid) === String(uid))));
+  getTag(who) { 
+    const item = QKEY.find(REV._store('bk'), who);
     return item ? (item.tag || '') : ''; 
   },
   
-  setTag(uid, tag, questionObj) {
-    if (!uid) return;
-    let item = REV._store('bk').find(x => x && (x.uid === uid || (x.qid && String(x.qid) === String(uid))));
+  setTag(who, tag, questionObj) {
+    if (!who) return;
+    let item = QKEY.find(REV._store('bk'), questionObj || who);
     if (!item && questionObj) { 
       item = { ...REV._stripHeavy(questionObj), tag: '' }; 
       S.bk.push(item); 
@@ -87,9 +88,10 @@ const REV = {
   },
 
   addWrong(question) {
-    if (!question || !question.uid) return;
-    const existing = REV._store('wr').find(x => x && x.uid === question.uid);
+    if (!question || (!question.uid && !question.qid)) return;
+    const existing = QKEY.find(REV._store('wr'), question);
     if (existing) {
+      QKEY.adopt(existing, question);
       existing._streak = 0;
       existing._nextDue = Date.now();
       _save(LS.WR, S.wr);
@@ -101,14 +103,23 @@ const REV = {
     if (typeof HOME !== 'undefined') HOME.updateBadges();
   },
   
-  removeWrong(uid) {
-    if (!uid) return;
-    const i = S.wr.findIndex(x => x && x.uid === uid);
+  /* Cross-device removal markers: write the permanent id AND the legacy uid so
+     a device that only knows one of them still honours the removal. */
+  _noteRemoved(item) {
+    if (typeof PROGRESS_RESET === 'undefined' || !item) return;
+    if (item.qid) PROGRESS_RESET.noteRemoved(item.qid);
+    if (item.uid) PROGRESS_RESET.noteRemoved(item.uid);
+  },
+
+  removeWrong(who) {
+    if (!who) return;
+    const i = QKEY.indexOf(S.wr, who);
     if (i > -1) {
+      const gone = S.wr[i];
       S.wr.splice(i, 1);
       _save(LS.WR, S.wr);
       if (typeof HOME !== 'undefined') HOME.updateBadges();
-      if (typeof PROGRESS_RESET !== 'undefined') PROGRESS_RESET.noteRemoved(uid);
+      REV._noteRemoved(gone);
     }
   },
 
@@ -122,9 +133,9 @@ const REV = {
     catch (e) { return false; }
   },
   
-  graduate(uid) {
-    if (!uid) return false;
-    const i = S.wr.findIndex(x => x && x.uid === uid);
+  graduate(who) {
+    if (!who) return false;
+    const i = QKEY.indexOf(S.wr, who);
     if (i < 0) return false;
     const item = S.wr[i];
     const list = REV._masteredLoad();
@@ -136,21 +147,21 @@ const REV = {
     S.wr.splice(i, 1);
     _save(LS.WR, S.wr);
     if (typeof HOME !== 'undefined') HOME.updateBadges();
-    if (typeof PROGRESS_RESET !== 'undefined') PROGRESS_RESET.noteRemoved(uid);
+    REV._noteRemoved(item);
     REV._updateMasteredBtn();
     if (typeof toastUndo === 'function') {
-      toastUndo('Mastered: moved out of your wrong bank', () => REV._restoreOne(uid));
+      toastUndo('Mastered: moved out of your wrong bank', () => REV._restoreOne(item));
     }
     return true;
   },
   
-  _restoreOne(uid) {
-    if (!uid) return false;
+  _restoreOne(who) {
+    if (!who) return false;
     const list = REV._masteredLoad();
-    const j = list.findIndex(x => x && x.uid === uid);
+    const j = QKEY.indexOf(list, who);
     if (j < 0) return false;
     const item = list[j];
-    if (!S.wr.some(x => x && x.uid === uid)) {
+    if (!QKEY.has(S.wr, item)) {
       const back = { ...item, _streak: 0, _nextDue: Date.now(), _addedAt: Date.now() };
       delete back._masteredAt;
       S.wr.push(back);
@@ -166,10 +177,10 @@ const REV = {
   },
   
   restoreMastered() {
-    const uids = REV._masteredLoad().map(x => x && x.uid).filter(Boolean);
-    if (!uids.length) { toast('No mastered questions yet'); return; }
+    const items = REV._masteredLoad().filter(x => x && (x.qid || x.uid));
+    if (!items.length) { toast('No mastered questions yet'); return; }
     let n = 0;
-    uids.forEach(u => { if (REV._restoreOne(u)) n++; });
+    items.forEach(it => { if (REV._restoreOne(it)) n++; });
     toast('Brought back ' + n + ' mastered question' + (n === 1 ? '' : 's') + ' for revision');
   },
   
@@ -197,8 +208,8 @@ const REV = {
   /* Re-price a just-recorded answer when the learner reports confidence after
      answering (flashcards ask after the tap). This keeps the reason and due
      date honest even when the initial trackAnswer had no confidence value. */
-  applyConfidence(uid, level, opts) {
-    const item = S.wr.find(x => x && x.uid === uid);
+  applyConfidence(who, level, opts) {
+    const item = QKEY.find(S.wr, who);
     if (!item) return false;
     const correct = !!(opts && opts.correct);
     item._lastConfidence = level || '';
@@ -213,7 +224,7 @@ const REV = {
       const last = item._lastTrack;
       if (last && Date.now() - last.at < 15 * 60 * 1000) {
         const next = level === 'guess' ? last.before : last.before + 1;
-        if (next >= WR_GRADUATE_AT) { REV.graduate(uid); return true; }
+        if (next >= WR_GRADUATE_AT) { REV.graduate(item); return true; }
         item._streak = next;
         item._nextDue = Date.now() + REV.intervalFor(last.before, level) * 24 * 60 * 60 * 1000;
         if (level === 'guess') item._guessed = (Number(item._guessed) || 0) + 1;
@@ -227,11 +238,12 @@ const REV = {
   },
 
   trackAnswer(question, isCorrect, opts) {
-    if (!question || !question.uid) return;
+    if (!question || (!question.uid && !question.qid)) return;
     const confidence = (opts && opts.conf) || '';
     if (isCorrect) {
-      const item = S.wr.find(x => x && x.uid === question.uid);
+      const item = QKEY.find(S.wr, question);
       if (!item) return;
+      QKEY.adopt(item, question);
       /* Every correct answer counts toward mastery, even one given before
          the scheduled review date. Five in a row graduates the question.
          A guessed-correct answer is evidence of luck, not recall, so it
@@ -240,7 +252,7 @@ const REV = {
       const next = confidence === 'guess' ? prev : prev + 1;
       item._lastConfidence = confidence;
       item._lastTrack = { at: Date.now(), before: prev, after: next, conf: confidence };
-      if (next >= WR_GRADUATE_AT) { REV.graduate(question.uid); return; }
+      if (next >= WR_GRADUATE_AT) { REV.graduate(item); return; }
       item._streak = next;
       const wait = REV.intervalFor(prev, confidence);
       item._nextDue = Date.now() + wait * 24 * 60 * 60 * 1000;
@@ -248,7 +260,7 @@ const REV = {
       if (typeof HOME !== 'undefined') HOME.updateBadges?.();
     } else {
       REV.addWrong(question);
-      const item = S.wr.find(x => x && x.uid === question.uid);
+      const item = QKEY.find(S.wr, question);
       if (item) {
         item._lastConfidence = confidence;
         if (confidence === 'sure') { item._reason = 'careless'; item._misconception = true; }
@@ -298,7 +310,7 @@ const REV = {
             return `<div class="eo${c ? ' shc' : ''}">${String.fromCharCode(65 + j)}) ${esc(o)}</div>`;
           }).join('');
           
-          const uidJson = JSON.stringify(String(q.uid || ''));
+          const uidJson = JSON.stringify(QKEY.of(q));
           const kindJson = JSON.stringify(kind);
           
           const tagPicker = kind === 'bk' ? `
@@ -317,7 +329,7 @@ const REV = {
           })() : '';
           
           const notePicker = kind === 'wr' ? (() => {
-            const n = (typeof QNOTE !== 'undefined') ? QNOTE.get(q.uid) : String(q._note || '');
+            const n = (typeof QNOTE !== 'undefined') ? QNOTE.get(q) : String(q._note || '');
             return `<div style="margin-top:.4rem">` +
               `<input class="input" type="text" maxlength="500" ` +
               `placeholder="Your note on this question (optional)" ` +
@@ -329,7 +341,7 @@ const REV = {
           
           let missBadge = '';
           if (kind === 'wr' && typeof WRONGBY !== 'undefined') {
-            const mc = WRONGBY.missCount(q.uid);
+            const mc = WRONGBY.missCount(q.qid || q.uid);
             if (mc >= 3) missBadge = `<span class="ctag tr" style="margin-left:.3rem" title="You have missed this question ${mc} times"><i class="ph ph-warning"></i> missed ${mc}\u00d7</span>`;
           }
           
@@ -367,6 +379,11 @@ const REV = {
   },
 
   renderList(kind) {
+    /* Saved questions are drawn by My library; keep it in step. */
+    if (kind === 'bk' || kind === 'fl') {
+      if (kind === 'bk' && typeof UI !== 'undefined' && UI.cur === 'library' && typeof LIBRARY !== 'undefined') LIBRARY.render();
+      return;
+    }
     let arr = REV._store(kind);
     REV._loadFilters();
     
@@ -410,10 +427,10 @@ const REV = {
     });
   },
 
-  _removeOne(kind, uid) {
-    if (!uid) return;
+  _removeOne(kind, who) {
+    if (!who) return;
     const arr = REV._store(kind);
-    const i = arr.findIndex(x => x && x.uid === uid);
+    const i = QKEY.indexOf(arr, who);
     if (i > -1) {
       const item = arr[i];
       arr.splice(i, 1);
@@ -421,9 +438,9 @@ const REV = {
       REV.renderList(kind);
       if (typeof HOME !== 'undefined') HOME.updateBadges();
       if (kind === 'wr' && typeof PROGRESS_RESET !== 'undefined') {
-        PROGRESS_RESET.noteRemoved(uid);
+        REV._noteRemoved(item);
         toastUndo('Removed from wrong bank', () => {
-          if (S.wr.some(x => x && x.uid === uid)) return;
+          if (QKEY.has(S.wr, item)) return;
           S.wr.push({ ...item, _addedAt: Date.now() });
           _save(LS.WR, S.wr);
           REV.renderList('wr');

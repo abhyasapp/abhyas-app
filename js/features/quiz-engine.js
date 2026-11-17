@@ -846,7 +846,7 @@ const QUIZ = {
       if(q.img && fcImgWrap && fcImg){ fcImg.src = q.img; fcImg.alt = q.imgCaption || 'Question figure'; fcImgWrap.style.display = ''; }
       else if(fcImgWrap){ fcImgWrap.style.display = 'none'; }
 
-      const isStarred = REV.has('bk', q.uid);
+      const isStarred = REV.has('bk', q);
       const reviewControls = S.quiz.reviewOnly ? '' : `
         <button class="ib ${isStarred?'bk-on':''}" data-on-click="QUIZ._star()" title="Save this question" aria-label="Save this question" aria-pressed="${isStarred?'true':'false'}"><i class="ph ph-star"></i></button>
       `;
@@ -857,7 +857,7 @@ const QUIZ = {
         ${qSearchHtml(q)}
         ${S.quiz.reviewOnly ? '' : `<select class="sel-c" style="font-size:.68rem;padding:.2rem .35rem;width:auto" data-on-change="QUIZ._tagCurrent(this.value)">
           <option value="">🏷 Tag…</option>
-          ${BK_TAGS.map(t=>`<option value="${t}" ${REV.getTag(q.uid)===t?'selected':''}>${t}</option>`).join('')}
+          ${BK_TAGS.map(t=>`<option value="${t}" ${REV.getTag(q)===t?'selected':''}>${t}</option>`).join('')}
         </select>`}
       `;
 
@@ -936,7 +936,7 @@ const QUIZ = {
 
       try {
         if (typeof QNOTE !== 'undefined'){
-          if (answered) QNOTE.render('fc-note', q.uid);
+          if (answered) QNOTE.render('fc-note', q);
           else { const b = document.getElementById('fc-note'); if (b) b.innerHTML = ''; }
         }
       } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
@@ -954,7 +954,7 @@ const QUIZ = {
           if (wrong && !S.quiz.reviewOnly && S.quiz.scope && S.quiz.scope.fid){
             wrap.innerHTML =
               '<button type="button" class="qnote-add" style="border-color:var(--accent-line);color:var(--accent)" ' +
-              'data-on-click="WRONGBY.practiceSimilar(\'' + escAttrJs(q.uid) + '\')">' +
+              'data-on-click="WRONGBY.practiceSimilar(\'' + escAttrJs(q.uid) + '\',\'' + escAttrJs(QKEY.of(q)) + '\')">' +
               '<i class="ph ph-target"></i> Practice 5 more like this' +
               '</button>';
           } else {
@@ -1262,7 +1262,7 @@ const QUIZ = {
     if(S.quiz.reviewOnly) return;
     const q=S.quiz.qs[S.quiz.idx];
     if(!q) return;
-    REV.setTag(q.uid, tag, q);
+    REV.setTag(q, tag, q);
     QUIZ._renderFlashcard();
   },
   fcFinish(){
@@ -1805,7 +1805,7 @@ const QUIZ = {
          (add / edit / delete, cloud-synced per question) — the natural moment
          to write one is right after seeing why an answer was wrong. */
       if (typeof QNOTE !== 'undefined') {
-        S.quiz.qs.forEach((q, i) => { try { QNOTE.render('res-note-' + i, q.uid); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } });
+        S.quiz.qs.forEach((q, i) => { try { QNOTE.render('res-note-' + i, q); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } });
       }
       renderMath(document.getElementById('res-review'));
       QUIZ._renderReviewChapters();
