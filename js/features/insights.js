@@ -631,11 +631,11 @@ window.HARDEST20 = {
     const scored = [];
     for (let i = 0; i < list.length; i++){
       const q = list[i];
-      const hist = QHIST.forUid(q.qid || q.uid);
+      const hist = QHIST.forUid(q);
       if (!hist || hist.seen < 2) continue;
       const rate = hist.correct / hist.seen;
       if (rate >= 0.7) continue;
-      scored.push({ q: q, miss: WRONGBY.missCount(q.qid || q.uid), rate: rate });
+      scored.push({ q: q, miss: WRONGBY.missCount(q), rate: rate });
     }
     scored.sort(function(a, b){
       if (b.miss !== a.miss) return b.miss - a.miss;

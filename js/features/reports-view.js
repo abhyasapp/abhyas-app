@@ -43,7 +43,7 @@
           (r.note ? '<div class="sub-feedback">' + esc(r.note) + '</div>' : '') +
           (failed && r.error ? '<div class="t-foot" style="color:var(--danger);margin-top:6px">' + esc(r.error) + '</div>' : '') +
           '<div class="t-cap mt2">' + esc(section) +
-            (r.qid ? ' \u00b7 question ' + esc(String(r.qid)) : '') +
+            ((r.pqn || r.qid) ? ' \u00b7 question ' + esc(String(r.pqn || r.qid)) : '') +
             ' \u00b7 kept on this device</div>' +
         '</div>';
       }).join('');

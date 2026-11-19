@@ -20,9 +20,11 @@ const g = loadGlobals(['js/core/question.js'], {
 const q = (extra = {}) => ({ q: 'Stem', options: ['a', 'b', 'c', 'd'], correct: 0, ...extra });
 
 describe('question identity from content', () => {
-  it('prefers the published public_qn over the internal id', () => {
+  it('prefers the NON-PUBLIC id over the public number, and keeps both', () => {
     const [item] = g.normQ([q({ id: 48213, public_qn: 'G0011.110001' })], 'fileA');
-    expect(item.qid).toBe('G0011.110001');
+    expect(item.qid).toBe(48213);              // primary = non-public id
+    expect(item.nid).toBe(48213);
+    expect(item.pqn).toBe('G0011.110001');
   });
 
   it('keeps the numeric id when no public id is published', () => {

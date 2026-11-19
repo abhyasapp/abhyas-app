@@ -46,6 +46,63 @@ const COV = {
     if(!S.cov || typeof S.cov !== 'object' || Array.isArray(S.cov)) S.cov = {};
     return true;
   },
+  /* Coverage is recorded TWICE, and the two copies have different jobs:
+       m  { <primary id>: '1'|'2' }  the truth for every question that has an id
+          (non-public id, else public number), so it survives a re-export;
+       p  a string with one character per POSITION in the file (0 unseen, 1 right,
+          2 wrong): the fast form the sprint, insights and chapter screens read.
+     p is a cache of m for the file's CURRENT order. alignSet() rebuilds it
+     whenever a file's order changes, so no screen ever reads bits that belong to
+     another question. Questions with no id only have p (position is all there is). */
+  _idKey(q){
+    if(typeof QKEY === 'undefined') return '';
+    const k = QKEY.of(q);
+    return k && k.charAt(0) === 'q' ? k.slice(2) : '';
+  },
+  _sig(questions){
+    let h = 5381, n = 0;
+    for(const q of questions){
+      const k = COV._idKey(q) || '-';
+      for(let i = 0; i < k.length; i++) h = ((h << 5) + h + k.charCodeAt(i)) | 0;
+      h = ((h << 5) + h + 124) | 0; n++;
+    }
+    return n + ':' + h;
+  },
+  /* Called once per parsed set (normQ). Cheap when nothing changed. */
+  alignSet(questions){
+    try {
+      if(!Array.isArray(questions) || !questions.length || !COV._ok() || typeof QKEY === 'undefined') return;
+      const fid = questions[0] && questions[0].fileId;
+      const rec = fid && S.cov[fid];
+      if(!rec || !COV._idKey(questions[0]) && !questions.some(q => COV._idKey(q))) return;
+      const sig = COV._sig(questions);
+      if(rec.sig === sig) return;
+      let changed = false;
+      const pstr = String(rec.p || '');
+      rec.m = (rec.m && typeof rec.m === 'object') ? rec.m : {};
+      let trustBits = false;
+      if(rec.sig === undefined){
+        /* First time this file is seen with ids. The old position bits can be
+           trusted only if the file is still in the order they were recorded
+           against. Anything already recorded BY ID is a witness: if each such
+           question still sits at a position whose bit agrees, the order is
+           unchanged; one disagreement means it moved, and the bits are dropped
+           in favour of the ids. */
+        const pos = new Map();
+        questions.forEach((q, i) => { const k = COV._idKey(q); if(k) pos.set(k, i); });
+        trustBits = Object.keys(rec.m).every(k => !pos.has(k) || pstr[pos.get(k)] === rec.m[k]);
+      }
+      if(trustBits || (rec.sig === undefined && !Object.keys(rec.m).length)){
+        questions.forEach((q, i) => { const k = COV._idKey(q); const b = pstr[i]; if(k && b && b !== '0' && !rec.m[k]) rec.m[k] = b; });
+      } else {
+        /* The order changed (re-export, questions added or removed), or a merge
+           added ids from another device: rebuild p from the ids for the current order. */
+        rec.p = questions.map((q, i) => { const k = COV._idKey(q); return k ? (rec.m[k] || '0') : (pstr[i] || '0'); }).join('');
+      }
+      rec.sig = sig; changed = true;
+      if(changed) _save(LS.COV, S.cov);
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/chapter-stats.js', e); }
+  },
   _add(q){
     if(!q || !q.uid) return;
     const uid = String(q.uid);
@@ -59,6 +116,8 @@ const COV = {
     rec.t = Date.now();      /* v1.33: lets a reset on another device tell old coverage from new */
     if(rec.p.length <= idx) rec.p = rec.p.padEnd(idx + 1, '0');
     rec.p = rec.p.slice(0, idx) + (q.ok ? '1' : '2') + rec.p.slice(idx + 1);
+    const ik = COV._idKey(q);
+    if(ik){ (rec.m || (rec.m = {}))[ik] = q.ok ? '1' : '2'; }
     rec.a = (rec.a || 0) + 1;
     if(q.ok) rec.c = (rec.c || 0) + 1;
   },
@@ -82,7 +141,16 @@ const COV = {
       if(!r || typeof r !== 'object') return;
       const rp = String(r.p || '');
       const l = S.cov[fid];
-      if(!l){ S.cov[fid] = {p: rp, a: Number(r.a) || 0, c: Number(r.c) || 0, t: Number(r.t) || 0}; return; }
+      const rm = (r.m && typeof r.m === 'object') ? r.m : null;
+      if(!l){ S.cov[fid] = {p: rp, a: Number(r.a) || 0, c: Number(r.c) || 0, t: Number(r.t) || 0}; if(rm) S.cov[fid].m = Object.assign({}, rm); return; }
+      if(rm){
+        /* Ids are the truth: union them (a wrong answer '2' is kept over nothing,
+           a later right answer on THIS device is kept), then force a realign so p
+           is rebuilt for the current order of the file. */
+        l.m = l.m || {};
+        Object.keys(rm).forEach(k => { if(!l.m[k]) l.m[k] = rm[k]; });
+        l.sig = '';
+      }
       let out = '';
       const n = Math.max(rp.length, l.p.length);
       for(let i = 0; i < n; i++){

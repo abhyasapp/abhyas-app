@@ -23,7 +23,7 @@ const S = {
 
 // These two scripts attach to UI objects at load time; the indexes under test
 // only need the shared state, so stand the rest in inertly.
-const g = loadGlobals(['js/features/quiz-extras.js', 'js/features/wrong-bank-ui.js'], {
+const g = loadGlobals(['js/core/qkey.js', 'js/features/quiz-extras.js', 'js/features/wrong-bank-ui.js'], {
   S,
   QUIZ: {},
   REV: { renderList() {} },

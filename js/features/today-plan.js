@@ -370,7 +370,7 @@ window.DAILY10 = {
         const raw = await QUIZ._fetch(ref.fid, ref.key);
         const qs = normQ(raw, ref.fid);
         for (const q of qs){
-          const hist = (typeof QHIST !== 'undefined') ? QHIST.forUid(q.uid) : null;
+          const hist = (typeof QHIST !== 'undefined') ? QHIST.forUid(q) : null;
           if (hist && hist.seen > 0 && hist.correct === hist.seen) continue;
           all.push(q);
         }

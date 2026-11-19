@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { loadGlobals } from './helpers/load-globals.js';
 
-const g = loadGlobals(['js/report/report-shared.js']);
+const g = loadGlobals(['js/core/qkey.js', 'js/report/report-shared.js']);
 
 describe('student report history', () => {
   it('adds a queued report with its question and timestamp', () => {

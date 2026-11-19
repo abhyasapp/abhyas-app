@@ -29,7 +29,7 @@ window.SESSION = {
     const phase = this._phase();
     const out = [], seen = new Set();
     const push = q => {
-      const key = q && (q.qid || q.uid);
+      const key = q && QKEY.of(q);
       if (!key || seen.has(key)) return false;
       if (out.length >= this.COUNT) return false;
       seen.add(key); out.push(q); return true;

@@ -51,15 +51,47 @@ There is no build step: the app is static files (plain browser scripts, no bundl
 `abhyasEndpointFor(action)` in `js/core/config.js` decides which tier an action goes to.
 The server code lives in [`../backend`](../backend).
 
+## Content (chapters) delivery — the single point of failure, and how it is contained
+
+The app cannot run without `chapters-data.js` from the content repo. `js/data/chapters-loader.js`:
+
+- tries several **mirrors** of the same file (jsDelivr, its fastly and gcore hosts, raw GitHub), all derived
+  from `CONTENT_CDN_BASE`. To pin content to a tag or commit, change `@main` to `@<tag-or-sha>` there once
+  and every mirror follows;
+- trusts a download only if it **looks like** the chapters file, and keeps it as the "last good" copy only after it
+  has **run and passed the contract** (`ChapterData.levels / chapterName / allFileRefs`). A bad commit to the
+  content repo therefore falls back to the last good copy instead of breaking learners, and the bad file is
+  remembered so it is not stored again;
+- runs the source from a `blob:` URL, so `script-src` needs no `'unsafe-inline'`;
+- makes the app wait (`ChapterDataReady`) and shows a retry screen that also retries when the device is back online;
+- reports `boot_failure` / `csp` to the activity log (`crash-report.js`).
+
+**Deploy gate:** `tools/e2e/smoke_browser.py` loads the app in real Chromium cold then warm and fails on any console
+error, CSP violation, missing `ChapterData` or icon font. It runs in `verify.yml` (normal, bad-commit, mirror-down,
+poisoned-cache) and in `smoke-live.yml` against the deployed site and the real CDN.
+Run it locally: `python3 tools/e2e/smoke_browser.py --scenario bad-commit`.
+
+- **Sync you can see.** `PSYNC.describe()` says in words whether work is only on the device, uploading, failed
+  or safely backed up (with the number of waiting changes); the results screen and the toolbar button show it.
+- **App lock.** An optional PIN for shared phones (`js/features/app-lock.js`): salted PBKDF2 hash, locks on open and
+  after 3 minutes in the background, wrong-try back-off, "forgot" = sign out. It keeps casual snoopers out; it is not
+  protection against someone inspecting the device. Browser test: `python3 tools/e2e/applock.py`.
+- **Admin permissions are explained.** A button the admin may not use shows as a locked button naming the permission
+  (`ADMIN.lockedBtn`), instead of silently disappearing.
+
 ### Things to know before editing
 
-- **Saved things follow the permanent question id.** Bookmarks, the wrong bank, notes
-  (`abhyas_qnotes`, key `q:<qid>`) and question stats are matched through `QKEY`
-  (`js/core/qkey.js`): same `qid` = same question, whatever its position. `uid`
-  (`fileId_position`) is only a fallback for content with no `qid`, and then only when the
-  question text still agrees. Never compare `uid` directly. Legacy rows and notes upgrade
-  themselves when their set is parsed (`QKEY.adoptSet`). Tests: `tests/qkey-identity.test.js`,
-  `tests/saved-by-qid.test.js`.
+- **Every question is identified by id, in this priority: NON-PUBLIC id, then PUBLIC number, then position.**
+  `QKEY` (`js/core/qkey.js`) is the one definition. `nid` is the internal numeric id; `pqn` is the readable
+  `public_qn` (`"G0011.110001"`); `uid` (`fileId_position`) is the last resort, used only for content that publishes
+  neither id and only while the question text still agrees. `qid` is kept on every record as the primary of those
+  (`nid`, else `pqn`) because older code and the backend read it; a stored `qid` is classified by its shape (digits only
+  = non-public id, anything else = public number), so data saved before this priority existed keeps working and upgrades
+  itself when its set is next parsed (`QKEY.adoptSet`). Never compare `uid` or `qid` directly: use `QKEY.same / of /
+  ids / mapKeys / mergeLists / makeIndex`. This covers solving history, misses, coverage (`S.cov.<file>.m` is keyed by id;
+  its position string `p` is rebuilt for the file's current order), bookmarks, the wrong bank, notes, stats, sync,
+  backup export and import, corrections and reports (which now send `uid`, `qid`, `nid` and `pqn`; the server should
+  match by `nid`, then `pqn`, then `uid`). Tests: `tests/id-priority.test.js`, `qkey-identity`, `saved-by-qid`.
 - **Reporting is id-first end to end.** A report carries the `qid` (the `uid` is a hint).
   The offline queue holds up to 100 reports on the device, keyed by `qid + reason`; when it
   is full the NEW report is refused with a message, an unsent one is never dropped. A flush

@@ -116,7 +116,7 @@ const PAYMENTS = {
           (p.status === 'pending' && canReview
             ? '<button class="btn btn-primary btn-sm" data-on-click="PAYMENTS.review(\'' + un + '\')">Review</button>'
             : '<button class="icon-btn sm" data-on-click="PAYMENTS.review(\'' + un + '\')" aria-label="Open payment from ' + esc(p.username) + '" title="Open"><i class="ph ph-arrow-right"></i></button>') +
-          (canReview ? '<button class="icon-btn sm danger" data-on-click="PAYMENTS.del(\'' + un + '\')" aria-label="Delete payment record" title="Delete record"><i class="ph ph-trash"></i></button>' : '') +
+          (canReview ? '<button class="icon-btn sm danger" data-on-click="PAYMENTS.del(\'' + un + '\')" aria-label="Delete payment record" title="Delete record"><i class="ph ph-trash"></i></button>' : ADMIN.lockedBtn('payments_review', 'Delete record')) +
         '</div></td></tr>';
     }).join('');
     PAGINATION.render('p-pg', ADMIN.state.pPage, total, 'PAYMENTS.goPage', rows.length);

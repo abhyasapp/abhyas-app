@@ -92,7 +92,7 @@ window.WRONGBY = {
     /* Fresh copies are looked up by the permanent id first (a teacher may have
        rewritten the stem or moved the question); position is only the fallback
        for questions that have no qid. */
-    const fresh = {}, freshById = {};
+    const fresh = {}, byNid = {}, byPqn = {};
     for (const fid of useFids) {
       const ref = this._ref(fid);
       if (!ref) continue;
@@ -100,20 +100,32 @@ window.WRONGBY = {
         const raw = await QUIZ._fetch(ref.fid, ref.key);
         normQ(raw, ref.fid).forEach(q => {
           fresh[q.uid] = q;
-          if (q.qid !== undefined && q.qid !== null && q.qid !== '') freshById[String(q.qid)] = q;
+          const k = QKEY.ids(q);
+          if (k.nid) byNid[k.nid] = q;
+          if (k.pqn) byPqn[k.pqn] = q;
         });
       } catch (e) { window.warnCaught && window.warnCaught('js/features/wrong-bank-ui.js', e); }
     }
     QUIZ._hideLoader();
+    /* The corrected copy of a saved question is found by id, in priority order:
+       non-public id, then public number, and only for a question that has no id
+       (or whose file publishes none) by position, and then only if the text
+       still agrees. A position that now holds a different id is never matched. */
     const merged = items.map(q => {
-      const hasId = q.qid !== undefined && q.qid !== null && q.qid !== '';
-      const byId = hasId ? freshById[String(q.qid)] : null;
-      const f = byId || fresh[q.uid];
-      if (!f) return q;
-      /* Same permanent id: it IS this question, whatever its text or position
-         is now. Otherwise the position match must also agree on the text. */
-      if (!byId && !sameQuestionAfterCorrection(q, f, 0.6)) return q;
-      if (!byId && hasId && f.qid !== undefined && f.qid !== null && f.qid !== '' && String(f.qid) !== String(q.qid)) return q;
+      const k = QKEY.ids(q);
+      let f = (k.nid && byNid[k.nid]) || null;
+      if (!f && k.pqn && byPqn[k.pqn]) {
+        const c = byPqn[k.pqn], ck = QKEY.ids(c);
+        if (!(k.nid && ck.nid && k.nid !== ck.nid)) f = c;
+      }
+      if (!f) {
+        const c = fresh[q.uid];
+        if (!c) return q;
+        const ck = QKEY.ids(c);
+        if ((k.nid || k.pqn) && (ck.nid || ck.pqn)) return q;       // both have ids and they differ: another question
+        if (!sameQuestionAfterCorrection(q, c, 0.6)) return q;
+        f = c;
+      }
       /* Keep every local review field, not only the four we knew about when
          this was written. New scheduling data must survive a corrected fetch. */
       const carry = {};
@@ -176,39 +188,34 @@ window.WRONGBY = {
   /* Build every uid's miss count in one pass. The old version walked every
      session for every uid, which made the hardest-20 and review-plan views
      quadratic as the session history grew. */
-  /* Misses counted per question, reachable by stable qid and by the positional
-     uid each answer was recorded under. Keying only on uid made a miss count
-     disappear as soon as a set was re-exported, and a lookup by qid (what
-     insights uses) always found zero. */
+  /* Misses counted per question. A question is recognised by its ids in priority
+     order: non-public id, then public number, and only for answers recorded with
+     neither (older history) its position. An answer that carries an id is never
+     merged with another question just because they shared a position, and a
+     re-exported set keeps its counts. */
   _missIndex(){
     if (this._missCache) return this._missCache;
-    const counts = Object.create(null);  // identity -> misses
-    const name = Object.create(null);    // any uid/qid seen -> identity
-    const prog = S.prog;
-    let sessions = prog && prog.sessions;
-    if (!Array.isArray(sessions)) sessions = [];
+    const ix = QKEY.makeIndex(), counts = Object.create(null);
+    const raw = S.prog && S.prog.sessions;                 // one read: the history can be large
+    const sessions = Array.isArray(raw) ? raw : [];
     for (let i = 0; i < sessions.length; i++){
       const qres = sessions[i] && sessions[i].qres;
       if (!Array.isArray(qres)) continue;
       for (let j = 0; j < qres.length; j++){
         const r = qres[j];
         if (!r) continue;
-        const id = r.qid || r.uid;
-        if (!id) continue;
-        const key = name[id] || (name[id] = id);
-        if (r.ok === false) counts[key] = (counts[key] || 0) + 1;
-        if (r.uid) name[r.uid] = key;
-        if (r.qid) name[r.qid] = key;
+        const c = ix.add(r);
+        if (c && r.ok === false) counts[c] = (counts[c] || 0) + 1;
       }
     }
-    const out = Object.create(null);
-    for (const id in name) out[id] = counts[name[id]] || 0;
-    this._missCache = out;
-    return out;
+    this._missCache = { ix, counts };
+    return this._missCache;
   },
-  missCount(uid){
-    if (!uid) return 0;
-    return this._missIndex()[uid] || 0;
+  /* `who` is a question or record (preferred) or a bare id string. */
+  missCount(who){
+    if (!who) return 0;
+    const m = this._missIndex(), c = m.ix.find(who);
+    return c ? (m.counts[c] || 0) : 0;
   },
   _reasonLabel(r){
     return r === 'concept' ? 'Concept gap' : r === 'careless' ? 'Careless' : '';
@@ -312,7 +319,7 @@ window.WRONGBY = {
     WRONGBY.startList(items, (want === 'concept' ? 'Concept gaps' : want === 'careless' ? 'Careless mistakes' : 'Not sorted yet') + ' \u00b7 Missed');
   },
   _hardest(){
-    return WRONGBY._items().map(q => ({ q: q, n: WRONGBY.missCount(q.qid || q.uid) })).filter(x => x.n > 0)
+    return WRONGBY._items().map(q => ({ q: q, n: WRONGBY.missCount(q) })).filter(x => x.n > 0)
       .sort((a, b) => b.n - a.n || (a.q._streak || 0) - (b.q._streak || 0)).slice(0, 20);
   },
   startHardest(){ WRONGBY.startList(WRONGBY._hardest().map(x => x.q), 'Hardest 20 \u00b7 Missed'); },
@@ -327,7 +334,7 @@ window.WRONGBY = {
     const ranked = this._items().filter(q => this._due(q)).map(q => {
       const overdueDays = q._nextDue == null ? 0 : Math.max(0, Math.floor((now - q._nextDue) / day));
       const reason = this._reason(q);
-      const missed = this.missCount(q.qid || q.uid);
+      const missed = this.missCount(q);
       return {
         q: q, overdueDays: overdueDays, reason: reason, missed: missed,
         score: overdueDays * 100 + missed * 10 + (reason === 'concept' ? 5 : reason === 'careless' ? 2 : 0)

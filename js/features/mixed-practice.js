@@ -2,27 +2,29 @@
 // MUST load AFTER: core/state.js, core/format.js (shuf), core/question.js
 // (normQ), data/chapters-data.js (ChapterData), features/quiz-engine.js (QUIZ).
 
-/* Which questions the wrong-answer list already holds. Keyed by the stable qid
-   as well as the positional uid, because a re-exported set keeps its qid but
-   renumbers uid — matching on uid alone made the weak drill claim "no wrong
-   answers yet" while the list was full. */
+/* Which questions the wrong-answer list already holds, matched by id in priority
+   order: non-public id, then public number, then position (only for rows that
+   have neither). A re-exported set keeps its ids but renumbers positions, so
+   matching on position alone made the weak drill claim "no wrong answers yet"
+   while the list was full, and could also flag the wrong question. */
 function weakKeys(list){
-  const keys = new Set();
+  const keys = { nid: new Set(), pqn: new Set(), pqnNoNid: new Set(), uid: new Set() };
   (Array.isArray(list) ? list : []).forEach(w => {
     if (!w || w._withdrawn) return;
-    /* A record with a permanent id is matched by it ALONE. Its uid is only where
-       the question happened to sit when it was saved, and a re-export can hand
-       that position to a different question. */
-    if (w.qid !== undefined && w.qid !== null && w.qid !== '') keys.add('q:' + w.qid);
-    else if (w.uid) keys.add('u:' + w.uid);
+    const k = QKEY.ids(w);
+    if (k.nid) keys.nid.add(k.nid);
+    if (k.pqn) { keys.pqn.add(k.pqn); if (!k.nid) keys.pqnNoNid.add(k.pqn); }
+    if (!k.nid && !k.pqn && k.uid) keys.uid.add(k.uid);
   });
   return keys;
 }
 
 function isWeakQuestion(q, keys){
   if (!q || !keys) return false;
-  if (q.uid && keys.has('u:' + q.uid)) return true;
-  return q.qid !== undefined && q.qid !== null && q.qid !== '' && keys.has('q:' + q.qid);
+  const k = QKEY.ids(q);
+  if (k.nid) return keys.nid.has(k.nid) || (!!k.pqn && keys.pqnNoNid.has(k.pqn));
+  if (k.pqn) return keys.pqn.has(k.pqn);
+  return !!k.uid && keys.uid.has(k.uid);
 }
 
 const PSY = {

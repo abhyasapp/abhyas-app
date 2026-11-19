@@ -33,18 +33,19 @@ const QSTATS = {
      Counts recorded under the old positional uid are folded into the permanent
      id the first time that question is seen with one. */
   _keys(who){
-    return (typeof QKEY !== 'undefined') ? QKEY.mapKeys(who) : { primary: String((who && who.uid) || who || ''), legacy: '' };
+    return (typeof QKEY !== 'undefined') ? QKEY.mapKeys(who) : { primary: String((who && who.uid) || who || ''), legacy: [] };
   },
   _slot(d, who, create){
     const k = this._keys(who);
     if(!k.primary) return null;
     let r = d[k.primary];
-    if(k.legacy && d[k.legacy]){
-      const o = d[k.legacy];
+    (k.legacy || []).forEach(l => {
+      if(!d[l] || l === k.primary) return;
+      const o = d[l];
       if(!r){ r = d[k.primary] = { a: o.a || 0, c: o.c || 0, t: o.t || 0 }; }
       else { r.a = (r.a || 0) + (o.a || 0); r.c = (r.c || 0) + (o.c || 0); r.t = Math.max(r.t || 0, o.t || 0); }
-      delete d[k.legacy];
-    }
+      delete d[l];
+    });
     if(!r && create) r = d[k.primary] = { a: 0, c: 0, t: 0 };
     return r || null;
   },

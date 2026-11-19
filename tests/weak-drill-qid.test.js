@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { loadGlobals } from './helpers/load-globals.js';
 
-const g = loadGlobals(['js/features/mixed-practice.js'], {
+const g = loadGlobals(['js/core/qkey.js', 'js/features/mixed-practice.js'], {
   S: { wr: [] },
   ChapterData: { chapters: () => ({}), fileCount: () => 0 },
   QUIZ: {},

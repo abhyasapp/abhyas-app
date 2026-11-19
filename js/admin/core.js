@@ -667,6 +667,19 @@ const ADMIN = {
      nothing. (This used to return true, so one failed request showed every section,
      button and export to a restricted sub-admin.) The server still enforces; this
      keeps the UI honest. An owner is recovered via adminListAdmins.isOwner. */
+  /* A button the signed-in admin is NOT allowed to use. It used to be left out,
+     so an admin without the permission saw no Edit/Delete at all and could not
+     tell whether the feature was missing or forbidden. It now shows as a locked,
+     disabled button that says which permission is needed. */
+  lockedBtn(perm, what, kind) {
+    const label = (typeof ADMINS !== 'undefined' && ADMINS.LABELS && ADMINS.LABELS[perm]) || perm;
+    const tip = what + ' needs the \u201c' + label + '\u201d permission. Ask the owner to grant it.';
+    const say = ' title="' + esc(tip) + '" aria-label="' + esc(tip) + '"';
+    return kind === 'btn'
+      ? '<button class="btn btn-quiet" type="button" disabled aria-disabled="true"' + say + '><i class="ph ph-lock-simple"></i> ' + esc(what) + '</button>'
+      : '<button class="icon-btn sm" type="button" disabled aria-disabled="true"' + say + '><i class="ph ph-lock-simple"></i></button>';
+  },
+
   can(key) {
     if (!this._perms) return false;
     if (this._perms.role === 'owner') return true;

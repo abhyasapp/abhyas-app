@@ -76,7 +76,7 @@ function qMetaHtml(q) {
   /* Only the question's own id is shown. The set it came from is plumbing — the
      Drive file id used to be printed here, and the set name is not something a
      learner reads a question by. */
-  add('QN', q.qid !== undefined && q.qid !== null && q.qid !== '' ? q.qid : '', 'mono');
+  add('QN', (q.pqn || (q.qid !== undefined && q.qid !== null && q.qid !== '' ? q.qid : '')), 'mono');   // the readable public number is what a student can quote
   add('', q.difficulty);
   add('', q.year);
   add('', q.source);
@@ -126,26 +126,37 @@ document.addEventListener('click', function(e) {
    sort or filter it without touching the cached one. */
 const NORM_CACHE = typeof WeakMap === 'function' ? new WeakMap() : null;
 
-/* Stable question id as the content file publishes it. The pipeline writes the
-   readable public id to `public_qn` (LCCCSSSFQQQQ: "50011.110001",
-   "G0011.110001", "5002mixedqn10001"); an export run with --public-qn puts the
-   same value in `id`, and older files carry the internal numeric id there. A
-   public id is a string, so it cannot be gated on Number.isFinite the way the
-   numeric id used to be — that check discarded every public id and silently
-   left the app keyed on the positional uid. */
+/* Question identity as the content file publishes it. A question can carry two
+   permanent ids, and the app uses them in this order (see js/core/qkey.js):
+     1. the NON-PUBLIC id: the internal numeric id (digits only), and
+     2. the PUBLIC question number `public_qn` (LCCCSSSFQQQQ: \"50011.110001\",
+        \"G0011.110001\", \"5002mixedqn10001\"),
+   and only then the position (`uid`), for content that publishes neither.
+   Each id is classified by its SHAPE, not by the field it arrived in: digits
+   only is a non-public id, a readable code containing a digit is a public one.
+   (An export run with --public-qn puts the public value in `id`; older files
+   carry the internal numeric id there.) A public id is a string, so it must not
+   be gated on Number.isFinite, which once discarded every public id and left
+   the app keyed on position. */
 const QID_DIGITS_RE = /^\d+$/;
 const QID_PUBLIC_RE = /^[A-Za-z0-9][A-Za-z0-9._]{3,63}$/;
 
-function _stableQid(q) {
-  const candidates = [q.public_qn, q.publicQn, q.qnid, q.qid, q.id];
-  for (const raw of candidates) {
+function _stableIds(q) {
+  const fields = [q.nid, q.internal_id, q.internalId, q.qid, q.qnid, q.id, q.public_qn, q.publicQn, q.pqn];
+  let nid, pqn;
+  for (const raw of fields) {
     if (raw === undefined || raw === null) continue;
     const s = String(raw).trim();
     if (!s) continue;
-    if (QID_DIGITS_RE.test(s)) return Number(s);            // internal id, as before
-    if (QID_PUBLIC_RE.test(s) && /\d/.test(s)) return s;     // public qn id
+    if (QID_DIGITS_RE.test(s)) { if (nid === undefined) nid = Number(s); }
+    else if (QID_PUBLIC_RE.test(s) && /\d/.test(s)) { if (pqn === undefined) pqn = s; }
   }
-  return undefined;
+  return { nid, pqn };
+}
+/* The primary id: non-public first, then public. */
+function _stableQid(q) {
+  const { nid, pqn } = _stableIds(q);
+  return nid !== undefined ? nid : pqn;
 }
 
 function normQ(raw, fid) {
@@ -200,6 +211,10 @@ function normQ(raw, fid) {
          and changes whenever a set is re-exported; reports and corrections key
          on qid whenever the file publishes one. */
       qid: _stableQid(q),
+      /* Both ids, kept apart: reports, backups and sync send them so the server
+         and other devices can match by non-public id, then public id, then position. */
+      nid: _stableIds(q).nid,
+      pqn: _stableIds(q).pqn,
       /* Optional descriptive fields, shown as chips when "Question details" is on. */
       difficulty: _metaStr(q.difficulty || q.level),
       year: _metaStr(q.year || q.exam_year),
@@ -215,5 +230,7 @@ function normQ(raw, fid) {
   /* Saved items from before permanent ids learn theirs the first time their
      question is parsed again (matched by text, never by position). */
   if (result.length && typeof QKEY !== 'undefined' && QKEY.adoptSet) QKEY.adoptSet(result);
+  /* Coverage (which questions were seen) is rebuilt for this file's current order. */
+  if (result.length && typeof COV !== 'undefined' && COV.alignSet) COV.alignSet(result);
   return result;
 }

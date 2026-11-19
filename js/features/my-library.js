@@ -75,6 +75,8 @@ window.LIBRARY = {
           key: key,
           uid: full.uid || q.uid || '',
           qid: full.qid !== undefined && full.qid !== null ? full.qid : q.qid,
+          nid: full.nid !== undefined && full.nid !== null ? full.nid : q.nid,
+          pqn: full.pqn || q.pqn,
           q: full.q || full.question || q.q || '',
           options: Array.isArray(full.options) ? full.options : (Array.isArray(q.options) ? q.options : []),
           explanation: full.explanation || q.explanation || '',
@@ -266,7 +268,7 @@ window.LIBRARY = {
     if (!e || !e.q || !e.options.length) { toast('Question details are not downloaded yet.'); return; }
     if (typeof QUIZ === 'undefined' || typeof QUIZ.startWith !== 'function') { toast('Practice is not available right now.'); return; }
     QUIZ.startWith([{
-      uid: e.uid, qid: e.qid, q: e.q, options: e.options.slice(),
+      uid: e.uid, qid: e.qid, nid: e.nid, pqn: e.pqn, q: e.q, options: e.options.slice(),
       correct: e.correct, explanation: e.explanation
     }], 'flashcard', 'My library', null);
   },
@@ -276,7 +278,7 @@ window.LIBRARY = {
     if (!rows.length) { toast('Nothing here can be practised yet.'); return; }
     if (typeof QUIZ === 'undefined' || typeof QUIZ.startWith !== 'function') { toast('Practice is not available right now.'); return; }
     QUIZ.startWith(rows.map(e => ({
-      uid: e.uid, qid: e.qid, q: e.q, options: e.options.slice(),
+      uid: e.uid, qid: e.qid, nid: e.nid, pqn: e.pqn, q: e.q, options: e.options.slice(),
       correct: e.correct, explanation: e.explanation
     })), 'flashcard', 'My library \u00b7 ' + rows.length + ' items', null);
   },

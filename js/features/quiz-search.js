@@ -38,9 +38,9 @@ window.QSEARCH = {
       const q = idx[i];
       const stem = String(q.q || '').toLowerCase();
       const opts = (q.options || []).join(' ').toLowerCase();
-      const qid = String(q.qid !== undefined && q.qid !== null ? q.qid : (q.id !== undefined && q.id !== null ? q.id : '')).trim();
-      // Allow searching by question id (qid) as well as text.
-      if (qid && (qid === t || qid.toLowerCase().indexOf(t) >= 0)){ hits.push({ q: q, where: 'id', pos: 0 }); continue; }
+      // Allow searching by ANY of the question's ids (non-public id, public number) as well as text.
+      const idHit = [q.nid, q.pqn, q.qid, q.id].some(v => { const x = String(v === undefined || v === null ? '' : v).trim().toLowerCase(); return x && (x === t || x.indexOf(t) >= 0); });
+      if (idHit){ hits.push({ q: q, where: 'id', pos: 0 }); continue; }
       const pos = stem.indexOf(t);
       if (pos >= 0){ hits.push({ q: q, where: 'stem', pos: pos }); continue; }
       const opos = opts.indexOf(t);
@@ -120,7 +120,7 @@ window.QSEARCH = {
     status.textContent = hits.length + ' result' + (hits.length === 1 ? '' : 's');
     const termLc = term.toLowerCase();
     box.innerHTML = hits.map((q, i) => {
-      const qid = String(q.qid !== undefined && q.qid !== null ? q.qid : (q.id !== undefined && q.id !== null ? q.id : '')).trim();
+      const qid = String(q.pqn || (q.qid !== undefined && q.qid !== null ? q.qid : (q.id !== undefined && q.id !== null ? q.id : ''))).trim();
       const stemRaw = String(q.q || '');
       const pos = stemRaw.toLowerCase().indexOf(termLc);
       const snip = pos < 0
@@ -317,8 +317,7 @@ window.SIDEBAR_SEARCH = {
       return;
     }
     const termIsId = hits.some(q => {
-      const qid = String(q.qid !== undefined && q.qid !== null ? q.qid : '');
-      return qid && qid.toLowerCase() === termLc;
+      return [q.nid, q.pqn, q.qid].some(v => v !== undefined && v !== null && String(v).toLowerCase() === termLc);
     });
 
     const rows = this._qResults.map((q, i) => {
@@ -328,7 +327,7 @@ window.SIDEBAR_SEARCH = {
         ? stem.slice(0, 100)
         : stem.slice(Math.max(0, pos - 25), pos + 75);
       const correct = q.correct != null ? String.fromCharCode(65 + Number(q.correct)) : '?';
-      const qid = String(q.qid !== undefined && q.qid !== null ? q.qid : '');
+      const qid = String(q.pqn || (q.qid !== undefined && q.qid !== null ? q.qid : ''));
       return '<button type="button" class="sb-filter-item" ' +
         'data-on-mousedown="SIDEBAR_SEARCH._pick(' + i + ');return false" ' +
         'data-on-click="return false">' +

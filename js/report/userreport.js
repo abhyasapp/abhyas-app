@@ -74,8 +74,13 @@ function _body(rep, reason, note) {
   return {
     action: 'reportQuestion',
     username: S.user.username, token: S.user.token,
+    /* Identity, strongest first: non-public id (nid), public number (pqn), position
+       (uid). qid is the primary of those, kept for the backend that already reads
+       it. The server should match a report by nid, then pqn, and only then uid. */
     uid: q.uid,
     qid: q.qid != null ? q.qid : '',
+    nid: q.nid != null ? q.nid : '',
+    pqn: q.pqn || '',
     reason: reason,
     note: note,
     questionSnapshot: (q.q || '').slice(0, 1000),
@@ -156,7 +161,7 @@ function _histMarkQid(who, reason, patch) {
 function _queue(rep, reason, note, quiet) {
   const q = rep.q;
   const item = {
-    uid: q.uid, qid: q.qid, reason: reason, note: note,
+    uid: q.uid, qid: q.qid, nid: q.nid, pqn: q.pqn, reason: reason, note: note,
     section: rep.section, chosen: rep.chosen,
     q: (q.q || '').slice(0, 1000),
     options: (q.options || []).slice(0, 6),
@@ -170,7 +175,7 @@ function _queue(rep, reason, note, quiet) {
   const saved = _rqSave(reportQueueAdd(queued, item, Date.now()));
   if (saved) {
     _histSave(reportHistoryAddQid(_histLoad(), {
-      uid: q.uid, qid: q.qid, reason: reason, note: note,
+      uid: q.uid, qid: q.qid, nid: q.nid, pqn: q.pqn, reason: reason, note: note,
       question: (q.q || '').slice(0, 1000),
       section: rep.section,
       reportedAt: Date.now(), status: 'queued'
@@ -209,7 +214,7 @@ async function _flush(quiet) {
       if (total > 20 && done > 0 && done % 20 === 0) toast('Sending reports\u2026 ' + done + ' of ' + total, 2500);
       done++;
       const rep = {
-        q: { uid: it.uid, qid: it.qid, q: it.q, options: it.options, correct: it.correct },
+        q: { uid: it.uid, qid: it.qid, nid: it.nid, pqn: it.pqn, q: it.q, options: it.options, correct: it.correct },
         chosen: it.chosen, section: it.section
       };
       try {
@@ -458,12 +463,10 @@ const USER_REPORT = {
   /* Newest first. Sent, waiting and rejected reports are all kept here. */
   history() {
     const list = _histLoad().slice();
-    const seen = new Set(list.map(reportHistoryKey));
     _rqLoad().forEach(it => {
-      const key = reportHistoryKey(it);
-      if (!seen.has(key)) {
+      if (!list.some(x => reportSameQuestionReason(x, it))) {
         list.push({
-          uid: it.uid, qid: it.qid, reason: it.reason, note: it.note,
+          uid: it.uid, qid: it.qid, nid: it.nid, pqn: it.pqn, reason: it.reason, note: it.note,
           question: it.q, section: it.section,
           reportedAt: it.queuedAt || Date.now(), status: 'queued'
         });

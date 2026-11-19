@@ -132,7 +132,7 @@ const ADMIN_DRAFTS = {
   },
   forReport(r) {
     this.load();
-    const key = adminDraftKey({ uid: r && r.uid, qid: r && r.qid });
+    const key = adminDraftKey({ uid: r && r.uid, qid: r && r.qid, nid: r && r.nid, pqn: r && r.pqn });
     return key ? (this.items.find(d => d.key === key) || null) : null;
   },
   add(draft) {
@@ -424,7 +424,7 @@ const ADMIN_REPORT = {
     if (this._prefetching) return;
     this._prefetching = true;
     try {
-      const todo = this.all.filter(r => r.status === 'open' && (r.uid || r.qid) && !this._qcache[r.id]).slice(0, 80);
+      const todo = this.all.filter(r => r.status === 'open' && (r.uid || r.qid || r.nid || r.pqn) && !this._qcache[r.id]).slice(0, 80);
       let next = 0;
       const worker = async () => {
         while (next < todo.length) {
@@ -432,7 +432,7 @@ const ADMIN_REPORT = {
           const m = ADMIN_REPORT._ref(r);
           if (!m) continue;
           try {
-            const res = await ADMIN.post('adminGetQuestion', { fileId: m[1], index: Number(m[2]), qid: r.qid });
+            const res = await ADMIN.post('adminGetQuestion', { fileId: m[1], index: Number(m[2]), qid: r.qid, nid: r.nid, pqn: r.pqn });
             if (res && res.success && res.question) this._qcache[r.id] = { q: res.question, at: Date.now() };
           } catch (e) { /* the editor will fetch it when opened */ }
         }
@@ -447,7 +447,7 @@ const ADMIN_REPORT = {
   _ref(r) {
     const m = String((r && r.uid) || '').match(/^(.+)_(\d+)$/);
     if (m) return m;
-    if (r && r.qid && r.fileId) return [null, String(r.fileId), -1];
+    if (r && (r.qid || r.nid || r.pqn) && r.fileId) return [null, String(r.fileId), -1];
     return null;
   },
 
@@ -553,7 +553,7 @@ const ADMIN_REPORT = {
     const dismissed = all.filter(r => r.status === 'dismissed').length;
     const wrong = all.filter(r => r.status === 'open' && r.reason === 'wrong_answer').length;
     const multi = all.filter(r => r.status === 'open' && (Number(r.openReporters) || 0) > 1).length;
-    const legacy = all.filter(r => r.status === 'open' && (r.qid == null || r.qid === '')).length;
+    const legacy = all.filter(r => r.status === 'open' && (!QKEY.primary(r))).length;
     const chip = (label, n, action, on, alert) =>
       '<button type="button" class="qr-sum' + (on ? ' is-on' : '') + (alert && n ? ' is-alert' : '') + '" ' +
         'data-on-click="' + action + '"><b>' + n + '</b> ' + label + '</button>';
@@ -675,8 +675,8 @@ const ADMIN_REPORT = {
             '<span class="badge flat">' +
               esc(REPORT_REASON_LABELS[r.reason] || r.reason) + '</span>' +
             '<span class="badge flat">' + esc(this.chapterFor(r.fileId)) + '</span>' +
-            (r.qid != null && r.qid !== ''
-              ? '<span class="badge flat mono" title="Stable question id in Neon">qid ' + esc(String(r.qid)) + '</span>'
+            (QKEY.primary(r)
+              ? '<span class="badge flat mono" title="Permanent question id: non-public id first, then the public number">' + esc('QN ' + (r.pqn || QKEY.primary(r))) + (r.nid ? ' \u00b7 id ' + esc(String(r.nid)) : '') + '</span>'
               : '') +
             this._searchHtml(r) +
           '</div>' +
@@ -774,7 +774,7 @@ const ADMIN_REPORT = {
         q = hit.q;
       } else {
         const res = await ADMIN.post('adminGetQuestion', {
-          fileId: m[1], index: Number(m[2]), qid: r.qid
+          fileId: m[1], index: Number(m[2]), qid: r.qid, nid: r.nid, pqn: r.pqn
         });
         if (!res.success) throw new Error(res.error || 'Could not load that question.');
         q = res.question;
@@ -790,11 +790,13 @@ const ADMIN_REPORT = {
          (not by position), so a text mismatch here is not "wrong question" —
          it usually means the question was already corrected. Only legacy
          (qid-less) reports rely on position/text and need the warning. */
-      const moved = !draft && !r.qid && !questionMatchesSnapshot(q.q, r.questionSnapshot);
+      const moved = !draft && !QKEY.primary(r) && !questionMatchesSnapshot(q.q, r.questionSnapshot);
       this._eq = {
         reportId: id,
         uid: r.uid,
         qid: r.qid,
+        nid: r.nid,
+        pqn: r.pqn,
         fileId: m[1],
         index: Number(m[2]),
         q: q,
@@ -881,7 +883,7 @@ const ADMIN_REPORT = {
     ADMIN_DRAFTS.load();
     ADMIN_DRAFTS.advance = advance;
     ADMIN_DRAFTS.add({
-      uid: c.uid, qid: c.qid, fileId: c.fileId, index: c.index,
+      uid: c.uid, qid: c.qid, nid: c.nid, pqn: c.pqn, fileId: c.fileId, index: c.index,
       reportId: c.reportId, reportReason: c.reportReason,
       adminNote: adminNote || c.reportNote || null,
       closeReport: done,

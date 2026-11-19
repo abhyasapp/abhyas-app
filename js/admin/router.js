@@ -376,5 +376,15 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ADMI
 })();
 
 ADMIN.init();
+/* Chapter names come from ChapterData, which can still be downloading on a first
+   visit. Sign-in must not wait for it, but the lists must not stay labelled
+   "Weekly set or unknown" either: repaint the open screen once it arrives. */
+if (window.ChapterDataReady && typeof window.ChapterDataReady.then === 'function') {
+  window.ChapterDataReady.then(function () {
+    try {
+      if (typeof UI !== 'undefined' && UI.current && ADMIN._paintCurrentView) ADMIN._paintCurrentView(UI.current);
+    } catch (e) { window.warnCaught && window.warnCaught('js/admin/router.js', e); }
+  });
+}
 
 window.UI = UI;

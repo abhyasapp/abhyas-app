@@ -258,8 +258,9 @@ function sprintDayStats(sessions, iso) {
 function sprintMissedOpen(qres, wr) {
   /* Same question = same permanent id; the uid (a position) is only the
      fallback for rows that have no qid. */
-  const idOf = x => (x && x.qid !== undefined && x.qid !== null && String(x.qid) !== '') ? 'q:' + x.qid
-    : (x && x.uid != null ? 'u:' + x.uid : '');
+  const idOf = x => (typeof QKEY !== 'undefined') ? QKEY.of(x)
+    : ((x && x.qid !== undefined && x.qid !== null && String(x.qid) !== '') ? 'q:' + x.qid
+       : (x && x.uid != null ? 'u:' + x.uid : ''));
   const open = new Set((Array.isArray(wr) ? wr : [])
     .filter(x => x && !x._withdrawn && idOf(x)).map(idOf));
   return (Array.isArray(qres) ? qres : [])

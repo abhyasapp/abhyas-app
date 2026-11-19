@@ -4,6 +4,54 @@ const PSYNC = {
   _timer: null,
   _state: 'idle',
   LAST_KEY: 'abhyas_last_sync',
+  /* How many saved changes have not reached the server yet. Counted when a
+     synced key is saved, cleared when a backup succeeds, kept across reloads so
+     a student who closes the app offline still sees the truth next time. */
+  PEND_KEY: 'abhyas_unsynced_n',
+  pendingCount(){
+    try { return Math.max(0, Number(localStorage.getItem(this.PEND_KEY)) || 0); } catch (e) { return 0; }
+  },
+  _setPending(n){
+    try { if (n > 0) localStorage.setItem(this.PEND_KEY, String(Math.min(n, 9999))); else localStorage.removeItem(this.PEND_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
+  },
+  noteChange(){ this._setPending(this.pendingCount() + 1); },
+
+  /* One plain sentence for the student, with the number of changes waiting. */
+  describe(){
+    const n = this.pendingCount();
+    const offline = (typeof S !== 'undefined') && (S.online === false || S.forcedOffline);
+    const waiting = n ? n + (n === 1 ? ' change' : ' changes') : 'Your latest work';
+    if (!(typeof S !== 'undefined' && S.user && S.user.token)) return { state: 'local', text: 'Saved on this device.' };
+    if (offline && n) return { state: 'offline', text: 'Saved on this device. ' + waiting + ' will upload when you are back online.' };
+    if (this._state === 'error') return { state: 'error', text: 'Saved on this device. The upload failed and will retry. ' + waiting + ' waiting.' };
+    if (this._state === 'syncing') return { state: 'syncing', text: 'Uploading\u2026' };
+    if (this._state === 'pending' || n) return { state: 'pending', text: 'Saved on this device. Uploading shortly.' };
+    if (this._state === 'idle' && !this.lastSync()) return { state: 'pending', text: 'Saved on this device. Not backed up yet.' };
+    return { state: 'synced', text: 'Backed up. Your progress is safe.' };
+  },
+  /* The small status line on the results screen. It repaints itself when the
+     sync state changes, so it never keeps saying "uploading" after it finished. */
+  renderResultBadge(){
+    const wrap = document.getElementById('res-wrap');
+    if (!wrap) return;
+    let el = document.getElementById('res-sync');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'res-sync';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--ink-3,#555);margin:.25rem 0 .75rem';
+      const ic = document.createElement('i'); ic.className = 'ph'; ic.setAttribute('aria-hidden', 'true');
+      const tx = document.createElement('span');
+      el.append(ic, tx);
+      wrap.insertBefore(el, wrap.firstChild);
+    }
+    const d = this.describe();
+    el.dataset.state = d.state;
+    el.lastChild.textContent = d.text;
+    el.firstChild.className = 'ph ' + ({ synced: 'ph-cloud-check', syncing: 'ph-cloud-arrow-up', pending: 'ph-cloud-arrow-up',
+      offline: 'ph-cloud-slash', error: 'ph-cloud-warning', local: 'ph-device-mobile' }[d.state] || 'ph-cloud');
+  },
+
   _setStatus(msg){
     const el = document.getElementById('psync-status');
     if(el) el.textContent = msg;
@@ -14,6 +62,7 @@ const PSYNC = {
     try { who = (S.user && S.user.username) || ''; } catch (e) { who = ''; }
     try { localStorage.setItem(this.LAST_KEY, JSON.stringify({ u: who, at: at })); } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
     this._setStatus('Last backed up: ' + new Date(at).toLocaleString());
+    this._setPending(0);
     this._setState('synced');
   },
   lastSync(){
@@ -38,6 +87,8 @@ const PSYNC = {
   },
   _setState(state){
     this._state = state;
+    try { window.dispatchEvent(new CustomEvent('abhyas:sync-state', { detail: { state } })); } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
+    try { if (document.getElementById('res-sync')) this.renderResultBadge(); } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); }
     const dot = document.getElementById('tb-sync-dot');
     const btn = document.getElementById('tb-sync-btn');
     if(!dot || !btn) return;
@@ -50,11 +101,14 @@ const PSYNC = {
     }[state] || {color:'var(--t3)', title:'', anim:false};
     dot.style.background = cfg.color;
     dot.style.animation = cfg.anim ? 'pulse 1s ease-in-out infinite' : 'none';
-    btn.title = 'Sync status — ' + cfg.title;
+    /* The colour alone is not enough (colour-blind users, glare): say it in words too. */
+    btn.title = 'Sync status \u2014 ' + (state === 'pending' || state === 'error' ? this.describe().text : cfg.title);
+    btn.dataset.state = state;
     btn.setAttribute('aria-label', btn.title);
   },
   scheduleSync(){
     if(!S.user || !S.user.token) return;
+    this.noteChange();
     this._setState('pending');
     clearTimeout(this._timer);
     this._timer = setTimeout(()=>this.pushNow(), 8000);
@@ -348,3 +402,7 @@ window.addEventListener('pagehide', ()=>PSYNC.flushOnHide());
 })();
 
 window.PSYNC = PSYNC;
+
+/* Going offline or coming back changes what the status line should say. */
+window.addEventListener('online',  () => { try { if (document.getElementById('res-sync')) PSYNC.renderResultBadge(); } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); } });
+window.addEventListener('offline', () => { try { if (document.getElementById('res-sync')) PSYNC.renderResultBadge(); } catch (e) { window.warnCaught && window.warnCaught('js/core/psync.js', e); } });

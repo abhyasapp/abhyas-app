@@ -102,9 +102,9 @@ function applyResets(d, rs) {
       const at = Number(x._addedAt) || 0;
       if (allT && at <= allT) return false;
       if (wrT && at <= wrT) return false;
-      // A removed question can be marked by its stable qid or, for legacy
-      // rows and offline content, by its positional uid.
-      const r = Number(rm[x.uid] || rm[x.qid]) || 0;
+      // A removed question can be marked by any id it has: non-public id, public
+      // number, or (legacy rows, offline content) its positional uid.
+      const r = Number(rm[x.nid] || rm[x.pqn] || rm[x.qid] || rm[x.uid]) || 0;
       if (r && at <= r) return false;
       const t = chT(x.fileId);
       return !(t && at <= t);
@@ -137,21 +137,11 @@ function mergeSyncData(local, remote) {
     });
     return out;
   };
-  /* A saved question is the SAME question when its permanent id matches; its uid
-     is only a position, and positions are reused when a set is re-exported. Rows
-     from before qids existed fall back to the uid. */
-  const hasQid = x => x && x.qid !== undefined && x.qid !== null && String(x.qid) !== '';
-  const uidOf = x => hasQid(x) ? 'q:' + x.qid
-    : (x && x.uid !== undefined) ? 'u:' + x.uid : 'j:' + JSON.stringify(x);
-  const stemOf = x => String((x && x.q) || '').toLowerCase().replace(/\s+/g, ' ').trim();
-  /* One device may already have upgraded a row to its qid while another still
-     holds the legacy copy. Keep one: the upgraded row. */
-  const unionQuestions = (a, b) => {
-    const out = unionBy(a, b, uidOf);
-    const upgraded = new Set();
-    out.forEach(x => { if (hasQid(x) && x.uid !== undefined) upgraded.add(x.uid + '|' + stemOf(x)); });
-    return out.filter(x => hasQid(x) || x.uid === undefined || !upgraded.has(x.uid + '|' + stemOf(x)));
-  };
+  /* A saved question is the SAME question by QKEY's rules: non-public id, then
+     public number, then (only for content that has neither) position + text.
+     A row one device already upgraded and a legacy copy another still holds are
+     merged into one. */
+  const unionQuestions = (a, b) => QKEY.mergeLists(a, b);
 
   const lp = isObj(L.prog) ? L.prog : {};
   const rp = isObj(R.prog) ? R.prog : {};
@@ -195,9 +185,13 @@ function mergeSyncData(local, remote) {
     const a = isObj(lc[fid]) ? lc[fid] : null;
     const b = isObj(rc[fid]) ? rc[fid] : null;
     const tt = Math.max(Number(a && a.t) || 0, Number(b && b.t) || 0);
+    /* m = coverage by question id (the truth; p is the position cache rebuilt from it
+       for the file's current order). It must travel with the record, or every
+       backup and restore would drop it and fall back to bare positions. */
     if (!a || !b) {
       const o = a || b;
       cov[fid] = { p: String(o.p || ''), a: Number(o.a) || 0, c: Number(o.c) || 0 };
+      if (isObj(o.m)) { cov[fid].m = Object.assign({}, o.m); cov[fid].sig = ''; }
       if (tt) cov[fid].t = tt;
       return;
     }
@@ -212,6 +206,15 @@ function mergeSyncData(local, remote) {
       a: Math.max(Number(a.a) || 0, Number(b.a) || 0),
       c: Math.max(Number(a.c) || 0, Number(b.c) || 0)
     };
+    if (isObj(a.m) || isObj(b.m)) {
+      /* Union by question id; where both devices recorded the question, the more
+         recently active device wins. sig '' makes the app rebuild p from these ids
+         the next time the file is opened, so p never carries bits from another order. */
+      const newer = (Number(b.t) || 0) > (Number(a.t) || 0) ? b : a;
+      const older = newer === a ? b : a;
+      cov[fid].m = Object.assign({}, isObj(older.m) ? older.m : {}, isObj(newer.m) ? newer.m : {});
+      cov[fid].sig = '';
+    }
     if (tt) cov[fid].t = tt;
   });
 

@@ -146,7 +146,7 @@ const AUTH = {
     const keys = [
       LS.PROG, LS.BK, LS.FL, LS.WR, LS.STK, LS.CHAPSTATS, LS.TT, LS.COV,
       LS.WK_ATTEMPTS, LS.EXAM_SNAP, LS.TT_NOTIFIED, LS.PROFILE, LS.CLOUD,
-      'abhyas_last_active', 'abhyas_practice_snap', 'abhyas_qnotes',
+      'abhyas_last_active', 'abhyas_practice_snap', 'abhyas_qnotes', 'abhyas_applock',
       'abhyas_sprint_start', 'abhyas_sprint_log', 'abhyas_sprint_rest',
       'abhyas_sprint_off', 'abhyas_sprint_focus', 'abhyas_sprint_exam',
       'abhyas_exam_date', 'abhyas_resets', 'abhyas_pre_reset_snapshot',
@@ -281,6 +281,7 @@ const AUTH = {
       if (!confirmed) PSYNC._beaconSync();
     }
     localStorage.removeItem(LS.USER);
+    localStorage.removeItem('abhyas_applock');     // a PIN belongs to the signed-in student
     window.location.href = 'index.html';
   },
 

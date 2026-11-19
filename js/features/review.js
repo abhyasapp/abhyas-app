@@ -107,8 +107,13 @@ const REV = {
      a device that only knows one of them still honours the removal. */
   _noteRemoved(item) {
     if (typeof PROGRESS_RESET === 'undefined' || !item) return;
-    if (item.qid) PROGRESS_RESET.noteRemoved(item.qid);
-    if (item.uid) PROGRESS_RESET.noteRemoved(item.uid);
+    /* Mark every id the question has, so a device that knows it only by its
+       non-public id, only by its public number, or only by position honours it. */
+    const k = QKEY.ids(item), seen = new Set();
+    [k.nid, k.pqn, item.qid, k.uid].forEach(v => {
+      const id = (v === undefined || v === null) ? '' : String(v);
+      if (id && !seen.has(id)) { seen.add(id); PROGRESS_RESET.noteRemoved(id); }
+    });
   },
 
   removeWrong(who) {
@@ -341,7 +346,7 @@ const REV = {
           
           let missBadge = '';
           if (kind === 'wr' && typeof WRONGBY !== 'undefined') {
-            const mc = WRONGBY.missCount(q.qid || q.uid);
+            const mc = WRONGBY.missCount(q);
             if (mc >= 3) missBadge = `<span class="ctag tr" style="margin-left:.3rem" title="You have missed this question ${mc} times"><i class="ph ph-warning"></i> missed ${mc}\u00d7</span>`;
           }
           

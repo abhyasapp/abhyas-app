@@ -942,7 +942,7 @@ const QUIZ = {
       } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
 
       try {
-        if (typeof QHIST !== 'undefined') QHIST.render('fc-hist', q.uid);
+        if (typeof QHIST !== 'undefined') QHIST.render('fc-hist', q);
       } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
 
       try {
@@ -1470,6 +1470,8 @@ const QUIZ = {
     document.getElementById('fc-wrap').style.display='none';
     document.getElementById('ex-wrap').style.display='none';
     document.getElementById('res-wrap').style.display='';
+    /* Say, in words, whether this result is safely uploaded or only on the device. */
+    try { if (typeof PSYNC !== 'undefined') PSYNC.renderResultBadge(); } catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
     const isWeekly = !!(S.quiz.scope && S.quiz.scope.weeklyId);
     const isLoksewa = isLoksewaFormat(S.quiz.scope);
     const againBtn = document.getElementById('res-again');
@@ -1861,6 +1863,8 @@ const QUIZ = {
         if (S.quiz.ans[i] === null || S.quiz.ans[i] === undefined) return null;
         const row = { uid: q.uid, ok: isOk(S.quiz.ans[i], q.correct) };
         if (q.qid !== undefined && q.qid !== null && q.qid !== '') row.qid = q.qid;
+        if (q.nid !== undefined && q.nid !== null && q.nid !== '') row.nid = q.nid;
+        if (q.pqn) row.pqn = q.pqn;
         return row;
       })
       .filter(Boolean);

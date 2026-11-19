@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { loadGlobals } from './helpers/load-globals.js';
 
-const g = loadGlobals(['js/report/report-shared.js'], {});
+const g = loadGlobals(['js/core/qkey.js', 'js/report/report-shared.js'], {});
 const mk = (i, over) => Object.assign({ uid: 'f_' + i, qid: 'Q' + i, reason: 'typo', note: '' }, over || {});
 
 describe('offline report queue', () => {

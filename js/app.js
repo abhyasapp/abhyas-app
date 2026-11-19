@@ -16,7 +16,15 @@
     console.error('[app.js] AUTH missing — check that js/core/auth.js loaded.');
     return;
   }
-  AUTH.restore().catch(err => console.error('[app.js] AUTH.restore failed:', err));
+  /* The chapters file must be defined before the app opens: on a first visit it
+     is still downloading at this point, and every screen reads ChapterData.
+     The loader shows its own loading / retry screen meanwhile. */
+  const _start = () => AUTH.restore().catch(err => console.error('[app.js] AUTH.restore failed:', err));
+  if (typeof ChapterData === 'undefined' && window.ChapterDataReady && typeof window.ChapterDataReady.then === 'function') {
+    window.ChapterDataReady.then(_start);
+  } else {
+    _start();
+  }
 
   /* 2. Service worker + install banner. PWA.init() is safe to call before
         login — it only sets up listeners. It handles beforeinstallprompt

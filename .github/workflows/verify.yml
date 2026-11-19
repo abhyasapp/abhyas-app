@@ -31,3 +31,27 @@ jobs:
 
       - name: Run verification gate
         run: npm run verify
+
+      # The unit tests cannot execute the page. This loads the real app in Chromium,
+      # cold and then warm, under the real CSP, and fails on any console error,
+      # CSP violation, missing ChapterData or missing icon font. Each scenario is a
+      # failure that has (or could have) reached users: a bad content commit, a
+      # content CDN host being down, a poisoned cache while offline.
+      - name: Set up Python (browser gate)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Chromium for the browser gate
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Browser gate (cold + warm, every content-failure scenario)
+        run: |
+          for s in normal bad-commit mirror poisoned-cache; do
+            python tools/e2e/smoke_browser.py --scenario "$s" --pages user.html,admin.html
+          done
+
+      - name: App lock (real browser, needs Web Crypto)
+        run: python tools/e2e/applock.py

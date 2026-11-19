@@ -59,3 +59,5 @@ desktop.ini
 *.tar.gz
 backup/
 scratch/
+__pycache__/
+*.pyc

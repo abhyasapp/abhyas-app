@@ -23,6 +23,14 @@ const PROGRESS_RESET = {
   save(r){ try { localStorage.setItem(this.KEY, JSON.stringify(r || {})); } catch (e) { window.warnCaught && window.warnCaught('js/features/progress-reset.js', e); } },
 
   /* one question left the wrong bank (removed, or graduated after the 14-day review) */
+  /* Every id a question can be known by: non-public id, public number, primary id,
+     position. A removal is recorded under all of them so any device honours it. */
+  _allIds(q){
+    const k = (typeof QKEY !== 'undefined') ? QKEY.ids(q) : { nid: '', pqn: '', uid: (q && q.uid) || '' };
+    const out = [];
+    [k.nid, k.pqn, q && q.qid, k.uid].forEach(v => { const id = (v === undefined || v === null) ? '' : String(v); if (id && out.indexOf(id) < 0) out.push(id); });
+    return out;
+  },
   noteRemoved(uid){
     if(!uid) return;
     const r = this.load(); r.rm = r.rm || {};
@@ -253,7 +261,7 @@ const PROGRESS_RESET = {
     r.ch[fid] = T;
     if(removedWr.length){
       r.rm = r.rm || {};
-      removedWr.forEach(q => { if(q && q.uid != null) r.rm[String(q.uid)] = T; });
+      removedWr.forEach(q => { if(q) PROGRESS_RESET._allIds(q).forEach(id => { r.rm[id] = T; }); });
       const keys = Object.keys(r.rm);
       if(keys.length > 400){
         keys.sort((x, y) => r.rm[y] - r.rm[x]);
@@ -303,7 +311,7 @@ const PROGRESS_RESET = {
     markKeys.forEach(k => { if(k) r.ch[k] = T; });
     if(removedWr.length){
       r.rm = r.rm || {};
-      removedWr.forEach(q => { if(q && q.uid != null) r.rm[String(q.uid)] = T; });
+      removedWr.forEach(q => { if(q) PROGRESS_RESET._allIds(q).forEach(id => { r.rm[id] = T; }); });
       const keys = Object.keys(r.rm);
       if(keys.length > 400){
         keys.sort((x, y) => r.rm[y] - r.rm[x]);

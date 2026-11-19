@@ -32,16 +32,15 @@ function qUidParts(uid) {
 
 function qIdKey(q) {
   if (!q) return '';
-  if (q.qid) return 'q' + q.qid;
+  const p = QKEY.primary(q);
+  if (p) return 'q' + p;
   if (q.uid) return 'u' + q.uid;
   return '';
 }
 
 function qByIdOrUid(q, id) {
   if (!q || !id) return false;
-  if (String(q.qid) === String(id)) return true;
-  if (String(q.uid) === String(id)) return true;
-  return false;
+  return QKEY.same(q, id);
 }
 
 
@@ -67,42 +66,49 @@ function sameQuestionAfterCorrection(old, fresh, minStem) {
    enough (0.6); anywhere else it must be near-identical (0.9), so a
    question that was removed is never mistaken for a similar-looking
    neighbour. */
-function _hasQid(q) { return !!q && q.qid !== undefined && q.qid !== null && String(q.qid) !== ''; }
-
-/* Key of a note in the notes map: the permanent id when there is one, else the
-   legacy positional uid (the shape notes were saved in before qids existed). */
+/* Key of a note in the notes map: the primary id (non-public id, else public
+   number) when there is one, else the legacy positional uid. */
 function qNoteKeyOf(q) {
-  if (_hasQid(q)) return 'q:' + q.qid;
-  return q && q.uid ? String(q.uid) : '';
+  return QKEY.mapKeys(q).primary || '';
+}
+
+/* True when both questions carry an id and those ids say they are different. */
+function _differentById(a, b) {
+  const x = QKEY.ids(a), y = QKEY.ids(b);
+  if (x.nid && y.nid) return x.nid !== y.nid;
+  if (x.pqn && y.pqn) return x.pqn !== y.pqn;
+  return false;
 }
 
 function matchCorrectedQuestion(old, fresh) {
   const parts = qUidParts(old && old.uid);
   const list = Array.isArray(fresh) ? fresh : [];
-  /* The permanent id decides. A teacher may rewrite the stem completely or the
-     set may be re-ordered; neither makes it a different question, and neither
-     may make a saved question look "withdrawn". */
-  if (_hasQid(old)) {
-    const byId = list.find(q => _hasQid(q) && String(q.qid) === String(old.qid));
-    if (byId) {
-      return {
-        index: (qUidParts(byId.uid) || {}).index,
-        question: byId,
-        kind: byId.uid === old.uid ? 'same' : 'moved'
-      };
-    }
+  const where = q => ({ index: (qUidParts(q.uid) || {}).index, question: q, kind: (old && q.uid === old.uid) ? 'same' : 'moved' });
+  /* 1. The ids decide, strongest first: the non-public id, then the public
+        number. A teacher may rewrite the stem completely or re-order the set;
+        neither makes it a different question, and neither may make a saved
+        question look \"withdrawn\". */
+  const k = QKEY.ids(old);
+  if (k.nid) {
+    const byNid = list.find(q => q && QKEY.ids(q).nid === k.nid);
+    if (byNid) return where(byNid);
   }
+  if (k.pqn) {
+    const byPqn = list.find(q => q && QKEY.ids(q).pqn === k.pqn && !_differentById(old, q));
+    if (byPqn) return where(byPqn);
+  }
+  /* 2. Position, only as a last resort: the question there must not carry an id
+        that says it is a different question, and the text must still agree. */
   if (parts) {
     const here = list.find(q => q && q.uid === old.uid);
-    /* Another permanent id at this position means a different question now
-       holds the slot: never match on position alone. */
-    const slotTaken = here && _hasQid(old) && _hasQid(here) && String(here.qid) !== String(old.qid);
-    if (here && !slotTaken && sameQuestionAfterCorrection(old, here, 0.6)) {
+    if (here && !_differentById(old, here) && sameQuestionAfterCorrection(old, here, 0.6)) {
       return { index: parts.index, question: here, kind: 'same' };
     }
   }
+  /* 3. Near-identical text anywhere, never across a known id difference. */
   let best = null, bestSim = 0;
   list.forEach(q => {
+    if (!q || _differentById(old, q)) return;
     const sm = qSimilarity(old && old.q, q && q.q);
     if (sm > bestSim) { bestSim = sm; best = q; }
   });
@@ -110,7 +116,7 @@ function matchCorrectedQuestion(old, fresh) {
     return {
       index: (qUidParts(best.uid) || {}).index,
       question: best,
-      kind: (best.uid === (old && old.uid) || (best.qid && old.qid === best.qid)) ? 'same' : 'moved'
+      kind: (best.uid === (old && old.uid)) ? 'same' : 'moved'
     };
   }
   return { index: -1, question: null, kind: 'none' };
@@ -138,7 +144,9 @@ function applyQuestionCorrection(item, q, nowMs) {
     img: q.img,
     imgCaption: q.imgCaption,
     uid: q.uid,
-    qid: q.qid,
+    qid: q.qid !== undefined ? q.qid : (q.nid !== undefined ? q.nid : q.pqn),
+    nid: q.nid,
+    pqn: q.pqn,
     fileId: q.fileId
   });
   delete out._withdrawn;
@@ -184,8 +192,11 @@ function applyCorrectionsToList(list, fid, fresh, nowMs, opts) {
     }
     const upd = applyQuestionCorrection(p.it, p.m.question, nowMs);
     if (upd.uid !== p.it.uid) res.moved++;
-    const from = qNoteKeyOf(p.it), to = qNoteKeyOf(upd);
-    if (from && to && from !== to) res.rekeys.push({ from: from, to: to });
+    /* Notes follow the question: from EVERY key it may have been saved under
+       (old public-first key, the other id, position) to its current primary key. */
+    const to = qNoteKeyOf(upd);
+    const mk = QKEY.mapKeys(p.it);
+    [mk.primary].concat(mk.legacy).forEach(from => { if (from && to && from !== to) res.rekeys.push({ from: from, to: to }); });
     if (!o.keepAll && seen.has(qIdKey(upd))) { res.merged++; return; }
     if (questionContentChanged(p.it, p.m.question)) res.updated++;
     seen.add(qIdKey(upd));

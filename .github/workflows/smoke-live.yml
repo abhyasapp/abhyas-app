@@ -23,3 +23,19 @@ jobs:
 
       - name: Check the deployed app and backend
         run: node tools/smoke-live.mjs
+
+      - name: Set up Python (browser gate)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Chromium
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+
+      # Loads the DEPLOYED app and the REAL content CDN in Chromium, cold then warm.
+      # The backend is stubbed so no account is needed. A red run here is the alert
+      # that learners cannot start the app.
+      - name: Browser gate against the live site
+        run: python tools/e2e/smoke_browser.py --base https://app.mku.name.np --live-cdn --pages user.html,admin.html

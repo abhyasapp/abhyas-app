@@ -23,15 +23,59 @@ const PWA = {
       if (btn) btn.style.display = 'none';
       PWA._hideInstallBanner();
     });
+    const verEl = document.getElementById('set-app-version');
+    if (verEl && typeof APP_VERSION !== 'undefined') verEl.textContent = APP_VERSION;
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {});
       navigator.serviceWorker.addEventListener('message', e => {
         if (e.data?.type === 'SW_ACTIVATED' && e.data.version !== (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '')) {
-          if (!S.quiz.active) toast('🔄 Update ready — reload to get the latest version.', 8000);
+          PWA._updateReady(e.data.version);
         }
       });
+      /* Browsers only look for a new service worker when the page is opened, so a
+         phone that never closes the app can run an old build for days. Ask
+         explicitly: when the app comes back to the foreground and every hour. */
+      const ask = () => { navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}); };
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ask(); });
+      setInterval(ask, 60 * 60 * 1000);
     }
   },
+  /* A new build is waiting. A toast that vanishes after 8 s (and is skipped
+     during a quiz) is easy to miss, so this stays as a bar until the student
+     reloads, and waits for the quiz to end instead of interrupting it. */
+  _updateVersion: '',
+  _updateReady(version) {
+    PWA._updateVersion = version || PWA._updateVersion || 'new';
+    PWA._showUpdateBar();
+  },
+  _showUpdateBar() {
+    if (document.getElementById('pwa-update-bar')) return;
+    if (S.quiz && S.quiz.active) {                 // never interrupt a quiz; try again shortly
+      if (!PWA._updateRetry) PWA._updateRetry = setInterval(() => {
+        if (!(S.quiz && S.quiz.active)) { clearInterval(PWA._updateRetry); PWA._updateRetry = null; PWA._showUpdateBar(); }
+      }, 4000);
+      return;
+    }
+    const bar = document.createElement('div');
+    bar.id = 'pwa-update-bar';
+    bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:fixed;left:.75rem;right:.75rem;top:calc(var(--safe-t,0px) + .5rem);z-index:9998;display:flex;align-items:center;gap:.6rem;'
+      + 'background:var(--surface,#fff);color:var(--ink,#111);border:1px solid var(--accent-line,var(--sep,#ccc));border-radius:12px;padding:.6rem .8rem;box-shadow:var(--sh-3,0 6px 20px rgba(0,0,0,.18))';
+    const t = document.createElement('div');
+    t.style.cssText = 'flex:1;font-size:.8rem;line-height:1.35';
+    t.textContent = 'A new version of Abhyas is ready.';
+    const go = document.createElement('button');
+    go.type = 'button'; go.textContent = 'Reload';
+    go.style.cssText = 'min-height:44px;padding:0 1rem;border:none;border-radius:10px;background:var(--accent,#1E7A4C);color:var(--on-accent,#fff);font-weight:700;font-size:.8rem;cursor:pointer;font-family:inherit';
+    go.addEventListener('click', () => PWA.reloadForUpdate());
+    const x = document.createElement('button');
+    x.type = 'button'; x.setAttribute('aria-label', 'Dismiss'); x.textContent = '\u00d7';
+    x.style.cssText = 'min-width:44px;min-height:44px;border:none;background:none;color:var(--ink-3,#555);font-size:1.2rem;cursor:pointer';
+    x.addEventListener('click', () => bar.remove());
+    bar.append(t, go, x);
+    document.body.appendChild(bar);
+  },
+  reloadForUpdate() { try { location.reload(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pwa.js', e); } },
   _showInstallBanner() {
     try { if (localStorage.getItem('pwa_banner_dismissed') === '1') return; } catch (e) {}
     if (document.getElementById('pwa-install-banner')) return;

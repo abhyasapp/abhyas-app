@@ -266,8 +266,7 @@ window.QNOTE = {
      permanent id the first time it is read or written with a question that has
      one, so it stops depending on where the question sits in its set. */
   _keys(who){
-    const k = (typeof QKEY !== 'undefined') ? QKEY.mapKeys(who) : { primary: String((who && who.uid) || who || ''), legacy: '' };
-    return k;
+    return (typeof QKEY !== 'undefined') ? QKEY.mapKeys(who) : { primary: String((who && who.uid) || who || ''), legacy: [] };
   },
   _has(k){ return !!k && Object.prototype.hasOwnProperty.call(this._load(), k); },
 
@@ -275,7 +274,10 @@ window.QNOTE = {
      every question-based read, so a later clear/edit by key can never find (or
      resurrect) a stale positional copy. */
   _adopt(k){
-    if (k.legacy && k.primary && k.legacy !== k.primary && this._has(k.legacy)) this.rekey(k.legacy, k.primary);
+    if (!k.primary) return;
+    /* Every older key this question may have been saved under: the old public-first
+       key, the other id, the positional uid. The note at the permanent key wins. */
+    (k.legacy || []).forEach(l => { if (l !== k.primary && this._has(l)) this.rekey(l, k.primary); });
   },
 
   get(who){
@@ -300,7 +302,7 @@ window.QNOTE = {
       : String(text == null ? '' : text);
     const t = raw.slice(0, this.MAX).trim();
     if (t) m[k.primary] = t; else delete m[k.primary];
-    if (k.legacy) delete m[k.legacy];          // the old positional copy is superseded
+    (k.legacy || []).forEach(l => { delete m[l]; });   // the older copies are superseded
     this._save();
   },
   remove(who, containerId){
@@ -315,6 +317,11 @@ window.QNOTE = {
     const m = this._load();
     if (!this._has(from)) return false;
     if (!this._has(to)) m[to] = m[from];
+    else if (m[to] !== m[from] && String(m[to]).indexOf(String(m[from])) === -1) {
+      /* Two devices wrote a note for the same question under different keys. Keep
+         both texts rather than silently dropping one. */
+      m[to] = (String(m[to]) + '\n\n' + String(m[from])).slice(0, this.MAX);
+    }
     delete m[from];
     this._save();
     return true;
@@ -400,37 +407,33 @@ window.QNOTE = {
 
 window.QHIST = {
   _cache: null,
-  /* One record per question, reachable by its stable qid and by the positional
-     uid it happened to have when each answer was recorded. A re-export
-     renumbers uid but never qid, so history used to vanish for any question
-     whose uid changed — and lookups made by qid found nothing at all. */
+  /* One record per question, found by its ids in priority order (non-public id,
+     public number, then position only for answers recorded without any id), so
+     history follows a question through a re-export and never leaks to another
+     question that happens to take its old position. */
   _index(){
     if (this._cache) return this._cache;
-    const recs = {};   // identity -> record
-    const name = {};   // any uid/qid seen -> identity
-    const sessions = (S.prog && Array.isArray(S.prog.sessions)) ? S.prog.sessions : [];
+    const ix = QKEY.makeIndex(), recs = Object.create(null);
+    const raw = S.prog && S.prog.sessions;                 // one read: the history can be large
+    const sessions = Array.isArray(raw) ? raw : [];
     for (let i = 0; i < sessions.length; i++){
       const qres = sessions[i] && sessions[i].qres;
       if (!Array.isArray(qres)) continue;
       for (let j = 0; j < qres.length; j++){
         const r = qres[j];
         if (!r) continue;
-        const id = r.qid || r.uid;
-        if (!id) continue;
-        const key = name[id] || (name[id] = id);
-        const rec = recs[key] || (recs[key] = { seen: 0, correct: 0 });
+        const c = ix.add(r);
+        if (!c) continue;
+        const rec = recs[c] || (recs[c] = { seen: 0, correct: 0 });
         rec.seen++;
         if (r.ok) rec.correct++;
-        if (r.uid) name[r.uid] = key;
-        if (r.qid) name[r.qid] = key;
       }
     }
-    const map = {};
-    for (const id in name) map[id] = recs[name[id]];
-    this._cache = map;
-    return map;
+    this._cache = { ix, recs };
+    return this._cache;
   },
-  forUid(uid){ return this._index()[uid] || null; },
+  /* `who` is a question or record (preferred) or a bare id string. */
+  forUid(who){ const m = this._index(), c = m.ix.find(who); return c ? (m.recs[c] || null) : null; },
   render(containerId, uid){
     const box = document.getElementById(containerId);
     if (!box) return;

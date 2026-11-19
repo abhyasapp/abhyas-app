@@ -40,22 +40,29 @@ const REPORT_QUEUE_KEY = 'abhyas_report_queue';
 const REPORT_HISTORY_KEY = 'abhyas_report_history_v1';
 const REPORT_HISTORY_MAX = 100;
 
-/* Keyed on the stable public qid when the export carries one, and on the
-   positional uid otherwise (legacy reports and offline content that predate
-   qids). The reason is part of the key, so one question can be reported once
-   per reason. */
+/* A question is identified by QKEY (js/core/qkey.js): non-public id first, then
+   public number, then position (only for content with neither). The reason is
+   part of the identity, so one question can be reported once per reason. */
+function _rid(r) { return (typeof QKEY !== 'undefined' && QKEY.primary(r)) || String((r && r.uid) || ''); }
+function reportSameQuestionReason(a, b) {
+  if (!a || !b || String(a.reason || '') !== String(b.reason || '')) return false;
+  /* A report that carries an id and one that carries only a position are kept
+     apart: the position may now belong to a different question, and a lost
+     report costs more than a duplicate one. */
+  const x = QKEY.ids(a), y = QKEY.ids(b);
+  if (!!(x.nid || x.pqn) !== !!(y.nid || y.pqn)) return false;
+  return QKEY.same(a, b);
+}
 function reportHistoryKey(r) {
-  const id = (r && (r.qid || r.uid)) || '';
-  return String(id) + '|' + String((r && r.reason) || '');
+  return String(_rid(r)) + '|' + String((r && r.reason) || '');
 }
 
 function reportHistoryAdd(list, entry, now) {
   const src = Array.isArray(list) ? list : [];
   if (!entry || !entry.reason) return src.slice();
-  if (!entry.qid && !entry.uid) return src.slice();
-  const key = reportHistoryKey(entry);
+  if (!QKEY.of(entry)) return src.slice();
   const t = Number(now) || Date.now();
-  const out = src.filter(x => x && reportHistoryKey(x) !== key);
+  const out = src.filter(x => x && !reportSameQuestionReason(x, entry));
   out.push(Object.assign({ status: 'queued', reportedAt: t }, entry));
   return out.slice(-REPORT_HISTORY_MAX);
 }
@@ -69,13 +76,7 @@ function reportHistoryUpdate(list, id, reason, patch) {
   const why = String(reason || '');
   return (Array.isArray(list) ? list : []).map(x => {
     if (!x || (!ref && !want)) return x;
-    let mine;
-    if (ref) {
-      if (ref.qid && x.qid) mine = String(ref.qid) === String(x.qid);
-      else mine = !!ref.uid && String(x.uid) === String(ref.uid);
-    } else {
-      mine = String(x.qid) === want || String(x.uid) === want;
-    }
+    const mine = ref ? QKEY.same(x, ref) : QKEY.same(x, want);
     return (mine && String(x.reason || '') === why)
       ? Object.assign({}, x, patch || {})
       : x;
@@ -99,11 +100,11 @@ const REPORT_QUEUE_MAX = 100;
    positional uid otherwise. Keying on uid alone meant a qid-only report
    could never be queued and could never be removed after it was sent. */
 function reportQueueId(r) {
-  return String((r && (r.qid || r.uid)) || '');
+  return r ? QKEY.of(r) : '';
 }
 
 function reportQueueKey(r) {
-  const id = reportQueueId(r);
+  const id = reportQueueId(r) && _rid(r);
   return id ? id + '|' + String((r && r.reason) || '') : '';
 }
 
@@ -112,8 +113,7 @@ function reportQueueAdd(queue, report, now) {
   if (!report || !reportQueueId(report)) return q;
   if (REPORT_REASONS.indexOf(report.reason) === -1) return q;
   const note = String(report.note || '').slice(0, 500);
-  const key = reportQueueKey(report);
-  const dup = q.findIndex(x => reportQueueKey(x) === key);
+  const dup = q.findIndex(x => reportSameQuestionReason(x, report));
   const entry = Object.assign({}, report, { note, queuedAt: Number(now) || Date.now() });
   if (dup !== -1) q[dup] = entry; else q.push(entry);
   return q.slice(-REPORT_QUEUE_MAX);
@@ -124,15 +124,13 @@ function reportQueueAdd(queue, report, now) {
 function reportQueueIsFull(queue, report) {
   const q = Array.isArray(queue) ? queue.filter(x => x && reportQueueId(x)) : [];
   if (q.length < REPORT_QUEUE_MAX) return false;
-  const key = reportQueueKey(report);
-  return !q.some(x => reportQueueKey(x) === key);
+  return !q.some(x => reportSameQuestionReason(x, report));
 }
 
 function reportQueueRemove(queue, report) {
   const src = Array.isArray(queue) ? queue : [];
-  const key = reportQueueKey(report);
-  if (!key) return src.slice();
-  return src.filter(x => !(x && reportQueueKey(x) === key));
+  if (!reportQueueKey(report)) return src.slice();
+  return src.filter(x => !(x && reportSameQuestionReason(x, report)));
 }
 
 /* qid-aware names used by the report sheet's call sites. Both share the
@@ -218,7 +216,9 @@ function questionMatchesSnapshot(current, snapshot) {
 
 function adminDraftKey(d) {
   if (!d) return '';
-  if (d.qid !== undefined && d.qid !== null && d.qid !== '') return 'q' + d.qid;
+  /* non-public id, then public number, then position (see QKEY) */
+  const p = (typeof QKEY !== 'undefined') ? QKEY.primary(d) : ((d.qid !== undefined && d.qid !== null && d.qid !== '') ? String(d.qid) : '');
+  if (p) return 'q' + p;
   return d.uid ? 'u' + d.uid : '';
 }
 
@@ -245,6 +245,8 @@ function adminDraftEvent(d) {
     key: d.key,
     uid: d.uid,
     qid: (d.qid === undefined || d.qid === '') ? null : d.qid,
+    nid: (d.nid === undefined || d.nid === '') ? null : d.nid,
+    pqn: d.pqn || null,
     fileId: d.fileId,
     index: d.index,
     reportId: d.reportId,

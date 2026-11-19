@@ -126,8 +126,8 @@ const USERS = {
         '<td data-label="Access" class="t-foot">' + esc(this.accessLabel(u)) + '</td>' +
         '<td class="td-actions"><div class="row-actions">' +
           '<button class="icon-btn sm" data-on-click="USERS.view(\'' + un + '\')" aria-label="Open ' + esc(u.username) + '" title="Open"><i class="ph ph-arrow-right"></i></button>' +
-          (canManage ? '<button class="icon-btn sm" data-on-click="USERS.edit(\'' + un + '\')" aria-label="Edit ' + esc(u.username) + '" title="Edit"><i class="ph ph-pencil-simple"></i></button>' : '') +
-          (canManage ? '<button class="icon-btn sm danger" data-on-click="USERS.del(\'' + un + '\')" aria-label="Delete ' + esc(u.username) + '" title="Delete"><i class="ph ph-trash"></i></button>' : '') +
+          (canManage ? '<button class="icon-btn sm" data-on-click="USERS.edit(\'' + un + '\')" aria-label="Edit ' + esc(u.username) + '" title="Edit"><i class="ph ph-pencil-simple"></i></button>' : ADMIN.lockedBtn('users_manage', 'Edit')) +
+          (canManage ? '<button class="icon-btn sm danger" data-on-click="USERS.del(\'' + un + '\')" aria-label="Delete ' + esc(u.username) + '" title="Delete"><i class="ph ph-trash"></i></button>' : ADMIN.lockedBtn('users_manage', 'Delete')) +
         '</div></td></tr>';
     }).join('');
     PAGINATION.render('u-pg', ADMIN.state.uPage, total, 'USERS.goPage', rows.length);
@@ -278,8 +278,8 @@ const USERS = {
           '<button class="btn btn-secondary grow" data-on-click="USERS.grantAccess(\'' + un + '\',\'year\')"><i class="ph ph-calendar"></i> One year</button></div>'
         : '') +
       '<div class="flex g2 wrap">' +
-        (canManage ? '<button class="btn btn-secondary" data-on-click="USERS.edit(\'' + un + '\')"><i class="ph ph-pencil-simple"></i> Edit details</button>' : '') +
-        (canManage ? '<button class="btn btn-danger" data-on-click="USERS.del(\'' + un + '\')"><i class="ph ph-trash"></i> Delete student</button>' : '') +
+        (canManage ? '<button class="btn btn-secondary" data-on-click="USERS.edit(\'' + un + '\')"><i class="ph ph-pencil-simple"></i> Edit details</button>' : ADMIN.lockedBtn('users_manage', 'Edit details', 'btn')) +
+        (canManage ? '<button class="btn btn-danger" data-on-click="USERS.del(\'' + un + '\')"><i class="ph ph-trash"></i> Delete student</button>' : ADMIN.lockedBtn('users_manage', 'Delete student', 'btn')) +
         '<button class="btn btn-quiet" style="margin-left:auto" data-on-click="MODAL.close(\'user\')">Close</button>' +
       '</div>';
     MODAL.open('user');

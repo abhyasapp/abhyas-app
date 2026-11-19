@@ -1,7 +1,7 @@
 // tests/qkey-identity.test.js — saved things follow the PERMANENT question id,
 // never the position. A re-export reuses positions for different questions;
 // matching on uid alone attached notes, bookmarks and misses to the wrong one.
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { loadGlobals } from './helpers/load-globals.js';
 
 function mkStorage() {
@@ -38,8 +38,8 @@ describe('QKEY.same', () => {
   it('keys: permanent id first, uid only as a fallback', () => {
     expect(K.of({ uid: 'f_3', qid: 'Q1' })).toBe('q:Q1');
     expect(K.of({ uid: 'f_3' })).toBe('u:f_3');
-    expect(K.mapKeys({ uid: 'f_3', qid: 'Q1' })).toEqual({ primary: 'q:Q1', legacy: 'f_3' });
-    expect(K.mapKeys({ uid: 'f_3' })).toEqual({ primary: 'f_3', legacy: '' });
+    expect(K.mapKeys({ uid: 'f_3', qid: 'Q1' })).toEqual({ primary: 'q:Q1', legacy: ['f_3'] });
+    expect(K.mapKeys({ uid: 'f_3' })).toEqual({ primary: 'f_3', legacy: [] });
   });
   it('accepts note keys and bare legacy strings', () => {
     expect(K.same({ uid: 'f_3', qid: 'Q1' }, 'q:Q1')).toBe(true);
@@ -88,7 +88,8 @@ describe('corrections', () => {
   });
   it('reports the note rekey when a question moves or learns its qid', () => {
     const moved = { uid: 'f_0', qid: 'Q1', q: 'Original stem', fileId: 'f' };
-    expect(g.applyCorrectionsToList([moved], 'f', fresh, 1).rekeys).toEqual([]);   // key is q:Q1 either way
+    // a note saved under the old position moves to the id key; the id key itself needs no move
+    expect(g.applyCorrectionsToList([moved], 'f', fresh, 1).rekeys).toEqual([{ from: 'f_0', to: 'q:Q1' }]);
     const legacy = { uid: 'f_1', q: 'Completely rewritten stem by the teacher', options: ['a', 'b'], fileId: 'f' };
     const r = g.applyCorrectionsToList([legacy], 'f', fresh, 1);
     expect(r.rekeys).toEqual([{ from: 'f_1', to: 'q:Q1' }]);
