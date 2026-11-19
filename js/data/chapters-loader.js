@@ -50,9 +50,21 @@ function mirrorsOf(base) {
 }
 var MIRRORS = mirrorsOf(CDN_BASE);
 
-function urlFor(base) {
+/* A cache-buster is only for the very first download. Every later check is a
+   CONDITIONAL request (If-None-Match): when nothing changed the server answers
+   304 and almost no data is used, which is what lets the app check on every open
+   even on mobile data. */
+function urlFor(base, bust) {
   var u = base + '/chapters-data.js';
-  return u + (u.indexOf('?') === -1 ? '?' : '&') + '_=' + Date.now();
+  return bust ? u + (u.indexOf('?') === -1 ? '?' : '&') + '_=' + Date.now() : u;
+}
+/* For freshness checks, raw GitHub first: jsDelivr caches a branch URL at its
+   edge for hours, raw GitHub for about five minutes. The CDN mirrors still back it up. */
+function freshOrder(list) {
+  return list.slice().sort(function (a, b) {
+    var ra = /raw\.githubusercontent\.com/.test(a) ? 0 : 1, rb = /raw\.githubusercontent\.com/.test(b) ? 0 : 1;
+    return ra - rb;
+  });
 }
 
 /* ── storage ───────────────────────────────────────────────────────── */
@@ -215,13 +227,13 @@ function failScreen(kind) {
 }
 
 /* ── network: try every mirror, two rounds ─────────────────────────── */
-function fetchOne(base, timeoutMs, noStore) {
+function fetchOne(base, timeoutMs, revalidate) {
   var ctl = ('AbortController' in window) ? new AbortController() : null;
   var to  = ctl ? setTimeout(function () { ctl.abort(); }, timeoutMs) : null;
   var opts = {};
   if (ctl) opts.signal = ctl.signal;
-  if (noStore) opts.cache = 'no-store';
-  return fetch(urlFor(base), opts)
+  if (revalidate) opts.cache = 'no-cache';           /* ask the server, but accept a 304 */
+  return fetch(urlFor(base, !revalidate), opts)
     .then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.text();
@@ -244,10 +256,10 @@ function fetchSource(opts) {
   var rounds = opts.rounds || 2;
   function round(n) {
     var chain = Promise.reject(new Error('start'));
-    MIRRORS.forEach(function (base, i) {
+    (opts.fresh ? freshOrder(MIRRORS) : MIRRORS).forEach(function (base, i) {
       chain = chain.catch(function (e) {
         if (e && e.message === 'bad-source') badSeen = true;
-        return fetchOne(base, i === 0 ? 20000 : 12000, opts.noStore);
+        return fetchOne(base, i === 0 ? 20000 : 12000, !!opts.fresh);
       });
     });
     return chain.catch(function (e) {
@@ -260,7 +272,9 @@ function fetchSource(opts) {
 }
 
 /* ── boot ──────────────────────────────────────────────────────────── */
+var _runningSrc = '';
 function finishOk(source, via) {
+  _runningSrc = source;
   /* It ran and defined the API: this copy is now the last known good one. */
   var cur = readSlot(GOOD_KEY);
   if (!cur || cur.source !== source) writeSlot(GOOD_KEY, source);
@@ -335,27 +349,50 @@ function weakConnection() {
     || c.type === 'cellular'
     || /^(slow-2g|2g|3g)$/i.test(c.effectiveType || '')));
 }
+/* Run a newer chapters file in the page that is already open and swap it in,
+   so a change from the content repo shows up without any reload. The old
+   ChapterData stays in place until the new one has run AND passes the contract;
+   a file that fails is remembered as bad and never replaces a working one. */
+function applyLive(src) {
+  var old = window.ChapterData;
+  return runSource(src).then(function () {
+    var changed = window.ChapterData !== old;
+    if (changed && shapeOk()) return true;
+    if (changed) window.ChapterData = old;             /* defined something unusable: put the good one back */
+    return false;
+  });
+}
+
 function fetchFresh(reason) {
   if (_inFlight) return;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
   if (reason === 'visible' || reason === 'interval') {
-    var gap = weakConnection() ? 60 * 60 * 1000 : 5 * 60 * 1000;
+    var gap = weakConnection() ? 15 * 60 * 1000 : 60 * 1000;
     if (Date.now() - _lastFresh < gap) return;
   }
   _lastFresh = Date.now();
   _inFlight = true;
-  fetchSource({ rounds: 1, noStore: true })
+  fetchSource({ rounds: 1, fresh: true })
     .then(function (src) {
-      var cand = readSlot(CACHE_KEY);
-      if (cand && src === cand.source) { writeSlot(CACHE_KEY, src); return; }   /* unchanged: refresh timestamp */
-      if (lsGet(BAD_KEY) === fingerprint(src)) return;                          /* known-bad: do not store again */
-      /* Stored as a CANDIDATE only. It is promoted to "good" after it has
-         actually run and passed the contract on the next start. */
-      if (!writeSlot(CACHE_KEY, src)) return;
-      try {
-        window.dispatchEvent(new CustomEvent('abhyas:chapters-updated', { detail: { reason: reason || 'background' } }));
-        if (typeof window.toast === 'function') window.toast('Chapters updated \u2014 reload to see the change', 8000);
-      } catch (e) { window.warnCaught && window.warnCaught('js/data/chapters-loader.js', e); }
+      if (src === _runningSrc) {                                              /* unchanged */
+        var c0 = readSlot(CACHE_KEY);
+        if (!c0 || c0.source !== src) writeSlot(CACHE_KEY, src);
+        return;
+      }
+      if (lsGet(BAD_KEY) === fingerprint(src)) return;                        /* known-bad: do not run it again */
+      return applyLive(src).then(function (ok) {
+        if (ok) {
+          _runningSrc = src;
+          writeSlot(GOOD_KEY, src); writeSlot(CACHE_KEY, src);
+          lsDel(BAD_KEY);
+          try {
+            window.dispatchEvent(new CustomEvent('abhyas:chapters-updated', { detail: { reason: reason || 'background', applied: true } }));
+          } catch (e) { window.warnCaught && window.warnCaught('js/data/chapters-loader.js', e); }
+        } else {
+          lsSet(BAD_KEY, fingerprint(src));
+          reportFailure('bad_content', 'a newer chapters file failed to run; the working copy was kept');
+        }
+      });
     })
     .catch(function () { /* offline or every mirror down: keep what we have */ })
     .then(function () { _inFlight = false; });
@@ -363,12 +400,13 @@ function fetchFresh(reason) {
 function startBackgroundRefresh() {
   if (_bgStarted) return;
   _bgStarted = true;
-  setTimeout(function () { fetchFresh('boot'); }, 2000);
+  setTimeout(function () { fetchFresh('boot'); }, 300);           /* every open checks for newer chapters */
   window.addEventListener('online', function () { fetchFresh('online'); });
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') fetchFresh('visible');
   });
-  setInterval(function () { fetchFresh('interval'); }, 15 * 60 * 1000);
+  window.addEventListener('pageshow', function (e) { if (e && e.persisted) fetchFresh('visible'); });
+  setInterval(function () { fetchFresh('interval'); }, 5 * 60 * 1000);
 }
 
 /* ── go ────────────────────────────────────────────────────────────── */

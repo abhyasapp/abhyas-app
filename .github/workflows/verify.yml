@@ -55,3 +55,6 @@ jobs:
 
       - name: App lock (real browser, needs Web Crypto)
         run: python tools/e2e/applock.py
+
+      - name: Updates arrive without a hard reload (real browser)
+        run: python tools/e2e/live_update.py

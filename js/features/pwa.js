@@ -46,6 +46,9 @@ const PWA = {
   _updateVersion: '',
   _updateReady(version) {
     PWA._updateVersion = version || PWA._updateVersion || 'new';
+    /* Nobody is looking and nothing is in progress: just apply it, so the next
+       time the app is opened it is already the new version. */
+    if (document.visibilityState === 'hidden' && !(S.quiz && S.quiz.active)) { PWA.reloadForUpdate(); return; }
     PWA._showUpdateBar();
   },
   _showUpdateBar() {
@@ -74,6 +77,23 @@ const PWA = {
     x.addEventListener('click', () => bar.remove());
     bar.append(t, go, x);
     document.body.appendChild(bar);
+  },
+  /* One clean reload with every shell file fetched from the network (the service
+     worker stops answering from cache for a few seconds). Once per version, so a
+     genuinely broken deploy can never put the page in a reload loop. Returns true
+     when a reload was started. */
+  forceFresh(why) {
+    try {
+      const key = 'abhyas_fresh_tried';
+      const tried = sessionStorage.getItem(key);
+      const ver = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : '';
+      if (tried === ver) return false;
+      sessionStorage.setItem(key, ver);
+      const go = () => location.reload();
+      const c = navigator.serviceWorker && navigator.serviceWorker.controller;
+      if (c) { c.postMessage({ type: 'FRESH_SHELL' }); setTimeout(go, 150); } else go();
+      return true;
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/pwa.js', e); return false; }
   },
   reloadForUpdate() { try { location.reload(); } catch (e) { window.warnCaught && window.warnCaught('js/features/pwa.js', e); } },
   _showInstallBanner() {

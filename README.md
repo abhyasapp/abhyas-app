@@ -79,6 +79,24 @@ Run it locally: `python3 tools/e2e/smoke_browser.py --scenario bad-commit`.
 - **Admin permissions are explained.** A button the admin may not use shows as a locked button naming the permission
   (`ADMIN.lockedBtn`), instead of silently disappearing.
 
+## Updates reach students without a hard reload
+
+Opening the app, or an ordinary browser reload, is enough. Nothing needs Ctrl+Shift+R.
+
+- **App code** (HTML/JS/CSS): the service worker is network-first with revalidation, so a normal reload gets the new
+  deploy. Each page declares its version (`<meta name="abhyas-version">`, kept equal to `APP_VERSION` by a test); if a slow
+  connection ever assembles a page from two deploys, `PWA.forceFresh()` does one clean fully-fresh reload (once per
+  version, so no loop). An update found while the app is in the background is applied silently; in the foreground a
+  "Reload" bar appears and never interrupts a quiz.
+- **Chapter data** (`chapters-data.js`): checked on every open (and on return to the app, every 5 minutes, and when the
+  device comes back online) with a conditional request (`If-None-Match`: a 304 costs almost nothing). A newer file is run
+  in the open page and swapped in **live**, only if it passes the contract; a broken one is refused and remembered.
+  Raw GitHub is asked first (jsDelivr caches a branch URL for hours).
+- **Question files** (`content/<file>.json`): when a chapter is opened and its saved copy was last checked more than
+  10 minutes ago (`QUIZ.REVAL_MS`), a conditional check runs first (2 s cap, then the saved copy opens and the check
+  finishes behind it). A corrected question therefore shows the next time the chapter opens.
+- Test: `python3 tools/e2e/live_update.py`.
+
 ### Things to know before editing
 
 - **Every question is identified by id, in this priority: NON-PUBLIC id, then PUBLIC number, then position.**

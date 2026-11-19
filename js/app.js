@@ -19,6 +19,20 @@
   /* The chapters file must be defined before the app opens: on a first visit it
      is still downloading at this point, and every screen reads ChapterData.
      The loader shows its own loading / retry screen meanwhile. */
+  /* New chapter data arrived while the app is open (chapters-loader.js swapped it
+     in). Nobody needs to reload: repaint the screen they are on, except during a
+     quiz, which is never interrupted (the next screen already uses the new data). */
+  window.addEventListener('abhyas:chapters-updated', () => {
+    try {
+      if (typeof S !== 'undefined' && S.quiz && S.quiz.active) return;
+      if (typeof UI !== 'undefined' && UI.cur && typeof UI.go === 'function') UI.go(UI.cur);
+      if (typeof toast === 'function') toast('Chapters updated', 2500);
+    } catch (e) { window.warnCaught && window.warnCaught('js/app.js', e); }
+  });
+  /* A page assembled from two deploys: reload once with the shell fetched fresh. */
+  if (window.__versionMismatch && typeof PWA !== 'undefined' && PWA.forceFresh) {
+    if (PWA.forceFresh(window.__versionMismatch)) return;
+  }
   const _start = () => AUTH.restore().catch(err => console.error('[app.js] AUTH.restore failed:', err));
   if (typeof ChapterData === 'undefined' && window.ChapterDataReady && typeof window.ChapterDataReady.then === 'function') {
     window.ChapterDataReady.then(_start);

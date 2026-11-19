@@ -15,6 +15,13 @@ describe('versions stay in sync (a mismatch breaks cache busting)', () => {
     const ver = /APP_VERSION\s*=\s*'([^']+)'/.exec(read('js/core/version.js'))[1];
     expect([cfg, ver]).toEqual([pkg, pkg]);
   });
+  it('the pages declare the same version (a mismatch triggers a forced reload on every load)', () => {
+    for (const page of ['user.html', 'index.html']) {
+      const meta = /<meta name="abhyas-version" content="([^"]+)"/.exec(read(page));
+      expect(meta, page).toBeTruthy();
+      expect(meta[1], page).toBe(pkg);
+    }
+  });
 });
 
 describe('service worker precache list', () => {

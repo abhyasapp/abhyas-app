@@ -17,7 +17,14 @@ const QUIZ = {
     }
     if(attempt === 1 && kind !== 'bg' && kind !== 'fresh'){
       const hit = await QDB.get(cacheKey);
-      if(_validCache(hit)){ QUIZ._maybeRevalidate(fileId, cacheKey); return hit; }
+      if(_validCache(hit)){
+        /* Opening a chapter checks whether the teacher changed it since we last
+           looked (a conditional request: tiny when nothing changed). If the check
+           is slow, the saved copy opens at once and the check finishes behind it. */
+        const fresh = await QUIZ._freshIfStale(fileId, cacheKey);
+        if(!fresh) QUIZ._maybeRevalidate(fileId, cacheKey);
+        return fresh || hit;
+      }
     }
     try{
       if(kind !== 'fresh') try{
@@ -86,26 +93,42 @@ const QUIZ = {
      Without it the SW would answer a recheck with the copy it cached
      earlier, unchanged files would look identical, and changed question
      content could never reach the offline downloads. */
+  /* Raw GitHub serves the repo's current file within minutes; jsDelivr caches a
+     branch URL at its edge for hours. A freshness check therefore asks raw GitHub
+     first and falls back to the CDN. Derived from CDN_BASE, so a pin (tag or
+     commit) applies to both. */
+  _rawBase(){
+    const m = /^https:\/\/cdn\.jsdelivr\.net\/gh\/([^/@]+\/[^/@]+)@(.+)$/.exec(this.CDN_BASE || '');
+    return m ? 'https://raw.githubusercontent.com/' + m[1] + '/' + m[2] : '';
+  },
   async _fetchFromCDN(fileId, timeoutMs, opts){
     if(!this.CDN_BASE) throw new Error('CDN 404 (no mirror configured)');
     if(!S.online || S.forcedOffline) throw new Error('OFFLINE');
-    const ctrl  = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs || 12000);
-    try{
-      let url = `${this.CDN_BASE}/content/${fileId}.json`;
-      if(opts && opts.fresh) url += '?refresh=1&_=' + Date.now();
-      const r = await fetch(url,
-                            { signal: ctrl.signal, cache: 'default' });
-      clearTimeout(timer);
-      if(!r.ok) throw new Error('CDN ' + r.status);
-      const data = await r.json();
-      if(typeof CONTENT_CRYPTO !== 'undefined' && CONTENT_CRYPTO.isEnvelope(data)) return await CONTENT_CRYPTO.open(data, fileId);
-      if(data && data.enc === 1) throw new Error('Encrypted file but no decryptor loaded');
-      return data;
-    }catch(e){
-      clearTimeout(timer);
-      throw e;
+    const fresh = !!(opts && opts.fresh);
+    /* A freshness check: conditional request first (If-None-Match, so an
+       unchanged file costs a 304), raw GitHub first, CDN as the fallback. */
+    const urls = [];
+    if(fresh && this._rawBase()) urls.push({ url: `${this._rawBase()}/content/${fileId}.json`, conditional: true });
+    urls.push({ url: `${this.CDN_BASE}/content/${fileId}.json` + (fresh ? '?refresh=1&_=' + Date.now() : ''), conditional: false });
+    let lastErr = null;
+    for(let i = 0; i < urls.length; i++){
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs || 12000);
+      try{
+        const r = await fetch(urls[i].url, { signal: ctrl.signal, cache: urls[i].conditional ? 'no-cache' : 'default' });
+        clearTimeout(timer);
+        if(!r.ok) throw new Error('CDN ' + r.status);
+        const data = await r.json();
+        if(typeof CONTENT_CRYPTO !== 'undefined' && CONTENT_CRYPTO.isEnvelope(data)) return await CONTENT_CRYPTO.open(data, fileId);
+        if(data && data.enc === 1) throw new Error('Encrypted file but no decryptor loaded');
+        return data;
+      }catch(e){
+        clearTimeout(timer);
+        lastErr = e;
+        if(String((e && e.message) || '') === 'OFFLINE') break;
+      }
     }
+    throw lastErr || new Error('CDN 404');
   },
 
   async _fetchBatch(refs){
@@ -194,11 +217,33 @@ const QUIZ = {
     return out;
   },
   _reval: {},
+  /* How long a saved question file counts as "just checked". Short, because a
+     teacher's correction should reach the student on the next time they open the
+     chapter, not tomorrow; the check itself is conditional and tiny. */
+  REVAL_MS: 10 * 60 * 1000,
+  _stamp(cacheKey){
+    try{ const m = _load('abhyas_qts', {}); m[cacheKey] = Date.now(); _save('abhyas_qts', m); }catch(e){ window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
+  },
+  /* Returns the newer copy if the file changed, else null. Never throws, never
+     waits longer than ~2 s: on a slow connection the saved copy is used and the
+     normal background revalidation carries on. */
+  async _freshIfStale(fileId, cacheKey){
+    try{
+      if(!S.online || S.forcedOffline) return null;
+      const last = Number((_load('abhyas_qts', {}) || {})[cacheKey]) || 0;
+      if(Date.now() - last < QUIZ.REVAL_MS || QUIZ._reval[cacheKey]) return null;
+      const data = await QUIZ._fetchFromCDN(fileId, 2000, { fresh: true });
+      if(!data || (typeof data === 'object' && !Array.isArray(data) && data.success === false)) return null;
+      if(!(await QDB.set(cacheKey, data))) return null;
+      QUIZ._stamp(cacheKey);
+      return data;
+    }catch(e){ return null; }
+  },
   _maybeRevalidate(fileId, cacheKey){
     try{
       const TS_KEY = 'abhyas_qts';
       const map = _load(TS_KEY, {});
-      if(Date.now() - (map[cacheKey] || 0) < 24*60*60*1000 || QUIZ._reval[cacheKey]) return;
+      if(Date.now() - (map[cacheKey] || 0) < QUIZ.REVAL_MS || QUIZ._reval[cacheKey]) return;
       QUIZ._reval[cacheKey] = true;
       QUIZ._revalidateQuiet(fileId, cacheKey)
         .then(ok => { if(ok){ const m = _load(TS_KEY, {}); m[cacheKey] = Date.now(); _save(TS_KEY, m); } })

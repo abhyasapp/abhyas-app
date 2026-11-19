@@ -13,7 +13,7 @@ const CACHE_NAME = 'abhyas-v' + APP_VERSION;
    importScripts below) does not trigger an update, so an already-installed
    app keeps its old shell cache and never sees a deployed fix. Bump SW_BUILD
    together with APP_VERSION in config.js, version.js and package.json. */
-const SW_BUILD = '2.58';
+const SW_BUILD = '2.59';
 const CDN_CACHE  = 'abhyas-cdn-v1';
 const NETWORK_TIMEOUT_MS = 2500;
 const CDN_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
@@ -194,6 +194,7 @@ async function clearStaleShellEntries() {
 }
 
 self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'FRESH_SHELL') { freshUntil = Date.now() + 20000; return; }
   if (e.data && e.data.type === 'CLEAR_STALE_IF_ONLINE') {
     e.waitUntil(clearStaleShellEntries());
   }
@@ -230,7 +231,11 @@ self.addEventListener('notificationclick', e => {
   })());
 });
 
+/* After PWA.forceFresh() asks for it, everything is fetched straight from the
+   network for a few seconds: no timeout, no cached fallback, no HTTP cache. */
+let freshUntil = 0;
 function fetchWithTimeout(req, ms) {
+  if (Date.now() < freshUntil) return fetch(req, { cache: 'reload' });
   if (!ms) return fetch(req, { cache: 'no-cache' });
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
@@ -284,7 +289,8 @@ async function cdnCacheFirst(req) {
        current answer, not the last one we cached (the mirror has no TTL,
        so a plain cache-first read would answer with the stale copy and
        downloaded question files would never update). */
-    const fresh = await fetch(key, { mode: 'cors', credentials: 'omit', cache: 'reload' });
+    /* 'no-cache' = ask the CDN, but accept a 304: an unchanged file costs almost no data. */
+    const fresh = await fetch(key, { mode: 'cors', credentials: 'omit', cache: 'no-cache' });
     if (fresh.ok) cache.put(key, fresh.clone()).catch(() => {});
     return fresh;
   }

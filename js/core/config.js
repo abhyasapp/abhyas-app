@@ -4,8 +4,20 @@
    MUST load EXACTLY ONCE (do not reference from any shim or app.js).
    ═══════════════════════════════════════════════════════════════════════ */
 
-const APP_VERSION = '2.58';
+const APP_VERSION = '2.59';
 window.APP_VERSION = APP_VERSION;
+
+/* The page (HTML) and its scripts must come from the same deploy. On a slow
+   connection the service worker can answer one file from the old cache while
+   another arrives new, and the mixed page misbehaves until a hard reload. The
+   HTML carries its own version; if it disagrees with this script, js/app.js asks
+   for one clean, fully-fresh reload (see PWA.forceFresh). */
+(function () {
+  try {
+    const m = document.querySelector('meta[name="abhyas-version"]');
+    if (m && m.content && m.content !== APP_VERSION) window.__versionMismatch = m.content + ' vs ' + APP_VERSION;
+  } catch (e) { /* no DOM (tests) */ }
+})();
 
 /* ═══════════════ Retry policy (read by js/core/net.js) ═══════════════════
    Tune these if a deployment gets flakier. Nothing else needs to change.
