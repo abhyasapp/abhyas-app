@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { test } from 'vitest';
 
-const root = path.resolve(import.meta.dirname, '..');
+/* Was written against node:test, which vitest never collected (its include glob
+   was *.test.js only), so these three assertions had not run. vitest runs them
+   now, and `import.meta.dirname` is not available under vite's module runner,
+   hence fileURLToPath below. */
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pdfBytes = new Uint8Array([37, 80, 68, 70, 45, 49, 46, 55, 10, 37, 37, 69, 79, 70, 10]);
 const signedUrl = 'https://storage.example/signed/example.pdf';
 
