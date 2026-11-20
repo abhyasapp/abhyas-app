@@ -17,14 +17,7 @@ const QUIZ = {
     }
     if(attempt === 1 && kind !== 'bg' && kind !== 'fresh'){
       const hit = await QDB.get(cacheKey);
-      if(_validCache(hit)){
-        /* Opening a chapter checks whether the teacher changed it since we last
-           looked (a conditional request: tiny when nothing changed). If the check
-           is slow, the saved copy opens at once and the check finishes behind it. */
-        const fresh = await QUIZ._freshIfStale(fileId, cacheKey);
-        if(!fresh) QUIZ._maybeRevalidate(fileId, cacheKey);
-        return fresh || hit;
-      }
+      if(_validCache(hit)) return await QUIZ._currentOrSaved(fileId, cacheKey, hit);
     }
     try{
       if(kind !== 'fresh') try{
@@ -104,9 +97,10 @@ const QUIZ = {
   async _fetchFromCDN(fileId, timeoutMs, opts){
     if(!this.CDN_BASE) throw new Error('CDN 404 (no mirror configured)');
     if(!S.online || S.forcedOffline) throw new Error('OFFLINE');
-    const fresh = !!(opts && opts.fresh);
-    /* A freshness check: conditional request first (If-None-Match, so an
-       unchanged file costs a 304), raw GitHub first, CDN as the fallback. */
+    /* When online the CURRENT file is always what is asked for: a conditional
+       request (If-None-Match, so an unchanged file costs a 304), raw GitHub first,
+       the CDN as the fallback. Only { fresh:false } (nothing uses it today) opts out. */
+    const fresh = !(opts && opts.fresh === false);
     const urls = [];
     if(fresh && this._rawBase()) urls.push({ url: `${this._rawBase()}/content/${fileId}.json`, conditional: true });
     urls.push({ url: `${this.CDN_BASE}/content/${fileId}.json` + (fresh ? '?refresh=1&_=' + Date.now() : ''), conditional: false });
@@ -217,39 +211,39 @@ const QUIZ = {
     return out;
   },
   _reval: {},
-  /* How long a saved question file counts as "just checked". Short, because a
-     teacher's correction should reach the student on the next time they open the
-     chapter, not tomorrow; the check itself is conditional and tiny. */
-  REVAL_MS: 10 * 60 * 1000,
+  _inflight: {},
+  /* The policy, in one place:
+       ONLINE   -> always ask the content repo for the current file. The saved copy
+                   is used only if that request is slow or fails.
+       OFFLINE  -> the saved copy (this method is never reached offline).
+     "Slow" means SAVED_AFTER_MS: the student is not kept waiting on a bad
+     connection, and the request keeps going in the background and refreshes the
+     saved copy for next time. */
+  SAVED_AFTER_MS: 3500,
   _stamp(cacheKey){
     try{ const m = _load('abhyas_qts', {}); m[cacheKey] = Date.now(); _save('abhyas_qts', m); }catch(e){ window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
   },
-  /* Returns the newer copy if the file changed, else null. Never throws, never
-     waits longer than ~2 s: on a slow connection the saved copy is used and the
-     normal background revalidation carries on. */
-  async _freshIfStale(fileId, cacheKey){
-    try{
-      if(!S.online || S.forcedOffline) return null;
-      const last = Number((_load('abhyas_qts', {}) || {})[cacheKey]) || 0;
-      if(Date.now() - last < QUIZ.REVAL_MS || QUIZ._reval[cacheKey]) return null;
-      const data = await QUIZ._fetchFromCDN(fileId, 2000, { fresh: true });
-      if(!data || (typeof data === 'object' && !Array.isArray(data) && data.success === false)) return null;
-      if(!(await QDB.set(cacheKey, data))) return null;
-      QUIZ._stamp(cacheKey);
-      return data;
-    }catch(e){ return null; }
-  },
-  _maybeRevalidate(fileId, cacheKey){
-    try{
-      const TS_KEY = 'abhyas_qts';
-      const map = _load(TS_KEY, {});
-      if(Date.now() - (map[cacheKey] || 0) < QUIZ.REVAL_MS || QUIZ._reval[cacheKey]) return;
-      QUIZ._reval[cacheKey] = true;
-      QUIZ._revalidateQuiet(fileId, cacheKey)
-        .then(ok => { if(ok){ const m = _load(TS_KEY, {}); m[cacheKey] = Date.now(); _save(TS_KEY, m); } })
-        .catch(() => {})
-        .finally(() => { delete QUIZ._reval[cacheKey]; });
-    }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); }
+  async _currentOrSaved(fileId, cacheKey, saved){
+    let p = QUIZ._inflight[cacheKey];            // one request per file at a time (double taps, prefetch)
+    if(!p){
+      p = QUIZ._fetchFromCDN(fileId, 12000).then(async data => {
+        if(!data || (typeof data === 'object' && !Array.isArray(data) && data.success === false)) throw new Error('empty');
+        await QDB.set(cacheKey, data);
+        QUIZ._stamp(cacheKey);
+        return data;
+      });
+      QUIZ._inflight[cacheKey] = p;
+      const clear = () => { delete QUIZ._inflight[cacheKey]; };
+      p.then(clear, clear);
+    }
+    let cdn404 = false;
+    const settled = p.catch(e => { cdn404 = /CDN 404/.test(String((e && e.message) || '')); return null; });
+    const slow = new Promise(res => setTimeout(() => res(null), QUIZ.SAVED_AFTER_MS));
+    const data = await Promise.race([settled, slow]);
+    if(data) return data;
+    /* A file that is not on the CDN at all lives on Apps Script: refresh it from there. */
+    settled.then(() => { if(cdn404) QUIZ._revalidateQuiet(fileId, cacheKey).catch(() => {}); });
+    return saved;
   },
   async _revalidateQuiet(fileId, cacheKey){
     if(!S.online || S.forcedOffline) return false;
@@ -284,13 +278,15 @@ const QUIZ = {
        on the next frame. The background revalidation still refreshes it, but
        the student never waits behind a "Connecting…" overlay for data that is
        already on the device. */
+    const online = S.online && !S.forcedOffline;
     const cached = await QDB.get(cacheKey);
-    if(validCache(cached)){
+    /* Online: the current file is fetched first (see _currentOrSaved), so a
+       correction is never hidden behind a saved copy. Offline: saved questions only. */
+    if(validCache(cached) && !online){
       const cachedQs = normQ(cached, fileId);
       if(cachedQs.length){
         QUIZ._hideLoader();
         QUIZ.startWith(cachedQs, mode, chapterName, scope);
-        QUIZ._maybeRevalidate(fileId, cacheKey);
         setTimeout(()=>{ try{ CACHE.prefetchNext(fileId); }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } }, 2000);
         return;
       }
@@ -308,19 +304,20 @@ const QUIZ = {
       QUIZ._showError('You are offline and this set is not cached yet. Go to the Offline Cache tab while online to download it.', null);
       return;
     }
-    QUIZ._showLoader('Connecting to server…');
-    const msgTimer = setTimeout(()=>{ QUIZ._showLoader('Still loading… (Apps Script may be warming up)'); }, 5000);
+    /* A check that finishes inside a quarter of a second never flashes a loader. */
+    const msgTimer0 = setTimeout(()=>{ QUIZ._showLoader('Checking for the latest questions…'); }, 250);
+    const msgTimer = setTimeout(()=>{ QUIZ._showLoader('Still loading… (the server may be warming up)'); }, 5000);
     const msgTimer2 = setTimeout(()=>{ QUIZ._showLoader('Taking longer than usual… please wait or check your connection.'); }, 12000);
     try{
       const raw = await QUIZ._fetch(fileId, cacheKey);
-      clearTimeout(msgTimer); clearTimeout(msgTimer2);
+      clearTimeout(msgTimer0); clearTimeout(msgTimer); clearTimeout(msgTimer2);
       const qsArr = normQ(raw, fileId);
       QUIZ._hideLoader();
       if(!qsArr.length){ toast('❌ No valid questions found in this file. Check the file format.'); return; }
       QUIZ.startWith(qsArr, mode, chapterName, scope);
       setTimeout(()=>{ try{ CACHE.prefetchNext(fileId); }catch (e) { window.warnCaught && window.warnCaught('js/features/quiz-engine.js', e); } }, 2000);
     } catch(err){
-      clearTimeout(msgTimer); clearTimeout(msgTimer2);
+      clearTimeout(msgTimer0); clearTimeout(msgTimer); clearTimeout(msgTimer2);
       QUIZ._hideLoader();
       const msg = err.message==='OFFLINE'
         ? 'You are offline and this set has not been downloaded yet. Open Downloads while you have a connection to save it.'

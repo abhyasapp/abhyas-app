@@ -25,7 +25,8 @@ Exit code 0 = pass, 1 = fail.
 import argparse, functools, http.server, json, os, re, socketserver, sys, threading
 from playwright.sync_api import sync_playwright
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+# ABHYAS_ROOT lets the same gate test the BUILT site (dist/) instead of the source tree.
+ROOT = os.path.abspath(os.environ.get('ABHYAS_ROOT') or os.path.join(os.path.dirname(__file__), '..', '..'))
 STUB = open(os.path.join(os.path.dirname(__file__), 'chapters_stub.js.txt')).read()
 BAD = 'this is not the chapters file { oops'
 

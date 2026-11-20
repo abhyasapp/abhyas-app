@@ -7,7 +7,11 @@ can transfer.
 ## What a buyer receives here
 
 - The complete static PWA frontend (`index.html`, `user.html`, `admin.html`).
-- 50 automated test files and the `npm run verify` gate.
+- 75+ automated test files (570+ tests) and the `npm run verify` gate, plus real-browser
+  gates (`tools/e2e/`) that load the app cold and warm under the real CSP, simulate a
+  bad content commit, a mirror outage and an offline poisoned cache, and prove updates
+  arrive without a hard reload. CI builds the site, runs those gates on the built copy
+  and only then publishes it (`.github/workflows/pages.yml`).
 - The admin console, content import tools, written-answer grading, offline
   cache, progress sync client and service worker.
 - A proprietary `LICENSE` and this transfer checklist.
@@ -24,12 +28,21 @@ can transfer.
 
 ## Smaller risks a technical reviewer will notice
 
-- `script-src` still allows `'unsafe-inline'` and `'unsafe-eval'` because of the
-  `data-on-*` dispatcher and inline page scripts.
+- `script-src` is strict (`'self' blob:` plus Google sign-in and one icon CDN): no
+  `'unsafe-inline'`, no `'unsafe-eval'`. `style-src` still allows `'unsafe-inline'` because
+  of about 90 inline `style=` attributes and styles built in JavaScript; that is the
+  remaining CSP gap and it cannot inject script.
 - Session tokens live in `localStorage`, so any XSS becomes account takeover.
 - The app is a PWA, not a native Play Store / App Store package.
 - The objective question bank is served from a public CDN; paid access is
-  enforced by the backend, not by the files themselves.
+  enforced by the backend and by content encryption, not by the files being hidden.
+  Confirm `CONTENT_KEY_TRIAL` is off and that keys are released only after an access check.
+- The content CDN (`chapters-data.js`, question files) is one point of failure. The app
+  contains it: several mirrors, a last-known-good copy, a contract check before a file is
+  trusted, and a retry screen. A permanent outage of every mirror on a brand-new device is
+  the one case it cannot cover.
+- Question identity is by non-public id, then public number, then position
+  (`js/core/qkey.js`). Content that publishes neither id falls back to position.
 - There is no formal SLA, company address or named data-protection officer.
 
 ## Transfer checklist
@@ -46,6 +59,13 @@ can transfer.
 9. Give the buyer a staging account and a seeded demo workspace.
 10. Hand over the business report exported from **Admin → Insights → Business
     report**, plus 12 months of payment records.
+
+## Content freshness policy
+
+Online, the app always asks the content repository for the current question file (a
+conditional request, so an unchanged file costs a 304) and for the current chapter data on
+every open; a newer chapter file is swapped in live. The saved copy is used only when the
+device is offline, or when the request is slow (3.5 s) or fails. Nothing needs a hard reload.
 
 ## What this release changed
 

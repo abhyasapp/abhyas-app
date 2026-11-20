@@ -1,0 +1,85 @@
+name: Build and deploy site
+
+# The site that learners get is the BUILT copy (tools/build-dist.mjs): the 103 page
+# scripts become one file, which cut a cold first load by about a third and 121
+# requests to 22. The source tree is never bundled or committed; this job builds it,
+# proves the built site works in a real browser, and only then publishes it. If any
+# check fails nothing is deployed and the previous version stays live.
+#
+# ONE-TIME SETUP (owner): Repository Settings -> Pages -> Build and deployment ->
+# Source: "GitHub Actions". Until that is switched, this workflow builds and tests
+# but the branch-based Pages deploy stays in charge, so merging it changes nothing.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the site into dist/
+        run: npm run build
+
+      - name: Set up Python (browser gate)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Chromium
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+
+      # The same real-browser gate as verify.yml, but against the BUILT site.
+      - name: Browser gate on the built site
+        env:
+          ABHYAS_ROOT: dist
+        run: |
+          for s in normal bad-commit mirror poisoned-cache; do
+            python tools/e2e/smoke_browser.py --scenario "$s" --pages user.html,admin.html
+          done
+          python tools/e2e/live_update.py
+          python tools/e2e/applock.py
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the built site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

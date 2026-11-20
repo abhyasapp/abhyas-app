@@ -564,7 +564,7 @@ const ADMIN_REPORT = {
       chip('resolved', resolved, "QREPORTS.setFilter('resolved')", this.filter === 'resolved', false) +
       chip('dismissed', dismissed, "QREPORTS.setFilter('dismissed')", this.filter === 'dismissed', false) +
       (legacy && ADMIN.can('qreports_manage')
-        ? '<button type="button" class="qr-sum is-alert" data-on-click="QREPORTS.matchOld()"><b>' + legacy + '</b> old, no qid</button>'
+        ? '<button type="button" class="qr-sum is-alert" data-on-click="QREPORTS.matchOld()"><b>' + legacy + '</b> old, no question id</button>'
         : '') +
       (open ? '<button type="button" class="qr-sum is-on" data-on-click="QREPORTS.nextOpen()"><i class="ph ph-arrow-right"></i> Triage highest impact</button>' : '');
   },

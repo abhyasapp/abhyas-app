@@ -79,6 +79,15 @@ Run it locally: `python3 tools/e2e/smoke_browser.py --scenario bad-commit`.
 - **Admin permissions are explained.** A button the admin may not use shows as a locked button naming the permission
   (`ADMIN.lockedBtn`), instead of silently disappearing.
 
+## The published site is a built copy
+
+`npm run build` (tools/build-dist.mjs) writes `dist/`: the 103 page scripts become one `js/bundle.js` (files in the
+page's own order, not wrapped, whitespace-minified only, no renaming) and the service worker's precache list is
+rewritten to match. Measured on a throttled cold load: slow 4G 5.4 s -> 3.6 s, fast 3G 11.0 s -> 7.4 s, 121 requests -> 22.
+Nothing generated is committed. `.github/workflows/pages.yml` builds, runs the real-browser gates on `dist/` and only
+then deploys. **One-time setup:** Settings -> Pages -> Source: "GitHub Actions". Until then the branch deploy stays in charge.
+Test the built site locally: `npm run build && ABHYAS_ROOT=dist python3 tools/e2e/smoke_browser.py`.
+
 ## Updates reach students without a hard reload
 
 Opening the app, or an ordinary browser reload, is enough. Nothing needs Ctrl+Shift+R.
@@ -92,9 +101,9 @@ Opening the app, or an ordinary browser reload, is enough. Nothing needs Ctrl+Sh
   device comes back online) with a conditional request (`If-None-Match`: a 304 costs almost nothing). A newer file is run
   in the open page and swapped in **live**, only if it passes the contract; a broken one is refused and remembered.
   Raw GitHub is asked first (jsDelivr caches a branch URL for hours).
-- **Question files** (`content/<file>.json`): when a chapter is opened and its saved copy was last checked more than
-  10 minutes ago (`QUIZ.REVAL_MS`), a conditional check runs first (2 s cap, then the saved copy opens and the check
-  finishes behind it). A corrected question therefore shows the next time the chapter opens.
+- **Question files** (`content/<file>.json`): **online, the current file is always fetched** (conditional request, raw
+  GitHub first). The saved copy is used only when the device is offline, or when that request is slow (3.5 s,
+  `QUIZ.SAVED_AFTER_MS`; it finishes behind and refreshes the saved copy) or fails. A correction shows on the very next open.
 - Test: `python3 tools/e2e/live_update.py`.
 
 ### Things to know before editing

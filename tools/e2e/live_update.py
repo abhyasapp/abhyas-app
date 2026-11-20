@@ -4,7 +4,7 @@ student WITHOUT a hard reload.
   1. new chapter data is applied while the app is open (no reload at all)
   2. a broken chapters file never replaces a working one
   3. a plain reload (not a hard reload) starts on the newest chapter data
-  4. a changed question file is picked up the next time the chapter opens
+  4. question files: online always fetches the current file, offline uses the saved copy
   5. a page assembled from two deploys fixes itself with ONE clean reload (and never loops)
 """
 import sys, os, json
@@ -85,18 +85,20 @@ with sync_playwright() as p:
     pg.reload(wait_until='domcontentloaded')
     check('a normal reload shows the newest chapters', wait(pg, "!!window.ChapterData && ChapterData.chapterName('level7','4') === 'Water Resources'"))
 
-    # 4. a changed question file is picked up when the chapter is next opened
-    check('question files check on open', wait(pg, "typeof QUIZ !== 'undefined' && !!QUIZ.CDN_BASE && S.online === true"))
-    first = pg.evaluate("""(async () => { await QDB.set('kX', [{ q: 'old stem' }]); localStorage.removeItem('abhyas_qts');
-        const d = await QUIZ._fetch('fileX', 'kX'); return d[0].q; })()""")
-    check('the first open already shows the corrected question', first == 'old stem' or first == 'new stem', first)
-    state['qfile'] = [{'q': 'new stem', 'options': ['a', 'b'], 'correct': 0}]
-    pg.evaluate("localStorage.removeItem('abhyas_qts')")                      # last check was long ago
+    # 4. question files: ONLINE always fetches the current file; OFFLINE uses the saved copy
+    check('question files are reachable', wait(pg, "typeof QUIZ !== 'undefined' && !!QUIZ.CDN_BASE && S.online === true"))
+    pg.evaluate("(async () => { await QDB.set('kX', [{ q: 'saved stem' }]); localStorage.removeItem('abhyas_qts'); })()")
     got = pg.evaluate("(async () => { const d = await QUIZ._fetch('fileX', 'kX'); return d[0].q; })()")
-    check('a changed question file is used the next time it is opened', got == 'new stem', got)
+    check('online: the current file is used, not the saved copy', got == 'old stem', got)
+    state['qfile'] = [{'q': 'new stem', 'options': ['a', 'b'], 'correct': 0}]
+    got = pg.evaluate("(async () => { const d = await QUIZ._fetch('fileX', 'kX'); return d[0].q; })()")
+    check('online: a correction is used on the very next open (no waiting, no gate)', got == 'new stem', got)
+    check('and the saved copy was updated for offline use', pg.evaluate("(async () => (await QDB.get('kX'))[0].q)()") == 'new stem')
     hits = state['qhits']
-    again = pg.evaluate("(async () => { const d = await QUIZ._fetch('fileX', 'kX'); return d[0].q; })()")
-    check('and it is not re-downloaded on every open', again == 'new stem' and state['qhits'] == hits)
+    pg.evaluate("S.online = false")
+    got = pg.evaluate("(async () => { const d = await QUIZ._fetch('fileX', 'kX'); return d[0].q; })()")
+    check('offline: the saved copy is used, with no network request', got == 'new stem' and state['qhits'] == hits, (got, state['qhits'], hits))
+    pg.evaluate("S.online = true")
     check('no page errors', not errors, errors[:3])
     ctx.close()
 
