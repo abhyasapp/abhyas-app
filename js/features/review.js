@@ -373,6 +373,7 @@ const REV = {
               ${qSearchHtml(q)}
               <button class="ib" data-on-click='REV._removeOne(${kindJson},${uidJson})' title="Remove from review" aria-label="Remove from review"><i class="ph ph-trash"></i></button>
             </div>
+            ${typeof qMetaHtml === 'function' ? qMetaHtml(q) : ''}
             <div class="qt" style="font-size:.82rem">${esc(q.q)}</div>
             ${qImgHtml(q)}
             <div style="margin-top:.3rem">${opts}</div>

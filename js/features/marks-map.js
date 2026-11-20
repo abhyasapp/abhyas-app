@@ -199,8 +199,12 @@ const MARKS_MAP = {
 
     box.innerHTML =
       '<section class="card" style="border-color:var(--accent-line)">' +
-        '<div class="card-hd"><h3><i class="ph ph-target"></i> Highest return next</h3>' +
-          '<button class="btn btn-sm btn-quiet" type="button" data-on-click="MARKS_MAP.openAll()" aria-label="View all chapters in the marks map"><i class="ph ph-squares-four"></i> All ' + all.length + '</button></div>' +
+        /* <h2>, not <h3>: on Home this card follows the page <h1>, and axe's
+           heading-order flags a skipped level (h1 -> h3). The accessible name
+           also repeats the visible label, which axe's label-content-name-mismatch
+           requires. */
+        '<div class="card-hd"><h2><i class="ph ph-target"></i> Highest return next</h2>' +
+          '<button class="btn btn-sm btn-quiet" type="button" data-on-click="MARKS_MAP.openAll()" aria-label="All ' + all.length + ' chapters in the marks map"><i class="ph ph-squares-four"></i> All ' + all.length + '</button></div>' +
         '<p class="t-foot" style="margin-bottom:var(--sp-2);line-height:1.5">' + totalMarks + ' marks across ' + all.length + ' chapters. Exam weight \u00d7 the gap in your accuracy.</p>' +
         '<div class="bg" role="group" aria-label="Sort chapters" style="gap:var(--sp-1);margin-bottom:var(--sp-2)">' +
           sortChip('gap', 'Best gap') + sortChip('weakest', 'Weakest first') +

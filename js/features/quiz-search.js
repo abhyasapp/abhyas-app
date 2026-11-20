@@ -120,7 +120,11 @@ window.QSEARCH = {
     status.textContent = hits.length + ' result' + (hits.length === 1 ? '' : 's');
     const termLc = term.toLowerCase();
     box.innerHTML = hits.map((q, i) => {
-      const qid = String(q.pqn || (q.qid !== undefined && q.qid !== null ? q.qid : (q.id !== undefined && q.id !== null ? q.id : ''))).trim();
+      /* Same source and same switch as qMetaHtml()'s QN chip: public number
+         first, then the primary id, and nothing at all when "Question details"
+         is off. normQ() output has no `id` field, so nothing else to read. */
+      const qMetaOff = (typeof qMetaOn === 'function') && !qMetaOn();
+      const qid = qMetaOff ? '' : String(q.pqn || (q.qid !== undefined && q.qid !== null ? q.qid : '')).trim();
       const stemRaw = String(q.q || '');
       const pos = stemRaw.toLowerCase().indexOf(termLc);
       const snip = pos < 0

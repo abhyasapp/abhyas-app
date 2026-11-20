@@ -55,6 +55,9 @@ window.PRINT_Q = {
 
       return '<div class="q">' +
         '<div class="q-line"><span class="q-num">Q' + (i + 1) + '.</span> ' + esc(textOf(q)) + '</div>' +
+        /* The published question number, the same chip the quiz screen shows:
+           a printed sheet a learner hands to a teacher must be quotable. */
+        (typeof qMetaHtml === 'function' ? qMetaHtml(q) : '') +
         (opts ? '<div class="opts">' + opts + '</div>' : '') +
         (metaBits.length ? '<div class="meta-q">' + metaBits.join(' \u00b7 ') + '</div>' : '') +
         (q.explanation ? '<div class="expl"><b>Why:</b> ' + esc(String(q.explanation)) + '</div>' : '') +
@@ -71,6 +74,9 @@ window.PRINT_Q = {
       '.q{margin:10px 0;padding:8px 0;border-bottom:1px solid #eee;page-break-inside:avoid}' +
       '.q-line{font-weight:600}' +
       '.q-num{font-weight:700;margin-right:6px}' +
+      '.qmeta{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}' +
+      '.qmeta-chip{display:inline-block;padding:1px 6px;border:1px solid #ddd;border-radius:9px;font-size:8pt;color:#333;background:#f7f7f7}' +
+      '.qmeta-chip b{font-weight:700;color:#111}' +
       '.opts{margin:4px 0 0 20px;font-size:10pt;color:#333}' +
       '.opt{margin:1px 0}' +
       '.opt.correct{font-weight:700;color:#111}' +
@@ -123,6 +129,9 @@ window.PRINT_Q = {
         '.meta{font-size:9pt;color:#666;margin-bottom:14px}' +
         '.q{margin:10px 0;padding:8px 0;border-bottom:1px solid #eee;page-break-inside:avoid}' +
         '.q-num{font-weight:700;margin-right:6px}' +
+      '.qmeta{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}' +
+      '.qmeta-chip{display:inline-block;padding:1px 6px;border:1px solid #ddd;border-radius:9px;font-size:8pt;color:#333;background:#f7f7f7}' +
+      '.qmeta-chip b{font-weight:700;color:#111}' +
         '.opts{margin:4px 0 0 20px;font-size:10pt;color:#333}' +
         '.opt{display:inline-block;margin-right:14px}' +
         '.answers{margin-top:22px;padding:10px;background:#f5f5f5;border:1px solid #ccc;border-radius:4px;font-size:9pt;page-break-before:always}' +
@@ -138,6 +147,7 @@ window.PRINT_Q = {
         ).join('');
         return '<div class="q">' +
           '<div><span class="q-num">Q' + (i+1) + '.</span>' + esc(q.q) + '</div>' +
+          (typeof qMetaHtml === 'function' ? qMetaHtml(q) : '') +
           (opts ? '<div class="opts">' + opts + '</div>' : '') +
         '</div>';
       }).join('') +
@@ -205,6 +215,9 @@ window.PRINT_Q = {
       '.q-head{display:flex;gap:12px;align-items:flex-start}' +
       '.q-line{flex:1;font-weight:600}' +
       '.q-num{font-weight:700;margin-right:6px}' +
+      '.qmeta{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}' +
+      '.qmeta-chip{display:inline-block;padding:1px 6px;border:1px solid #ddd;border-radius:9px;font-size:8pt;color:#333;background:#f7f7f7}' +
+      '.qmeta-chip b{font-weight:700;color:#111}' +
       '.marks{font-weight:700;white-space:nowrap;font-size:10pt}' +
       '.q-meta{font-size:9pt;color:#666;margin-top:4px}' +
       '.key{margin-top:22px;padding-top:10px;border-top:2px solid #111;page-break-before:always}' +

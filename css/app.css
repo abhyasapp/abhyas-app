@@ -198,11 +198,11 @@ button,a,label,summary,.eo,input[type=checkbox],input[type=radio]{touch-action:m
   display:flex;align-items:center;justify-content:space-between;
   gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-3)
 }
-.card-hd h3{
+.card-hd h3,.card-hd h2{
   font-size:var(--fs-t3);font-weight:650;
   display:flex;align-items:center;gap:var(--sp-2);color:var(--ink)
 }
-.card-hd h3 i{color:var(--ink-3);font-size:1.05em}
+.card-hd h3 i,.card-hd h2 i{color:var(--ink-3);font-size:1.05em}
 
 .pg-head{margin-bottom:var(--sp-4)}
 .pg-head h2{
@@ -1158,6 +1158,10 @@ body{
 .qotd-meta{font-size:var(--fs-cap);color:var(--ink-3);font-weight:650}
 .qotd-marks{flex-shrink:0;padding:.28rem var(--sp-3);border-radius:var(--r-full);background:var(--accent);color:var(--on-accent);font-size:var(--fs-foot);font-weight:700;white-space:nowrap}
 .qotd-marks.m10{background:var(--violet);color:#fff}
+/* Dark theme: white on the dark-theme violet (#9b7df0) is 3.18:1, below the
+   4.5:1 axe requires for this 12px bold chip. Darkening the chip keeps the
+   white label and reaches ~5.8:1; the light theme already passes. */
+.dark .qotd-marks.m10{background:color-mix(in srgb,var(--violet) 68%,#000)}
 .qotd-marks.mhalf{background:var(--warning-soft);color:var(--warning);border:var(--hairline-w) solid var(--warning-line)}
 .qotd-q{font-size:var(--fs-t3);line-height:1.75;color:var(--ink);font-weight:500;padding:var(--sp-4);margin-bottom:var(--sp-4);background:var(--surface-alt);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-card)}
 .qotd-timer{font-size:var(--fs-num-xl);font-weight:700;color:var(--ink);text-align:center;letter-spacing:-.02em;line-height:1;padding:var(--sp-3) 0}
@@ -1543,7 +1547,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
 .pg-head p{margin-top:var(--sp-1);line-height:1.55}
 .card{background:linear-gradient(180deg,var(--surface) 0%,var(--surface-alt) 180%);border-color:var(--sep);box-shadow:var(--sh-1)}
 .card-hd{padding-bottom:var(--sp-3);border-bottom:var(--hairline-w) solid var(--sep)}
-.card-hd h3 i{color:var(--accent);opacity:.8}
+.card-hd h3 i,.card-hd h2 i{color:var(--accent);opacity:.8}
 .section-head h2{color:var(--ink-2)}
 
 .qbar{background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 8px 26px rgba(18,28,22,.08)}
@@ -1625,7 +1629,7 @@ html[data-amoled="1"].dark{--bg:#000;--bg-sunken:#000;--surface:#050505;--surfac
 
 /* Cards, grouped settings and rows */
 .card{border-radius:var(--r-panel)}
-.card-hd h3{letter-spacing:-.012em}
+.card-hd h3,.card-hd h2{letter-spacing:-.012em}
 .card-hd h3 i{color:var(--accent);opacity:.9}
 .tabs,.conf-btns,.seg{box-shadow:inset 0 1px 2px rgba(18,28,22,.025)}
 .tab{font-weight:650}
@@ -1874,7 +1878,7 @@ html.reduce-motion *,html.reduce-motion *::before,html.reduce-motion *::after{an
 /* Card heads carry the title, status and actions in one compact band. */
 .card{padding:var(--sp-3) var(--sp-4);border-radius:var(--r-card);margin-bottom:10px}
 .card-hd{gap:8px;margin-bottom:10px;padding-bottom:8px}
-.card-hd h3{font-size:.9rem;font-weight:700;letter-spacing:-.01em}
+.card-hd h3,.card-hd h2{font-size:.9rem;font-weight:700;letter-spacing:-.01em}
 .card-hd .bg{gap:6px}
 .section-head{gap:8px;margin-bottom:8px}
 .section-head h2{font-size:var(--fs-cap);letter-spacing:.055em}
