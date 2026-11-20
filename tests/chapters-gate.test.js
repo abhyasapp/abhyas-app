@@ -139,6 +139,23 @@ describe('chapters loader', () => {
     expect(sb).toBeTruthy();
   });
 
+  it('the content file can be run a second time without a redeclaration error', async () => {
+    // chapters-data.js declares `const CH_NAMES` / `LEVEL_LABELS` / `DRIVE` at
+    // top level. The boot re-check and every background refresh run a newer
+    // copy in the page that is already open, so a second run used to throw
+    // "Identifier 'CH_NAMES' has already been declared" and leave the old data
+    // in place. Each run now gets its own function scope.
+    const V1 = 'const CH_NAMES = { gk: {} };\nwindow.CH_NAMES = CH_NAMES;\n' + DEFINE;
+    const V2 = 'const CH_NAMES = { gk: { 1: "General Awareness" } };\nwindow.CH_NAMES = CH_NAMES;\n' + DEFINE + '\n// newer\n';
+    let calls = 0;
+    const sb = boot({ fetchFn: () => Promise.resolve({ ok: true, text: async () => (calls++ === 0 ? V1 : V2) }) });
+    expect(await sb.ChapterDataReady).toBe(true);
+    expect(sb.CH_NAMES).toEqual({ gk: {} });
+    await tick(400);                          // the boot re-check runs 300 ms after the data arrives
+    expect(sb.ChapterData).toBeTruthy();
+    expect(sb.CH_NAMES).toEqual({ gk: { 1: 'General Awareness' } });
+  });
+
   it('a pinned base produces pinned mirrors', async () => {
     const seen = [];
     boot({ base: 'https://cdn.jsdelivr.net/gh/abhyasapp/content@v12', fetchFn: (u) => { seen.push(u); return Promise.reject(new Error('x')); } });

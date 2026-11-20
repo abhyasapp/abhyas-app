@@ -119,12 +119,24 @@ function looksLikeChapters(src) {
   return typeof src === 'string' && !/^\s*</.test(src) && src.indexOf('ChapterData') !== -1;
 }
 
+/* The content file publishes everything it has through window.* (ChapterData,
+   CH_NAMES, DRIVE, LEVEL_LABELS), but declares its data with top-level `const`s.
+   Running that same source a second time in one page (the boot re-check, or a
+   background refresh that applies a newer copy) used to throw
+   "Identifier 'CH_NAMES' has already been declared", which left the old data in
+   place and reported an error for a page that was working fine. So every run
+   gets a function scope of its own, and the file can be re-run any number of
+   times. Nothing is lost: only window.* survives a run, and that is by design. */
+function scopeSource(source) {
+  return '(function(){\n' + source + '\n})();';
+}
+
 /* Run source WITHOUT an inline script: a blob: URL is allowed by `script-src
    'self' blob:`, an injected inline <script> is not. Falls back to the inline
    form only where blob URLs are unavailable (very old browsers, test DOMs). */
 function runInline(source) {
   var s = document.createElement('script');
-  s.textContent = source;
+  s.textContent = scopeSource(source);
   (document.head || document.documentElement).appendChild(s);
 }
 function runSource(source) {
@@ -132,7 +144,7 @@ function runSource(source) {
     var url = null;
     try {
       if (window.URL && URL.createObjectURL && window.Blob) {
-        url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+        url = URL.createObjectURL(new Blob([scopeSource(source)], { type: 'text/javascript' }));
       }
     } catch (e) { url = null; }
     if (!url) {
