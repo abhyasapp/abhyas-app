@@ -134,6 +134,46 @@ window.RECOVERY = {
   }
 };
 
+/* Copy the question as plain text, so a learner can paste it into a message to
+   a teacher. Format: the question, a blank line, then one option per line as
+   "A.option" (no space after the dot). */
+window.QNCOPY = {
+  text(){
+    if (typeof S === 'undefined' || !S.quiz || !S.quiz.qs) return '';
+    const q = S.quiz.qs[S.quiz.idx];
+    if (!q) return '';
+    const opts = (q.options || [])
+      .map(o => String(o == null ? '' : o).replace(/^[A-Ea-e][.)]\s*/, '').trim())
+      .map((o, i) => String.fromCharCode(65 + i) + '.' + o);
+    return [String(q.q || '').trim(), ''].concat(opts).join('\n').trim();
+  },
+  async copy(){
+    const txt = this.text();
+    if (!txt) { toast('Nothing to copy yet', 1500); return; }
+    let ok = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(txt);
+        ok = true;
+      }
+    } catch (e) { ok = false; }
+    if (!ok) {
+      /* Older browsers, or a page not served over https. */
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = txt;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        ok = !!(document.execCommand && document.execCommand('copy'));
+        document.body.removeChild(ta);
+      } catch (e) { ok = false; }
+    }
+    toast(ok ? 'Question copied' : 'Could not copy \u2014 select the text and copy it', ok ? 1600 : 4000);
+  }
+};
+
 window.READALOUD = {
   _btn: null,
   supported(){
@@ -150,13 +190,20 @@ window.READALOUD = {
   render(){
     const box = $('fc-tools');
     if (!box) return;
-    if (!this.supported()) { box.innerHTML = ''; return; }
-    const speaking = window.speechSynthesis.speaking;
+    /* Copy is always offered; Read only where the browser can speak. */
+    const supported = this.supported();
+    const speaking = supported && window.speechSynthesis.speaking;
     box.innerHTML =
-      '<button type="button" class="tts-btn' + (speaking ? ' speaking' : '') + '" ' +
-        'data-on-click="READALOUD.toggle()" aria-label="Read this question aloud">' +
-        '<i class="ph ph-speaker-high"></i> ' + (speaking ? 'Stop' : 'Read') +
-      '</button>';
+      '<button type="button" class="tts-btn" ' +
+        'data-on-click="QNCOPY.copy()" aria-label="Copy this question and its options">' +
+        '<i class="ph ph-copy"></i> Copy' +
+      '</button>' +
+      (supported
+        ? '<button type="button" class="tts-btn' + (speaking ? ' speaking' : '') + '" ' +
+            'data-on-click="READALOUD.toggle()" aria-label="Read this question aloud">' +
+            '<i class="ph ph-speaker-high"></i> ' + (speaking ? 'Stop' : 'Read') +
+          '</button>'
+        : '');
   },
   toggle(){
     if (!this.supported()) return;

@@ -9,5 +9,6 @@ Boots the real app over HTTP with the backend/CDN mocked, then verifies behaviou
     python3 tools/e2e/flows2.py             # landing, register form, login, admin smoke, manifest, service worker + OFFLINE reload
     python3 tools/e2e/sprint.py             # 60-day sprint: plan on screen, session -> log, review/drill/mock, behind/compressed, counting, settings, reports, copy, sync payloads
     python3 tools/e2e/search.py             # question search button: Google fallback, Dual Search extension, ctrl-click, special characters
+    python3 tools/e2e/qncopy.py             # quiz Copy button: clipboard text byte-for-byte, "A." prefixed options, 2-5 options, next question, no-TTS browser, execCommand fallback (ABHYAS_ROOT=dist to test the built site)
 
 Last run (v1.58.0): 0 JS errors, 0 axe violations, 0 overflow on all 18 screens x 6 viewport/theme configs; flows 14/14, 19/19, search 11/11, sprint 70/70, exam 9/9, qbank 8/8, history 6/6, storage 9/9, sprint-accuracy 12/12, sprint-i18n 7/7, admin-perms 13/13, settings 36/36.
