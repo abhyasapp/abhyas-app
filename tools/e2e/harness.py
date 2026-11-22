@@ -48,7 +48,11 @@ class Run:
             if 'chapters-data.js' in u: return r.fulfill(body=STUB,content_type='text/javascript')
             return r.continue_()
         if 'chapters-data.js' in u: return r.fulfill(status=200,content_type='text/javascript',body=STUB)
-        m=re.search(r'/content/(.+)\.json',u)
+        # Question files are requested from the content repo first (raw.githubusercontent.com/
+        # abhyasapp/content/main/<fid>.json) and jsDelivr second (…/content@main/<fid>.json),
+        # so the id is the LAST path segment, not everything after '/content/'. Matching the old
+        # shape made every file fall back to 12 questions instead of its real 30.
+        m=re.search(r'/([A-Za-z0-9_-]+)\.json(?:\?|$)',u)
         if m: return r.fulfill(status=200,content_type='application/json',body=json.dumps(questions(FCOUNT.get(m.group(1),12))))
         if 'supabase.co' in u or 'script.google' in u:
             body={}

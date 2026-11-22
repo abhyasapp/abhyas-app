@@ -660,7 +660,11 @@ const ADMIN = {
         }
       } catch (e) { window.warnCaught && window.warnCaught('js/admin/core.js', e); }
     }
-    this._perms = null;
+    /* A failed permissions call must not undo an owner the server already confirmed
+       through adminListAdmins.isOwner: that answer is just as authoritative, and the
+       data refresh runs in parallel with this call, so it often lands FIRST. Wiping
+       it here hid every section from an owner whenever adminGetPermissions errored. */
+    if (!(this._perms && this._perms.role === 'owner')) this._perms = null;
   },
 
   /* Fail CLOSED: until the server has told us what this admin may do, they may do

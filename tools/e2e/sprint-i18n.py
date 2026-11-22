@@ -12,12 +12,15 @@ with sync_playwright() as p:
         pg.evaluate("UI.go('sprint')"); pg.wait_for_timeout(1200)
         txt=pg.evaluate("document.getElementById('view-sprint').innerText")
         deva=len(re.findall(r'[\u0900-\u097F]',txt))
+        # d4666af replaced the fixed "Resets at midnight" hint with the remaining-work
+        # sentence: "~5m left today", or "All targets done" when nothing is left.
+        hint=pg.evaluate("(document.getElementById('sprint-targets-hint')||{}).textContent||''").strip()
         if lang=='en':
             check('E1 English screen has no Devanagari', deva==0, deva)
-            check('E2 English wording unchanged', 'resets at midnight' in txt.lower() and 'syllabus' in txt.lower())
+            check('E2 English wording unchanged', 'syllabus' in txt.lower() and (re.match(r'^~\S+ left today$', hint) is not None or hint=='All targets done'), hint)
         else:
             check('N1 Nepali screen shows Nepali text', deva>40, deva)
-            check('N2 "Resets at midnight" translated', 'मध्यरातमा रिसेट हुन्छ' in txt)
+            check('N2 the remaining-work hint is translated', (hint.startswith('आज अझै') and 'बाँकी' in hint) or hint=='सबै लक्ष्य पूरा भयो', hint)
             pg.evaluate("toast(I18N.t('Pick a date first.'))"); pg.wait_for_timeout(300)
             check('N3 toast text translated', 'पहिले मिति छान्नुहोस्' in pg.evaluate("document.body.innerText"))
         check(f'{lang.upper()}9 no JS errors', not R.errors, R.errors[:2]); R.close()
