@@ -177,6 +177,8 @@ window.CH_GRID = {
         box.innerHTML = html +
           '<div class="chg-search"><i class="ph ph-magnifying-glass"></i><input class="input" type="search" id="chg-q" value="' + esc(this.q) + '" placeholder="' + esc(T('Search chapters')) + '" aria-label="' + esc(T('Search chapters')) + '" data-on-input="CH_GRID.setQuery(this.value)"></div>' +
           '<div class="chg-tabs">' + tabs + '</div>' + filterRow +
+          '<div class="chg-tools"><span class="chg-tools-hint">' + esc(T('Out of date?')) + '</span>' +
+            '<button type="button" class="btn btn-quiet btn-sm" data-on-click="DATA.refreshQuestions()"><i class="ph ph-arrows-clockwise"></i> ' + esc(T('Refresh questions')) + '</button></div>' +
           '<div class="chg-grid">' + cards + '</div>' + empty;
         if (keepSearch) {
           const input = box.querySelector('#chg-q');

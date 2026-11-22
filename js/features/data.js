@@ -114,6 +114,80 @@ const DATA = {
     toast('🧹 Question cache cleared');
   },
 
+  /* ── Device housekeeping (Settings → Data tools) ─────────────────────────── */
+
+  _roughBytes(v){
+    try { return JSON.stringify(v == null ? '' : v).length; } catch (e) { return 0; }
+  },
+
+  /* Remove only what is provably useless: cached question sets the server returned
+     as an error, the per-file freshness stamps, and cache buckets left behind by
+     older builds. Progress, notes, bookmarks and every download are never touched.
+
+     Deliberately NOT an "orphans" sweep: the cache key and the chapter-data key are
+     not the same string, so a set the chapter list does not recognise may still be a
+     valid download. Treating that as garbage would silently delete a student's
+     offline copy — the one thing this button must never do. */
+  async cleanupCache(){
+    const out = { stale: 0, stamps: 0, buckets: 0, bytes: 0 };
+    let keys = [];
+    try { keys = await QDB.keys(); } catch (e) { /* no IndexedDB */ }
+    for (const k of keys){
+      let v = null;
+      try { v = await QDB.get(k); } catch (e) { /* unreadable: leave it alone */ }
+      const broken = !!(v && typeof v === 'object' && !Array.isArray(v) && v.success === false);
+      if (!broken) continue;
+      out.bytes += this._roughBytes(v);
+      try { await QDB.del(k); } catch (e) { continue; }
+      out.stale++;
+    }
+    /* Freshness stamps: clearing them makes the next open re-check the server, which is
+       exactly the "stale question" state cleanup is meant to end. */
+    try {
+      const raw = localStorage.getItem('abhyas_qts');
+      if (raw) {
+        const m = JSON.parse(raw);
+        out.stamps = (m && typeof m === 'object') ? Object.keys(m).length : 0;
+        localStorage.removeItem('abhyas_qts');
+      }
+    } catch (e) { /* nothing stored */ }
+    /* Shell caches from earlier builds pile up under their own names. The current
+       shell and the fonts/icons bucket are kept. */
+    try {
+      if (window.caches && caches.keys){
+        const keep = new Set(['abhyas-v' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''), 'abhyas-cdn-v1']);
+        const names = await caches.keys();
+        for (const name of names){
+          if (keep.has(name)) continue;
+          if (await caches.delete(name)) out.buckets++;
+        }
+      }
+    } catch (e) { /* Cache API unavailable */ }
+    return out;
+  },
+
+  /* Fetch the newest copy of the question files, outside a quiz. The file the student
+     was last in is refreshed even when it was never downloaded; every downloaded set is
+     then rechecked against the CDN. Refuses mid-quiz so answers cannot move under them. */
+  async refreshQuestions(){
+    if (typeof S !== 'undefined' && S.quiz && S.quiz.active){ toast('Finish the quiz first, then refresh.'); return false; }
+    if (typeof S !== 'undefined' && (!S.online || S.forcedOffline)){ toast('Connect to the internet to fetch the latest questions.'); return false; }
+    try { localStorage.removeItem('abhyas_qts'); } catch (e) { /* no stamps stored */ }
+    let ref = null;
+    try {
+      const last = ((S.prog && S.prog.sessions) || []).find(x => x && x.fid);
+      if (last && typeof ChapterData !== 'undefined') ref = (ChapterData.allFileRefs() || []).find(r => r.fid === last.fid);
+    } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
+    if (ref && typeof QUIZ !== 'undefined'){
+      try { await QDB.del(ref.key); await QUIZ._fetch(ref.fid, ref.key, 1, 'bg'); } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
+    }
+    if (typeof CACHE !== 'undefined' && CACHE.refreshFromUpdate){
+      try { await CACHE.refreshFromUpdate('manual', { force: true }); } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
+    }
+    toast('Questions refreshed from the server.');
+    return true;
+  },
+
   async reset(){
     if(!(await ASK.confirm({title:'Reset this device?', body:'This deletes ALL progress, bookmarks, flags, wrong answers and study plan on this device. Your cloud backup is not touched.', ok:'Continue', danger:true}))) return;
     if(!(await ASK.confirm({title:'Are you absolutely sure?', body:'This cannot be undone.', ok:'Yes, reset', danger:true}))) return;

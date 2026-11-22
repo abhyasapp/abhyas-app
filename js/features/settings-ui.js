@@ -69,6 +69,12 @@ window.SETTINGS = (function () {
     return '<div class="set-row"><div class="set-text"><div class="set-label">' + E(title) + '</div>' +
       (hint ? '<div class="set-hint">' + E(hint) + '</div>' : '') + '</div>' + control + '</div>';
   }
+  /* A data tool: icon, what it does, and the one button that runs it. */
+  function toolRow(icon, title, hint, control) {
+    return '<div class="tool-row"><span class="tool-ic"><i class="ph ' + icon + '" aria-hidden="true"></i></span>' +
+      '<span class="tool-text"><span class="set-label">' + E(title) + '</span>' +
+      '<span class="set-hint">' + E(hint) + '</span></span>' + control + '</div>';
+  }
   function switchBtn(label, on, call) {
     return '<button type="button" class="btn btn-sm seg-opt" role="switch" aria-checked="' + on + '"' +
       ' aria-label="' + E(label) + '" data-on-click="SETTINGS.' + call + '()">' + E(on ? T('On') : T('Off')) + '</button>';
@@ -152,9 +158,25 @@ window.SETTINGS = (function () {
                       : '<button type="button" class="btn btn-sm btn-quiet" data-on-click="SETTINGS.protect()">' + E(T('Protect')) + '</button>')
         : '') +
       '</div>' +
+      '<div class="set-sect-head"><h3>' + E(T('Data tools')) + '</h3><span>' + E(T('Everything here asks first, or only touches cached files')) + '</span></div>' +
+      '<div class="set-list tool-list">' +
+        toolRow('ph-download-simple', T('Download all sets'),
+          total ? T('{a} of {b} sets are saved. This saves the rest for offline study.', { a: sets, b: total })
+                : T('Saves every question set on this device for offline study.'),
+          '<button type="button" class="btn btn-sm btn-a" data-on-click="SETTINGS.downloadAll()"' + (total && sets >= total ? ' disabled' : '') + '>' +
+            E(total && sets >= total ? T('All saved') : T('Download')) + '</button>') +
+        toolRow('ph-arrows-clockwise', T('Refresh questions'),
+          T('Fetches the newest copy of every question file. Not available during a quiz.'),
+          '<button type="button" class="btn btn-sm btn-quiet" data-on-click="SETTINGS.refreshQuestions()">' + E(T('Refresh')) + '</button>') +
+        toolRow('ph-broom', T('Clean up cache'),
+          T('Removes broken and out-of-date cached files only. Progress and notes stay.'),
+          '<button type="button" class="btn btn-sm btn-quiet" data-on-click="SETTINGS.cleanup()">' + E(T('Clean up')) + '</button>') +
+        toolRow('ph-trash', T('Remove downloaded sets'),
+          T('Frees space by removing saved question sets. They can be downloaded again.'),
+          '<button type="button" class="btn btn-sm btn-quiet" data-on-click="SETTINGS.removeDownloads()"' + (anyCached ? '' : ' disabled') + '>' + E(T('Remove')) + '</button>') +
+      '</div>' +
       '<div class="bg set-actions">' +
-        '<button type="button" class="btn btn-a" data-on-click="DATA.exportAll()"><i class="ph ph-download-simple"></i> ' + E(T('Download backup')) + '</button>' +
-        '<button type="button" class="btn btn-quiet" data-on-click="SETTINGS.removeDownloads()"' + (anyCached ? '' : ' disabled') + '><i class="ph ph-trash"></i> ' + E(T('Remove downloaded sets')) + '</button>' +
+        '<button type="button" class="btn btn-a btn-blk" data-on-click="DATA.exportAll()"><i class="ph ph-download-simple"></i> ' + E(T('Download backup')) + '</button>' +
       '</div>';
   }
 
@@ -171,6 +193,35 @@ window.SETTINGS = (function () {
     renderStorage();
   }
 
+  /* ── The four data tools ─────────────────────────────────────────────────────────────── */
+  async function downloadAll() {
+    if (typeof CACHE === 'undefined') return;
+    if (typeof S !== 'undefined' && (!S.online || S.forcedOffline)) { toast(T('Connect to the internet to download sets.')); return; }
+    await CACHE.downloadAll();
+    renderStorage();
+  }
+  async function refreshQuestions() {
+    if (typeof DATA === 'undefined') return;
+    await DATA.refreshQuestions();
+    renderStorage();
+  }
+  async function cleanup() {
+    if (typeof DATA === 'undefined') return;
+    const out = await DATA.cleanupCache();
+    const bits = [];
+    if (out.stale) bits.push(out.stale + ' ' + T('broken'));
+    if (out.buckets) bits.push(out.buckets + ' ' + T('old caches'));
+    if (bits.length) {
+      toast(T('Cleaned up: {list}{freed}', {
+        list: bits.join(', '),
+        freed: out.bytes > 2048 ? ' (' + fmtBytes(out.bytes) + ')' : ''
+      }), 5000);
+    } else {
+      toast(T('Nothing to clean up — the cache is already tidy.'), 4000);
+    }
+    renderStorage();
+  }
+
   function refresh() { renderDisplay(); renderStorage(); }
 
   if (typeof UI !== 'undefined' && UI.onEnter) UI.onEnter('data', refresh);
@@ -179,6 +230,7 @@ window.SETTINGS = (function () {
 
   return {
     refresh, renderDisplay, renderStorage, protect, removeDownloads, toggleMotion, toggleQMeta,
+    downloadAll, refreshQuestions, cleanup,
     theme: setTheme,
     textSize(v) { if (typeof FONT !== 'undefined') { FONT.set(Number(v)); renderDisplay(); } },
     language(l) { if (typeof I18N !== 'undefined') { I18N.setLang(l); } refresh(); },

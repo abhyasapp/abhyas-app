@@ -13,7 +13,7 @@ const CACHE_NAME = 'abhyas-v' + APP_VERSION;
    importScripts below) does not trigger an update, so an already-installed
    app keeps its old shell cache and never sees a deployed fix. Bump SW_BUILD
    together with APP_VERSION in config.js, version.js and package.json. */
-const SW_BUILD = '2.62';
+const SW_BUILD = '2.63';
 const CDN_CACHE  = 'abhyas-cdn-v1';
 const NETWORK_TIMEOUT_MS = 2500;
 const CDN_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
@@ -78,6 +78,7 @@ const SHELL = [
   './js/features/count.js',
   './js/features/data.js',
   './js/features/focus.js',
+  './js/features/home-hero.js',
   './js/features/home-layout.js',
   './js/features/home-ui.js',
   './js/features/home.js',

@@ -259,6 +259,13 @@ const CACHE = {
     CACHE.render();
   },
 
+  /* Settings → "Download all question sets": every set the chapter data knows about. */
+  async downloadAll(){
+    if (CACHE._running) { toast('A download is already running'); return; }
+    if (typeof S !== 'undefined' && (!S.online || S.forcedOffline)) { toast('Connect to the internet to download sets.'); return; }
+    return CACHE.dl();
+  },
+
   async removeSelected(){
     const picked = new Set(CACHE._picked());
     if(!picked.size){ toast('Tick a group first'); return; }
@@ -388,12 +395,13 @@ const CACHE = {
     }
   },
 
-  async refreshFromUpdate(reason) {
+  async refreshFromUpdate(reason, opts) {
     if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return;
     if (typeof QUIZ === 'undefined' || !QUIZ._fetchFromCDN) return;
     if (typeof S === 'undefined') return;
     if (this._refreshing || this._running) return;
-    if (Date.now() - this._refreshLastAt < 10 * 60 * 1000) return;
+    /* A change event is throttled (it fires in the background); a tap on Refresh is not. */
+    if (!(opts && opts.force) && Date.now() - this._refreshLastAt < 10 * 60 * 1000) return;
     if (!S.online || S.forcedOffline) { this._postponeRefresh(false); return; }
     if (this._weakConnection()) { this._postponeRefresh(true); return; }
 

@@ -2103,3 +2103,232 @@ input:-webkit-autofill,input:-webkit-autofill:focus{
   .toast,.skel{display:none!important}
   .card{box-shadow:none!important;transform:none!important}
 }
+/* ═══════════════════════════════════════════════════════════════════════
+   v2.63 · STUDENT APP POLISH
+   One deliberate pass over the shell and the screens students use most:
+   a quieter top bar, a floating tab bar, cards that read as one family,
+   a real home greeting, and legible type at every size. Additive and
+   theme-aware (light + dark); no existing rule is removed.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root{
+  --page-pad: clamp(.85rem, 2.2vw, 1.6rem);
+  --card-hair: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,0) 42%);
+  --shadow-card: 0 1px 2px rgba(18,28,22,.05), 0 6px 18px -6px rgba(18,28,22,.10);
+  --shadow-lift: 0 2px 4px rgba(18,28,22,.06), 0 14px 30px -10px rgba(18,28,22,.18);
+}
+.dark{
+  --card-hair: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0) 46%);
+  --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 10px 26px -12px rgba(0,0,0,.8);
+  --shadow-lift: 0 2px 6px rgba(0,0,0,.55), 0 18px 40px -14px rgba(0,0,0,.9);
+}
+
+/* ── Page canvas ─────────────────────────────────────────────────────── */
+body{
+  background-image:
+    radial-gradient(1100px 420px at 12% -12%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
+    radial-gradient(900px 380px at 100% 0%, color-mix(in srgb, var(--info) 6%, transparent), transparent 72%);
+  background-attachment: fixed;
+}
+#main .inner{padding:var(--page-pad) var(--page-pad) calc(var(--bn-h) + 1.4rem)}
+@media (min-width:961px){ #main .inner{padding-bottom:2.5rem} }
+
+/* ── Top bar: quieter, grouped, taller targets ───────────────────────── */
+#tb{
+  height:calc(var(--topbar-h) + 6px);
+  padding:0 var(--page-pad);
+  gap:var(--sp-2);
+  background:color-mix(in srgb, var(--bg) 84%, transparent);
+  backdrop-filter:saturate(1.4) blur(14px); -webkit-backdrop-filter:saturate(1.4) blur(14px);
+  border-bottom:var(--hairline-w) solid var(--sep);
+  box-shadow:none;
+}
+.tb-btn{width:40px;height:40px;border-radius:12px;color:var(--ink-2)}
+.tb-btn:hover{background:var(--bg-sunken);color:var(--ink)}
+.tb-btn[aria-pressed="true"],.tb-btn.on{background:var(--accent-soft);color:var(--accent)}
+.tb-brand{gap:.55rem}
+.bd-mark img{border-radius:11px;box-shadow:var(--sh-1)}
+.tb-name-main{font-size:1.02rem;letter-spacing:-.02em;font-weight:750}
+.tb-name-sub{font-size:.64rem;letter-spacing:.02em}
+.tb-r{gap:.15rem;padding:.15rem;border-radius:14px;background:color-mix(in srgb, var(--surface) 72%, transparent);border:var(--hairline-w) solid var(--hairline)}
+@media (max-width:420px){ .tb-name-sub{display:none} .tb-btn{width:38px;height:38px} }
+.uchip{padding:.3rem .6rem;border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:var(--fs-cap)}
+
+/* ── Floating tab bar ────────────────────────────────────────────────── */
+#bnav{
+  left:.6rem; right:.6rem; bottom:calc(.5rem + var(--safe-b));
+  height:var(--tabbar-h);
+  padding:.28rem .3rem;
+  border:var(--hairline-w) solid var(--sep);
+  border-radius:20px;
+  background:color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter:saturate(1.5) blur(18px); -webkit-backdrop-filter:saturate(1.5) blur(18px);
+  box-shadow:0 12px 34px -14px rgba(18,28,22,.45), 0 1px 0 rgba(255,255,255,.5) inset;
+}
+.dark #bnav{box-shadow:0 14px 40px -14px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.06) inset}
+.bn-item{font-size:10.5px;letter-spacing:.01em;gap:3px;border-radius:15px;padding:.28rem .1rem}
+.bn-item .bn-ic{display:grid;place-items:center;width:34px;height:26px;border-radius:11px;font-size:18px;transition:background var(--dur-base) var(--ease),color var(--dur-base) var(--ease)}
+.bn-item.active{color:var(--accent)}
+.bn-item.active .bn-ic{background:var(--accent-soft);transform:none}
+.bn-item.active::after{display:none}
+.bn-item:active .bn-ic{transform:scale(.93)}
+
+/* ── Cards: one family, consistent rhythm ────────────────────────────── */
+.card,.today-card,.qcard{
+  border-radius:var(--r-panel);
+  border:var(--hairline-w) solid var(--sep);
+  background-image:var(--card-hair);
+  box-shadow:var(--shadow-card);
+  transition:box-shadow var(--dur-base) var(--ease),transform var(--dur-base) var(--ease),border-color var(--dur-base) var(--ease);
+}
+@media (hover:hover){
+  .card:hover,.chg-card:hover:not([disabled]),.ci:hover{box-shadow:var(--shadow-lift);transform:translateY(-1px);border-color:var(--sep-strong)}
+}
+.section-head{margin-bottom:var(--sp-3);align-items:center}
+.section-head h2{
+  display:inline-flex;align-items:center;gap:.45rem;
+  font-size:.72rem;letter-spacing:.09em;color:var(--ink-3);
+}
+.section-head h2::before{content:'';width:5px;height:5px;border-radius:2px;background:var(--accent);opacity:.85}
+.section-head .hint{font-size:.7rem}
+.pg-head{margin-bottom:var(--sp-4);padding-left:var(--sp-3)}
+.pg-head h2{font-size:1.28rem;letter-spacing:-.028em}
+.pg-head p{font-size:.82rem;line-height:1.5;margin-top:.2rem}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.btn{border-radius:13px;font-weight:650;letter-spacing:-.005em;transition:transform var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
+.btn:active{transform:scale(.985)}
+.btn-solid{
+  background-image:linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white 12%), var(--accent));
+  color:var(--on-accent);border-color:transparent;
+  box-shadow:0 1px 2px rgba(18,28,22,.18), 0 8px 18px -10px rgba(30,122,76,.75);
+}
+.btn-solid:hover{background-image:linear-gradient(180deg, var(--accent-hover), var(--accent-hover))}
+.btn-quiet{background:var(--bg-sunken);color:var(--ink-2)}
+.btn-quiet:hover{background:color-mix(in srgb, var(--ink-4) 22%, var(--bg-sunken));color:var(--ink)}
+.btn-sm{min-height:36px;padding:0 .7rem;border-radius:11px;font-size:.78rem}
+.btn-blk{width:100%}
+
+/* ── Home hero (greeting, date, streak, accuracy, continue) ──────────── */
+.home-hero{
+  position:relative;
+  padding:1.05rem 1.1rem 1rem;
+  margin-bottom:var(--sp-3);
+  border-radius:var(--r-panel);
+  border:var(--hairline-w) solid var(--accent-line);
+  background:
+    radial-gradient(120% 150% at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%),
+    linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--accent-soft) 62%, var(--surface)));
+  box-shadow:var(--shadow-card);
+}
+.dark .home-hero{background:
+    radial-gradient(120% 150% at 100% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 62%),
+    linear-gradient(180deg, var(--surface-2), var(--surface))}
+.hh-kicker{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);opacity:.9}
+.hh-greet{font-size:1.35rem;font-weight:750;letter-spacing:-.03em;margin:.15rem 0 .1rem;line-height:1.15}
+.hh-sub{font-size:.8rem;color:var(--ink-2);line-height:1.45}
+.hh-stats{display:flex;gap:.4rem;margin:.85rem 0 .1rem;flex-wrap:wrap}
+.hh-stat{
+  display:flex;align-items:baseline;gap:.3rem;
+  padding:.28rem .55rem;border-radius:var(--r-full);
+  background:color-mix(in srgb, var(--surface) 75%, transparent);
+  border:var(--hairline-w) solid var(--hairline);
+}
+.hh-stat .n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:750;font-size:.86rem;color:var(--ink)}
+.hh-stat .l{font-size:.66rem;color:var(--ink-3);font-weight:600}
+.hh-cta{width:100%;margin-top:.85rem;min-height:46px;border-radius:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+  background-image:linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white 12%), var(--accent));color:var(--on-accent);
+  box-shadow:0 2px 4px rgba(18,28,22,.16), 0 12px 24px -12px rgba(30,122,76,.8)}
+.hh-cta:active{transform:scale(.99)}
+.hh-cta .ph{font-size:1.05rem}
+
+/* ── Chapter picker ──────────────────────────────────────────────────── */
+.chg-search{margin-bottom:var(--sp-2)}
+.chg-search .input{border-radius:14px;min-height:46px;background:var(--surface);box-shadow:var(--sh-1)}
+.chg-tabs{border-radius:14px;padding:3px;gap:3px}
+.chg-tabs button{min-height:40px;font-weight:650}
+.chg-mf{min-height:38px;font-size:.74rem}
+.chg-grid{gap:var(--sp-3)}
+.chg-card{min-height:108px;padding:.8rem .85rem;border-radius:16px;background:var(--surface);box-shadow:var(--sh-1)}
+.chg-name{font-size:.9rem;font-weight:700;letter-spacing:-.015em;line-height:1.25}
+.chg-meta{font-size:.7rem;color:var(--ink-3);line-height:1.35}
+.chg-card .pb{height:5px;border-radius:var(--r-full);background:var(--bg-sunken);overflow:hidden}
+.chg-card .pb-f{height:100%;border-radius:inherit;background-image:linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 62%, white))}
+.chg-tools{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:0 0 var(--sp-3);flex-wrap:wrap}
+.chg-tools-hint{font-size:.72rem;color:var(--ink-3)}
+.ctag.chg-state{font-size:.64rem;font-weight:700;letter-spacing:.02em}
+
+/* ── Data tools (Settings → Storage) ────────────────────────────────── */
+.set-sect-head{display:flex;align-items:baseline;gap:.5rem;margin:1.15rem 0 .5rem}
+.set-sect-head h3{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+.set-sect-head span{font-size:.68rem;color:var(--ink-3)}
+.tool-list{display:grid;gap:.4rem}
+.tool-row{
+  display:flex;align-items:center;gap:.7rem;
+  padding:.6rem .65rem;border-radius:14px;
+  background:var(--surface);border:var(--hairline-w) solid var(--sep);
+}
+.tool-ic{
+  display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:11px;
+  background:var(--accent-soft);color:var(--accent);font-size:1rem;
+}
+.tool-text{display:flex;flex-direction:column;min-width:0;flex:1}
+.tool-text .set-label{font-size:.82rem;font-weight:650;color:var(--ink)}
+.tool-text .set-hint{font-size:.7rem;color:var(--ink-3);line-height:1.4;margin-top:1px}
+.tool-row .btn{flex:none}
+@media (max-width:380px){ .tool-row{flex-wrap:wrap} .tool-row .btn{width:100%} }
+
+/* ── Quiz reading surface ────────────────────────────────────────────── */
+.qcard{padding:1.05rem 1rem}
+.eo{min-height:50px;padding:.7rem .85rem;border-radius:14px;background:var(--surface);font-size:.875rem}
+@media (hover:hover){.eo:not(.shc):not(.bad2):not(:disabled):hover{background:var(--accent-soft);border-color:var(--accent-line)}}
+
+/* ── Empty states ────────────────────────────────────────────────────── */
+.empty-i{
+  width:52px;height:52px;margin:0 auto .6rem;border-radius:16px;
+  background:var(--bg-sunken);color:var(--ink-3);font-size:1.4rem;
+  display:grid;place-items:center;
+}
+.empty p{font-size:.85rem}
+
+/* ── Focus: always visible, never shouty ─────────────────────────────── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Refresh row above the chapter cards: one line, and the hint steps aside on a phone. */
+.chg-tools{flex-wrap:nowrap}
+.chg-tools-hint{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:520px){ .chg-tools-hint{display:none} .chg-tools{justify-content:flex-end} }
+
+/* Data tools: separate them from the storage summary and keep each row compact. */
+.set-sect-head{margin:1.05rem 0 .5rem;padding-top:.9rem;border-top:var(--hairline-w) solid var(--sep)}
+.tool-row{min-height:56px}
+.tool-text .set-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:520px){
+  .tool-text .set-hint{display:none}
+  .tool-row{padding:.55rem .6rem}
+}
+
+/* A column row must not spread its children when an ancestor stretches it. */
+.set-row.set-col{justify-content:flex-start;row-gap:var(--sp-2)}
+
+/* In a column row the 14rem flex-basis would become HEIGHT (224px of dead space). */
+.set-row.set-col .set-text{flex:0 0 auto}
+
+/* Keep the chapters refresh on one line, with its hint, at phone width. */
+@media (max-width:520px){
+  .chg-tools{justify-content:space-between}
+  .chg-tools-hint{display:block}
+}
+
+/* One-line tool rows even on the narrowest phones: keep the button inline and let
+   the title ellipsis instead of wrapping the whole row onto two floors. */
+@media (max-width:380px){
+  .tool-row{flex-wrap:nowrap;gap:.5rem;padding:.5rem .55rem}
+  .tool-row .btn{width:auto;flex:0 0 auto}
+}
+
+/* 320px phones: stacking is better than a clipped title. */
+@media (max-width:340px){
+  .tool-row{flex-wrap:wrap}
+  .tool-row .btn{width:100%}
+}

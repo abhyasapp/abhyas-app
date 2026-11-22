@@ -13,6 +13,11 @@ const WHATS_NEW = {
   SEEN_KEY: 'abhyas_seen_version',
 
   RELEASES: [
+    { version: '2.63', date: '2026-11-22', title: 'A calmer home, and data tools you can trust', items: [
+      { icon: 'ph-house', title: 'Home greets you', text: 'Your name, the date, your streak and your accuracy at the top of Home, with one button that puts you back where you left off.' },
+      { icon: 'ph-paint-brush', title: 'A quieter, clearer app', text: 'A calmer top bar, a floating tab bar, roomier cards and larger tap targets — the same screens, easier to read and to reach.' },
+      { icon: 'ph-broom', title: 'Download all, refresh, clean up', text: 'Settings can now save every question set at once, fetch the newest copy of the questions, and remove only the broken or out-of-date cached files. Progress and notes are never touched.' }
+    ] },
     { version: '2.62', date: '2026-11-22', title: 'Notes you can read, and a What\u2019s new section', items: [
       { icon: 'ph-note', title: 'Export notes that say which question they are about', text: 'The exported file now lists the QN number and the question for every note, and there is a plain-text version you can print or show a teacher.' },
       { icon: 'ph-hash', title: 'The QN number on your saved questions too', text: 'My library cards carry the same QN chip as the quiz, review, print sheets and search.' },
