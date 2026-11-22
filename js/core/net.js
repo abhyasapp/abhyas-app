@@ -362,3 +362,40 @@ const NETCHECK = {
   },
   reset() { this._failCount = 0; _CIRCUIT.reset(); }
 };
+
+/* Try several sources WITHOUT waiting out a dead one.
+   attempts: functions (signal) => Promise. The first starts at once; the next starts
+   after staggerMs, or immediately when the one before it failed. The first to succeed
+   wins and the others are aborted, so a blocked or sleeping host costs ~staggerMs
+   instead of its whole timeout. Rejects when every source failed (or overallMs passed). */
+function raceStaggered(attempts, staggerMs, overallMs) {
+  return new Promise((resolve, reject) => {
+    let next = 0, running = 0, done = false, lastErr = null, stagger = null;
+    const ctls = [];
+    let overall = null;
+    const finish = (ok, v) => {
+      if (done) return;
+      done = true; clearTimeout(stagger); clearTimeout(overall);
+      ctls.forEach(c => { try { c.abort(); } catch (e) { /* already settled */ } });
+      if (ok) resolve(v); else reject(v);
+    };
+    const launch = () => {
+      if (done || next >= attempts.length) return;
+      const i = next++, ctl = new AbortController();
+      ctls.push(ctl); running++;
+      clearTimeout(stagger);
+      if (next < attempts.length) stagger = setTimeout(launch, staggerMs);
+      Promise.resolve().then(() => attempts[i](ctl.signal)).then(
+        v => finish(true, v),
+        e => {
+          lastErr = e; running--;
+          if (done) return;
+          if (next < attempts.length) launch();
+          else if (running === 0) finish(false, lastErr || new Error('all sources failed'));
+        });
+    };
+    overall = setTimeout(() => finish(false, new Error('timeout')), overallMs || 20000);
+    launch();
+  });
+}
+window.raceStaggered = raceStaggered;

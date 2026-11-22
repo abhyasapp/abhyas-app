@@ -196,29 +196,77 @@
         EXPORTNOTES.run() but never declared anywhere, so the Tools card
         threw ReferenceError on tap. ── */
   if (typeof window.EXPORTNOTES === 'undefined') {
+    /* Notes are stored under a question's id ('q:48213', 'q:G0011.110001'), which means
+       nothing to a person. An export must say WHICH question each note is about: the
+       readable QN number, the id, and the question text whenever this device has it
+       (from the Library, the saved list or the wrong bank). */
+    const _noteRows = () => {
+      let notes = {};
+      try { notes = JSON.parse(localStorage.getItem('abhyas_qnotes') || '{}') || {}; } catch (e) { notes = {}; }
+      const known = [];
+      try { if (typeof LIBRARY !== 'undefined' && Array.isArray(LIBRARY._entries)) known.push.apply(known, LIBRARY._entries); } catch (e) { /* optional */ }
+      try { if (typeof S !== 'undefined') [S.bk, S.fl, S.wr].forEach(l => { if (Array.isArray(l)) known.push.apply(known, l); }); } catch (e) { /* optional */ }
+      return Object.keys(notes).map(key => {
+        const k = (typeof QKEY !== 'undefined') ? QKEY.ids(key.indexOf('q:') === 0 ? key : 'u:' + key) : {};
+        let row = null;
+        if (typeof QKEY !== 'undefined') row = known.find(x => x && x.q && QKEY.same(x, key.indexOf('q:') === 0 ? key : 'u:' + key)) || null;
+        const r = row ? QKEY.ids(row) : k;
+        return {
+          qn: (r.pqn || r.nid || (row && row.qid) || '') + '',
+          nid: r.nid || '', pqn: r.pqn || '',
+          key: key,
+          question: row ? String(row.q || '') : '',
+          note: String(notes[key] || '')
+        };
+      }).filter(x => x.note);
+    };
+    const _download = (name, text, type) => {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    };
     window.EXPORTNOTES = {
+      rows: _noteRows,
       run() {
         try {
-          const raw = localStorage.getItem('abhyas_qnotes') || '{}';
-          const notes = JSON.parse(raw);
-          const keys = Object.keys(notes);
-          if (!keys.length) {
-            if (typeof toast === 'function') toast('You have no question notes yet.');
-            return;
-          }
+          const rows = _noteRows();
+          if (!rows.length) { if (typeof toast === 'function') toast('You have no question notes yet.'); return; }
+          const raw = JSON.parse(localStorage.getItem('abhyas_qnotes') || '{}');
           const payload = {
             exportedAt: new Date().toISOString(),
-            count: keys.length,
-            notes
+            count: rows.length,
+            /* readable list: which question each note is about */
+            notes: rows.map(r => ({ qn: r.qn, nid: r.nid || undefined, pqn: r.pqn || undefined, question: r.question || undefined, note: r.note })),
+            /* the stored form, so a restore is exact */
+            raw: raw
           };
-          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'abhyas_notes_' + new Date().toISOString().slice(0, 10) + '.json';
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 4000);
-          if (typeof toast === 'function') toast('Exported ' + keys.length + ' note' + (keys.length === 1 ? '' : 's'));
+          _download('abhyas_notes_' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(payload, null, 2), 'application/json');
+          if (typeof toast === 'function') toast('Exported ' + rows.length + ' note' + (rows.length === 1 ? '' : 's'));
+        } catch (e) {
+          if (typeof toast === 'function') toast('Could not export notes: ' + (e && e.message || 'unknown'), 5000);
+        }
+      },
+      /* Plain text: something to print, or hand to a teacher, with the QN to quote. */
+      text() {
+        const rows = _noteRows();
+        const lines = ['Abhyas \u2014 my question notes', 'Exported ' + new Date().toLocaleDateString(), ''];
+        rows.forEach((r, i) => {
+          lines.push((i + 1) + '. ' + (r.qn ? 'QN ' + r.qn : 'Question') + (r.nid && String(r.nid) !== r.qn ? '  (id ' + r.nid + ')' : ''));
+          if (r.question) lines.push('   ' + r.question.replace(/\s+/g, ' ').trim());
+          lines.push('   Note: ' + r.note.replace(/\n/g, '\n         '));
+          lines.push('');
+        });
+        return lines.join('\n');
+      },
+      runText() {
+        try {
+          const rows = _noteRows();
+          if (!rows.length) { if (typeof toast === 'function') toast('You have no question notes yet.'); return; }
+          _download('abhyas_notes_' + new Date().toISOString().slice(0, 10) + '.txt', window.EXPORTNOTES.text(), 'text/plain');
+          if (typeof toast === 'function') toast('Exported ' + rows.length + ' note' + (rows.length === 1 ? '' : 's') + ' as text');
         } catch (e) {
           if (typeof toast === 'function') toast('Could not export notes: ' + (e && e.message || 'unknown'), 5000);
         }

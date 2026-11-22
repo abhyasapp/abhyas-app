@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="abhyas-version" content="2.60">
+<meta name="abhyas-version" content="2.62">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://*.supabase.co https://script.googleusercontent.com https://accounts.google.com https://*.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://fcm.googleapis.com https://fastly.jsdelivr.net https://gcore.jsdelivr.net https://raw.githubusercontent.com; frame-src https://accounts.google.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#080B14" media="(prefers-color-scheme: dark)">
@@ -700,6 +700,11 @@
               </div>
             </div>
             
+            <div class="card" id="whats-new-card">
+              <div class="card-hd"><h3><i class="ph ph-sparkle"></i> What's new</h3><span class="ctag ta" id="whats-new-version"></span></div>
+              <div id="whats-new-list"></div>
+            </div>
+
             <div class="card">
               <div class="card-hd"><h3>App lock</h3><span class="ctag tp" id="lock-state">Off</span></div>
               <p class="t-callout mb3">On a phone that other people use, a PIN keeps casual snoopers out of your progress. It locks when you open the app and after a few minutes away. It does not protect against someone with technical tools. If you forget it, signing out is the only way back in.</p>
@@ -722,6 +727,8 @@
             <div class="card">
               <div class="card-hd"><h3>About this app</h3></div>
               <p class="t-callout">Version <b id="set-app-version"></b>. If something looks wrong, tell support this number.</p>
+              <p class="t-foot" id="set-content-status" role="status">Chapters: checking\u2026</p>
+              <button class="btn btn-quiet btn-sm" type="button" data-on-click="ChapterDataStatus.checkNow()"><i class="ph ph-arrows-clockwise"></i> Check for new chapters now</button>
             </div>
 
             <div class="card">
@@ -756,6 +763,7 @@
               <button class="btn btn-a" data-on-click="DATA.exportAll()"><i class="ph ph-download-simple"></i> Export a backup</button>
               <button class="btn btn-quiet" data-on-click="DATA.imp()"><i class="ph ph-upload-simple"></i> Load a backup</button>
               <button class="btn btn-quiet" data-on-click="EXPORTNOTES.run()"><i class="ph ph-note"></i> Export my notes</button>
+              <button class="btn btn-quiet" data-on-click="EXPORTNOTES.runText()"><i class="ph ph-file-text"></i> Notes as text</button>
             </div>
           </div>
           <div id="backup-nudge-slot-data"></div>
@@ -1092,6 +1100,7 @@
 <script defer src="js/features/pdf-viewer.js"></script>
 <!-- features -->
 <script defer src="js/features/app-lock.js"></script>
+<script defer src="js/features/whats-new.js"></script>
 <script defer src="js/features/pwa.js"></script>
 <script defer src="js/features/net-toggle.js"></script>
 <script defer src="js/features/module-sheet.js"></script>

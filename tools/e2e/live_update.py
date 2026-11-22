@@ -94,6 +94,7 @@ with sync_playwright() as p:
     got = pg.evaluate("(async () => { const d = await QUIZ._fetch('fileX', 'kX'); return d[0].q; })()")
     check('online: a correction is used on the very next open (no waiting, no gate)', got == 'new stem', got)
     check('and the saved copy was updated for offline use', pg.evaluate("(async () => (await QDB.get('kX'))[0].q)()") == 'new stem')
+    pg.wait_for_timeout(2500)          # let any slower, second-source attempt of the previous open finish (a loaded CI box)
     hits = state['qhits']
     pg.evaluate("S.online = false")
     got = pg.evaluate("(async () => { const d = await QUIZ._fetch('fileX', 'kX'); return d[0].q; })()")

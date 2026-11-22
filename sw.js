@@ -13,7 +13,7 @@ const CACHE_NAME = 'abhyas-v' + APP_VERSION;
    importScripts below) does not trigger an update, so an already-installed
    app keeps its old shell cache and never sees a deployed fix. Bump SW_BUILD
    together with APP_VERSION in config.js, version.js and package.json. */
-const SW_BUILD = '2.60';
+const SW_BUILD = '2.62';
 const CDN_CACHE  = 'abhyas-cdn-v1';
 const NETWORK_TIMEOUT_MS = 2500;
 const CDN_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
@@ -145,7 +145,8 @@ const SHELL = [
   './js/boot/user-boot-paint.js',
   './js/core/qkey.js',
   './js/core/no-autofill.js',
-  './js/features/app-lock.js'
+  './js/features/app-lock.js',
+  './js/features/whats-new.js'
 ];
 
 function offlinePage() {
@@ -172,6 +173,13 @@ self.addEventListener('activate', e => {
     const keep = [CACHE_NAME, CDN_CACHE];
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => keep.indexOf(k) === -1).map(k => caches.delete(k)));
+    /* Older workers cached content-repo files here with no expiry. Drop them, or the
+       copies they stored would still be there for anything that reads this cache. */
+    try {
+      const cdn = await caches.open(CDN_CACHE);
+      const stale = (await cdn.keys()).filter(r => /^https:\/\/cdn\.jsdelivr\.net\/gh\//.test(r.url));
+      await Promise.all(stale.map(r => cdn.delete(r)));
+    } catch (err) { /* best effort */ }
     await self.clients.claim();
     const clients = await self.clients.matchAll({ type: 'window' });
     clients.forEach(client => {
@@ -312,6 +320,12 @@ self.addEventListener('fetch', e => {
   try { url = new URL(req.url); } catch (err) { return; }
 
   if (/^script\.google(usercontent)?\.com$/.test(url.hostname)) return;
+  /* The content repository (chapters-data.js, question files) is NOT static: it changes
+     whenever a teacher publishes. It must never be answered from a cache that has no
+     expiry, so those requests go straight to the network and the page decides what to
+     do when offline (it keeps its own saved copies). Everything else on the CDN hosts
+     (fonts, icon and library files) is versioned and stays cache-first. */
+  if (url.hostname === 'cdn.jsdelivr.net' && url.pathname.indexOf('/gh/') === 0) return;
   if (CDN_HOSTS.indexOf(url.hostname) !== -1) { e.respondWith(cdnCacheFirst(req)); return; }
   if (url.origin !== self.location.origin) return;
   if (url.pathname.endsWith('/admin.html')) return;

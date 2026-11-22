@@ -58,3 +58,6 @@ jobs:
 
       - name: Updates arrive without a hard reload (real browser)
         run: python tools/e2e/live_update.py
+
+      - name: CDN fetching with the real service worker (stale cache, blocked mirror)
+        run: python tools/e2e/cdn_fetch.py

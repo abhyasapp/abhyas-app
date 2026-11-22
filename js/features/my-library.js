@@ -176,6 +176,7 @@ window.LIBRARY = {
         '<button class="ib" type="button" data-on-click="LIBRARY.review(\'' + uid + '\')" ' +
           'title="Practise this question" aria-label="Practise this question"><i class="ph ph-play"></i></button>' +
       '</div>' +
+      (typeof qMetaHtml === 'function' ? qMetaHtml(e) : '') +
       '<div class="qt">' + esc(e.q || 'Question details are not downloaded on this device yet.') + '</div>' +
       (e.chapter ? '<div class="t-cap" style="margin-top:4px">' + esc(e.chapter) + '</div>' : '') +
       (opts ? '<div style="margin-top:.4rem">' + opts + '</div>' : '') +

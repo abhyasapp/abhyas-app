@@ -104,25 +104,23 @@ const QUIZ = {
     const urls = [];
     if(fresh && this._rawBase()) urls.push({ url: `${this._rawBase()}/content/${fileId}.json`, conditional: true });
     urls.push({ url: `${this.CDN_BASE}/content/${fileId}.json` + (fresh ? '?refresh=1&_=' + Date.now() : ''), conditional: false });
-    let lastErr = null;
-    for(let i = 0; i < urls.length; i++){
-      const ctrl  = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), timeoutMs || 12000);
-      try{
-        const r = await fetch(urls[i].url, { signal: ctrl.signal, cache: urls[i].conditional ? 'no-cache' : 'default' });
-        clearTimeout(timer);
-        if(!r.ok) throw new Error('CDN ' + r.status);
-        const data = await r.json();
-        if(typeof CONTENT_CRYPTO !== 'undefined' && CONTENT_CRYPTO.isEnvelope(data)) return await CONTENT_CRYPTO.open(data, fileId);
-        if(data && data.enc === 1) throw new Error('Encrypted file but no decryptor loaded');
-        return data;
-      }catch(e){
-        clearTimeout(timer);
-        lastErr = e;
-        if(String((e && e.message) || '') === 'OFFLINE') break;
-      }
+    /* Sources are raced, not queued: if the first one is slow or blocked on this
+       network, the next starts after ~1.5 s (at once if the first failed), and the
+       first good answer wins. A dead host therefore costs 1.5 s, not its timeout. */
+    const attempts = urls.map(u => async (signal) => {
+      const r = await fetch(u.url, { signal, cache: u.conditional ? 'no-cache' : 'default' });
+      if(!r.ok) throw new Error('CDN ' + r.status);
+      const data = await r.json();
+      if(typeof CONTENT_CRYPTO !== 'undefined' && CONTENT_CRYPTO.isEnvelope(data)) return await CONTENT_CRYPTO.open(data, fileId);
+      if(data && data.enc === 1) throw new Error('Encrypted file but no decryptor loaded');
+      return data;
+    });
+    try{
+      return await raceStaggered(attempts, 1500, timeoutMs || 12000);
+    }catch(e){
+      /* Report the most useful reason: a real HTTP status beats a generic timeout. */
+      throw e || new Error('CDN 404');
     }
-    throw lastErr || new Error('CDN 404');
   },
 
   async _fetchBatch(refs){

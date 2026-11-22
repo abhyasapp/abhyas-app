@@ -35,3 +35,19 @@ describe('crash reports cover what actually bit us', () => {
     expect(cr).toMatch(/kind:\s*kind \|\| 'error'/);
   });
 });
+
+describe('the service worker never caches content-repo files', () => {
+  const sw = read('sw.js');
+  it('answers nothing for cdn.jsdelivr.net/gh/ (the content repo), so it always reaches the network', () => {
+    expect(sw).toMatch(/hostname === 'cdn\.jsdelivr\.net' && url\.pathname\.indexOf\('\/gh\/'\) === 0\) return;/);
+    // ...and that rule comes BEFORE the cache-first rule for the other CDN hosts
+    expect(sw.indexOf("pathname.indexOf('/gh/') === 0) return;")).toBeLessThan(sw.indexOf('respondWith(cdnCacheFirst(req))'));
+  });
+  it('drops content-repo files an older worker cached with no expiry', () => {
+    expect(sw).toMatch(/cdn\\\.jsdelivr\\\.net\\\/gh\\\//);
+    expect(sw).toContain('cdn.delete(r)');
+  });
+  it('the loader still asks old workers for a fresh copy (refresh=1) during the changeover', () => {
+    expect(read('js/data/chapters-loader.js')).toContain("u += '?refresh=1'");
+  });
+});

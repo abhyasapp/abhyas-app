@@ -23,6 +23,21 @@ const PWA = {
       if (btn) btn.style.display = 'none';
       PWA._hideInstallBanner();
     });
+    /* Where the chapters came from and when the content server was last asked. */
+    const paintContent = () => {
+      const el = document.getElementById('set-content-status');
+      if (!el || !window.ChapterDataStatus) return;
+      const st = window.ChapterDataStatus.status();
+      const ago = t => { if (!t) return 'not yet'; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m + ' min ago'; };
+      const src = st.source.via === 'cold' ? ('downloaded' + (st.source.host ? ' from ' + st.source.host : ''))
+        : st.source.via ? 'saved on this device' : 'loading';
+      const chk = st.lastCheck.result ? ('last check ' + ago(st.lastCheck.at) + ': ' + st.lastCheck.result + (st.lastCheck.host ? ' (' + st.lastCheck.host + ')' : '')) : 'not checked yet';
+      el.textContent = 'Chapters: ' + src + '; ' + chk + '.';
+    };
+    paintContent();
+    window.addEventListener('abhyas:chapters-status', paintContent);
+    window.addEventListener('abhyas:chapters-updated', paintContent);
+    setTimeout(paintContent, 3000);
     const verEl = document.getElementById('set-app-version');
     if (verEl && typeof APP_VERSION !== 'undefined') verEl.textContent = APP_VERSION;
     if ('serviceWorker' in navigator) {

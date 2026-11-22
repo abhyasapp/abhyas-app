@@ -56,6 +56,10 @@ var MIRRORS = mirrorsOf(CDN_BASE);
    even on mobile data. */
 function urlFor(base, bust) {
   var u = base + '/chapters-data.js';
+  /* refresh=1 is a request an OLD service worker understands as "do not answer from
+     your cache" (it kept content-repo files forever). The current worker ignores these
+     files altogether; the CDN itself ignores the parameter. Raw GitHub needs neither. */
+  if (!/raw\.githubusercontent\.com/.test(base)) u += '?refresh=1';
   return bust ? u + (u.indexOf('?') === -1 ? '?' : '&') + '_=' + Date.now() : u;
 }
 /* For freshness checks, raw GitHub first: jsDelivr caches a branch URL at its
@@ -95,6 +99,24 @@ function fingerprint(src) {
 /* The app must not start before ChapterData exists. js/app.js waits on this
    promise. It resolves when ChapterData is defined and never rejects: if the
    chapters cannot be loaded the retry screen stays up and the app waits. */
+/* What happened when each source was asked, newest last. It is shown on the retry
+   screen and in Settings so \"the chapters will not load\" can be answered with the
+   actual reason (a blocked host, a 503, a captive-portal page) instead of a guess. */
+var DIAG = window.__chaptersDiag = window.__chaptersDiag || [];
+function hostOf(u) { try { return new URL(u).hostname; } catch (e) { return String(u).slice(0, 40); } }
+function describeErr(e) {
+  var m = String((e && e.message) || e || '');
+  if (/abort/i.test(m) || (e && e.name === 'AbortError')) return 'no answer in time';
+  if (/^HTTP (\d+)/.test(m)) return m;
+  if (m === 'html') return 'returned a web page (sign-in or error page)';
+  if (m === 'bad-source') return 'returned something that is not the chapters file';
+  if (/failed to fetch|networkerror|load failed/i.test(m)) return 'blocked or unreachable';
+  return m || 'failed';
+}
+function note(base, ok, ms, e) {
+  DIAG.push({ host: hostOf(base), ok: ok, ms: ms, why: ok ? '' : describeErr(e), at: Date.now() });
+  while (DIAG.length > 10) DIAG.shift();
+}
 var _ready;
 window.ChapterDataReady = new Promise(function (resolve) { _ready = resolve; });
 window.__abhyasBootFailures = window.__abhyasBootFailures || [];
@@ -233,17 +255,20 @@ function failScreen(kind) {
     showScreen('You are offline, and this device has not downloaded your chapters yet.',
       { retry: true, hint: 'Connect to the internet once. Your chapters will download and then work offline.' });
   } else {
+    var tried = DIAG.filter(function (d) { return !d.ok; }).slice(-4)
+      .map(function (d) { return d.host + ': ' + d.why; }).join(' \u00b7 ');
     showScreen('Could not load your chapters.',
-      { retry: true, hint: 'Check your connection and try again. It will also retry on its own when you are back online.' });
+      { retry: true, hint: 'Check your connection and try again. It will also retry on its own when you are back online.'
+        + (tried ? '  (' + tried + ')' : '') });
   }
 }
 
 /* ── network: try every mirror, two rounds ─────────────────────────── */
-function fetchOne(base, timeoutMs, revalidate) {
-  var ctl = ('AbortController' in window) ? new AbortController() : null;
-  var to  = ctl ? setTimeout(function () { ctl.abort(); }, timeoutMs) : null;
+/* One attempt against one mirror. It never waits on its own timeout: the race
+   below aborts it when another mirror has already answered. */
+function fetchOne(base, signal, revalidate) {
   var opts = {};
-  if (ctl) opts.signal = ctl.signal;
+  if (signal) opts.signal = signal;
   if (revalidate) opts.cache = 'no-cache';           /* ask the server, but accept a 304 */
   return fetch(urlFor(base, !revalidate), opts)
     .then(function (r) {
@@ -251,42 +276,80 @@ function fetchOne(base, timeoutMs, revalidate) {
       return r.text();
     })
     .then(function (src) {
-      if (to) clearTimeout(to);
       /* Never execute something that is not the chapters file. A captive-portal
          or error page answers 200 with HTML. */
       if (/^\s*</.test(src)) throw new Error('html');
       if (!looksLikeChapters(src)) throw new Error('bad-source');
       return src;
-    })
-    .catch(function (e) { if (to) clearTimeout(to); throw e; });
+    });
 }
-/* Returns the first source that looks right. Mirrors are tried one after the
-   other (the primary gets the longest timeout); if all fail, one more round
-   after a short pause, because the first request often hits a sleeping network. */
+
+/* Try the mirrors as a RACE, not a queue. The first starts at once; the next starts
+   after STAGGER_MS, or immediately if the one before it failed. The first good file
+   wins and the rest are aborted. A mirror that is blocked or asleep on this network
+   therefore costs about STAGGER_MS, where waiting out its timeout used to cost 20 s. */
+var STAGGER_MS = 1500;
+function raceMirrors(order, revalidate, overallMs) {      /* overallMs: 25 s for a first download, 12 s for a background check */
+  return new Promise(function (resolve, reject) {
+    var next = 0, running = 0, done = false, lastErr = null, failures = 0, badCount = 0, stagger = null, overall = null;
+    var ctls = [];
+    function finish(ok, v) {
+      if (done) return;
+      done = true; clearTimeout(stagger); clearTimeout(overall);
+      ctls.forEach(function (c) { try { c.abort(); } catch (e) { /* already settled */ } });
+      /* A CONTENT problem only when every source that answered returned a file that is
+         not the chapters file. If some were down or blocked, it is a connection problem
+         (a blocked-host proxy can answer with a short text that is not our file). */
+      if (ok) resolve(v); else reject((failures > 0 && badCount === failures) ? new Error('bad-source') : (v || new Error('net')));
+    }
+    function launch() {
+      if (done || next >= order.length) return;
+      var i = next++;
+      var ctl = ('AbortController' in window) ? new AbortController() : null;
+      if (ctl) ctls.push(ctl);
+      running++;
+      clearTimeout(stagger);
+      if (next < order.length) stagger = setTimeout(launch, STAGGER_MS);
+      var t0 = Date.now(), base = order[i];
+      fetchOne(base, ctl && ctl.signal, revalidate).then(
+        function (src) { note(base, true, Date.now() - t0); finish(true, src); },
+        function (e) {
+          if (!done || !(e && (e.name === 'AbortError' || /abort/i.test(String(e.message))))) note(base, false, Date.now() - t0, e);
+          lastErr = e; running--;
+          if (!done) { failures++; if (e && e.message === 'bad-source') badCount++; }
+          if (done) return;
+          if (next < order.length) launch();
+          else if (running === 0) finish(false, lastErr);
+        });
+    }
+    overall = setTimeout(function () { finish(false, new Error('timeout')); }, overallMs || 25000);
+    launch();
+  });
+}
+
+/* Returns the first source that looks right. If every mirror fails, one more round
+   after a short pause (the first request often hits a sleeping network). */
 function fetchSource(opts) {
   opts = opts || {};
   var rounds = opts.rounds || 2;
+  var order = opts.fresh ? freshOrder(MIRRORS) : MIRRORS;
   function round(n) {
-    var chain = Promise.reject(new Error('start'));
-    (opts.fresh ? freshOrder(MIRRORS) : MIRRORS).forEach(function (base, i) {
-      chain = chain.catch(function (e) {
-        if (e && e.message === 'bad-source') badSeen = true;
-        return fetchOne(base, i === 0 ? 20000 : 12000, !!opts.fresh);
-      });
-    });
-    return chain.catch(function (e) {
+    return raceMirrors(order, !!opts.fresh, opts.fresh ? 12000 : 25000).catch(function (e) {
       if (n < rounds) return new Promise(function (r) { setTimeout(r, 1200); }).then(function () { return round(n + 1); });
-      throw (badSeen && e && e.message === 'bad-source') ? e : (e || new Error('net'));
+      throw e;
     });
   }
-  var badSeen = false;
   return round(1);
 }
 
 /* ── boot ──────────────────────────────────────────────────────────── */
 var _runningSrc = '';
+var _source = { via: '', host: '', at: 0 };
 function finishOk(source, via) {
   _runningSrc = source;
+  var last = null;
+  for (var k = DIAG.length - 1; k >= 0; k--) { if (DIAG[k].ok) { last = DIAG[k]; break; } }
+  _source = { via: via, host: (via === 'cold' && last) ? last.host : '', at: Date.now() };
   /* It ran and defined the API: this copy is now the last known good one. */
   var cur = readSlot(GOOD_KEY);
   if (!cur || cur.source !== source) writeSlot(GOOD_KEY, source);
@@ -375,17 +438,23 @@ function applyLive(src) {
   });
 }
 
+var _lastCheck = { at: 0, result: '', host: '' };
+var _inFlightAt = 0, _again = false;
 function fetchFresh(reason) {
-  if (_inFlight) return;
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  /* A check already running covers this one, unless it has been stuck for a while or the
+     student pressed "Check now": then a new check starts (they are safe to overlap). */
+  if (_inFlight && reason !== 'manual' && Date.now() - _inFlightAt < 8000) { _again = true; return Promise.resolve(); }   /* coalesce, never drop */
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) { _lastCheck = { at: Date.now(), result: 'offline', host: '' }; return Promise.resolve(); }
   if (reason === 'visible' || reason === 'interval') {
     var gap = weakConnection() ? 15 * 60 * 1000 : 60 * 1000;
     if (Date.now() - _lastFresh < gap) return;
   }
   _lastFresh = Date.now();
-  _inFlight = true;
-  fetchSource({ rounds: 1, fresh: true })
+  _inFlight = true; _inFlightAt = Date.now();
+  return fetchSource({ rounds: 1, fresh: true })
     .then(function (src) {
+      var okHost = ''; for (var k = DIAG.length - 1; k >= 0; k--) { if (DIAG[k].ok) { okHost = DIAG[k].host; break; } }
+      _lastCheck = { at: Date.now(), result: (src === _runningSrc) ? 'up to date' : 'new version', host: okHost };
       if (src === _runningSrc) {                                              /* unchanged */
         var c0 = readSlot(CACHE_KEY);
         if (!c0 || c0.source !== src) writeSlot(CACHE_KEY, src);
@@ -406,9 +475,27 @@ function fetchFresh(reason) {
         }
       });
     })
-    .catch(function () { /* offline or every mirror down: keep what we have */ })
-    .then(function () { _inFlight = false; });
+    .catch(function (e) {                                  /* offline or every mirror down: keep what we have */
+      _lastCheck = { at: Date.now(), result: 'could not reach the content server', host: '' };
+      reportFailure('network', 'refresh failed: ' + describeErr(e));
+    })
+    .then(function () {
+      _inFlight = false;
+      /* A trigger arrived while this check was running (the device came back online, the
+         app returned to the foreground): that answer may predate it, so ask once more. */
+      if (_again) { _again = false; setTimeout(function () { fetchFresh('again'); }, 50); }
+    });
 }
+/* For Settings: where the chapters in use came from and when we last asked. */
+window.ChapterDataStatus = {
+  status: function () { return { source: _source, lastCheck: _lastCheck, tried: DIAG.slice(-6) }; },
+  checkNow: function () {
+    _lastFresh = 0;
+    return fetchFresh('manual').then(function () {
+      try { window.dispatchEvent(new CustomEvent('abhyas:chapters-status')); } catch (e) { /* cosmetic */ }
+    });
+  }
+};
 function startBackgroundRefresh() {
   if (_bgStarted) return;
   _bgStarted = true;

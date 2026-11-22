@@ -64,6 +64,7 @@ jobs:
           done
           python tools/e2e/live_update.py
           python tools/e2e/applock.py
+          python tools/e2e/cdn_fetch.py
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

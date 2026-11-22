@@ -79,6 +79,66 @@ Run it locally: `python3 tools/e2e/smoke_browser.py --scenario bad-commit`.
 - **Admin permissions are explained.** A button the admin may not use shows as a locked button naming the permission
   (`ADMIN.lockedBtn`), instead of silently disappearing.
 
+## What's new (v2.58 to v2.62)
+
+The same list is in the app: Settings -> What's new (`js/features/whats-new.js`, edit `RELEASES`; a test fails if the newest
+entry is not the running version). After an update the app shows a one-time bar pointing to it.
+
+**v2.62 - Notes you can read, and a What's new section**
+- Exported notes name their question: the QN number, the id and the question text (when this device has it); a plain-text
+  export (`EXPORTNOTES.runText()`) is there to print or hand to a teacher. Library cards carry the same QN chip as the quiz,
+  review, print sheets and search.
+- The What's new section itself, with a one-time bar after an update.
+- Merged with the repo's own changes: the chapters file runs in its own scope (a re-run cannot redeclare `CH_NAMES`), the QN chip on
+  every screen that prints a question, the axe fixes and the vitest config. Fixed a regression in the previous drop that had removed
+  `QUIZ._fetchBatch` (offline downloads); `tests/notes-export.test.js` now covers it.
+
+**v2.61 - Chapters load faster and more reliably:** sources raced instead of queued; the service worker no longer caches the
+content repo; Settings shows where the chapters came from with a "Check now" button; the retry screen names the failing source.
+
+**v2.60 - Always the latest questions:** online, the current question file is fetched first; the published site is a built copy.
+
+**v2.59 - Updates without a hard reload.** **v2.58 - Every question tracked by its id** (non-public id, public number, position),
+PIN app lock, backup status in words.
+
+## What's new
+
+The newest release is also shown inside the app (Settings, "What's new"), and once after each update a bar says what changed.
+The list lives in `js/features/whats-new.js` (`WHATS_NEW.RELEASES`, newest first); `tests/whats-new.test.js` fails if the top
+entry is not the running version, so it cannot be forgotten when you ship.
+
+**2.62 - Notes you can read, and a What's new section**
+- Exported notes name the question: the QN number, the id and the question text (JSON), plus a plain-text export to print or show a teacher.
+- My library cards carry the same QN chip as the quiz, review cards, print sheets and search.
+- The What's new section itself (Settings card + one-time update bar).
+- Offline downloads (`QUIZ._fetchBatch`) now have tests; the v2.61 zip had dropped that method by mistake while replacing the CDN fetch.
+- Built on top of the repo's own changes since v2.60: the chapters file runs in its own scope (so a live re-run cannot redeclare `CH_NAMES`),
+  the QN chip on every screen that prints a question, and the accessibility fixes.
+
+**2.61 - Chapters load faster and more reliably**: the service worker no longer caches the content repo (it served a stale
+`chapters-data.js` forever); mirrors are raced instead of queued; the retry screen names the failing source and why; Settings shows where
+the chapters came from, with "Check for new chapters now".
+
+**2.60 - Always the latest questions** (online: the current file is fetched, offline: the saved copy) and a built, bundled site.
+**2.59 - Updates without a hard reload.** **2.58 - Every question tracked by id** (non-public id, then public number, then position).
+
+## Fetching from the content CDN: what can go wrong and how it is handled
+
+- **The service worker never caches the content repo** (`cdn.jsdelivr.net/gh/...`). An earlier worker answered those URLs
+  from a cache with no expiry, so a file it had seen once was served forever (a hard reload does not clear a service
+  worker's cache). The current worker lets them reach the network and deletes the old entries on activation; the loader
+  also sends `refresh=1`, which the old worker understood, so the changeover is safe. Proof:
+  `python3 tools/e2e/cdn_fetch.py --sw <old sw.js> --no-refresh-param` fails, the current code passes.
+- **Mirrors are raced, not queued** (`raceStaggered` in `js/core/net.js`, `raceMirrors` in the loader): the next source starts
+  after 1.5 s, or at once if the previous failed; the first good answer wins. A blocked or sleeping host costs ~1.5 s instead
+  of a 12-20 s timeout.
+- **Raw GitHub is asked first for freshness** (jsDelivr caches a branch URL for hours), the CDN hosts back it up.
+- **You can see what happened:** the retry screen lists each source and why it failed (`raw.githubusercontent.com: HTTP 503`),
+  Settings -> About shows where the chapters came from and when the server was last asked, with a "Check for new chapters
+  now" button (`ChapterDataStatus`). A failure is only called a "content problem" when every source answered with a file
+  that is not the chapters file; otherwise it is reported as a connection problem.
+- Test: `python3 tools/e2e/cdn_fetch.py` (real Chromium + real service worker + a local stand-in for both hosts).
+
 ## The published site is a built copy
 
 `npm run build` (tools/build-dist.mjs) writes `dist/`: the 103 page scripts become one `js/bundle.js` (files in the
