@@ -45,3 +45,5 @@ with sync_playwright() as p:
     check('no JS errors', not [e for e in R.errors if e[0]=='pageerror'], R.errors[:2])
     b.close()
 print('SUMMARY',sum(res),'/',len(res),'passed')
+# A failed check must fail the process, so the nightly workflow can see it.
+sys.exit(0 if all(res) else 1)

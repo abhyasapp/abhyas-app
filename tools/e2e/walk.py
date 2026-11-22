@@ -24,3 +24,6 @@ with sync_playwright() as p:
         tot_err+=len(R.errors); tot_ax+=len(ax); tot_ov+= 1 if ov>0 else 0
     print('TOTAL errors',tot_err,'axe',tot_ax,'overflowViews',tot_ov,'| failed requests:',R.failed[:3])
     b.close()
+# A screen with an error, an axe violation or sideways scroll must fail the process,
+# so the nightly workflow can see it.
+sys.exit(0 if not (tot_err or tot_ax or tot_ov) else 1)

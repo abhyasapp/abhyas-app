@@ -1,0 +1,81 @@
+name: Nightly browser suites
+
+# The fourteen Playwright suites in tools/e2e/ that until now only ran when someone
+# typed the command from tools/e2e/README.md: every app screen (walk, flows, flows2),
+# the quiz and its variants (exam, qbank, qncopy, search), the sprint planner,
+# reports and history, the admin permission matrix, settings and local storage.
+#
+# They run against the SOURCE tree, exactly as the README runs them. The built
+# artifact is already covered on every push by pages.yml (smoke_browser, live_update,
+# applock, cdn_fetch with ABHYAS_ROOT=dist), so this job is about the flows, not the
+# bundle.
+#
+# Each suite is its own matrix job: one broken suite cannot hide the other thirteen,
+# and each gets its own harness server on an ephemeral port. Every suite exits
+# non-zero when a single check fails, so a red run means a real regression.
+#
+# Start one by hand: Actions -> Nightly browser suites -> Run workflow.
+
+on:
+  schedule:
+    - cron: '30 18 * * *' # 00:15 Asia/Kathmandu (UTC+5:45)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-browser
+  cancel-in-progress: false
+
+jobs:
+  suites:
+    name: ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        suite:
+          - admin-perms
+          - exam
+          - flows
+          - flows2
+          - history
+          - qbank
+          - qncopy
+          - search
+          - settings
+          - sprint
+          - sprint-accuracy
+          - sprint-i18n
+          - storage
+          - walk
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # axe-core is a devDependency now, so npm ci is enough: harness.py reads it
+      # from node_modules for the accessibility checks inside the suites.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Chromium
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Run ${{ matrix.suite }}
+        run: python tools/e2e/${{ matrix.suite }}.py

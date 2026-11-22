@@ -53,3 +53,5 @@ with sync_playwright() as p:
     print('backend actions seen:',sorted(set(R.actions)))
     b.close()
 print('SUMMARY',sum(res),'/',len(res),'passed')
+# A failed check must fail the process, so the nightly workflow can see it.
+sys.exit(0 if all(res) else 1)
