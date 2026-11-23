@@ -61,3 +61,6 @@ backup/
 scratch/
 __pycache__/
 *.pyc
+
+# v2.64 review pack (tools/e2e/shots.py) is a local aid, not app content
+shots/v264/

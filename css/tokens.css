@@ -94,6 +94,13 @@
   --safe-t:env(safe-area-inset-top,0px);
   --z-sticky:10; --z-quizbar:60; --z-rail:400; --z-tabbar:500;
   --z-sheet:600; --z-modal:700; --z-toast:800; --z-gate:900;
+  /* v2.64 — layout contract: one gutter, one tap floor, one reading measure */
+  --gutter:16px;
+  --gutter-row:var(--sp-3);
+  --tap-min:44px;
+  --content-measure:68ch;
+  --card-pad:var(--sp-4);
+  --card-gap:var(--sp-3);
   /* legacy aliases so existing selectors keep working */
   --amb:var(--accent);       --amb2:var(--accent-pressed);
   --neon:var(--accent);

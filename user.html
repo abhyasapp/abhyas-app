@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="abhyas-version" content="2.63">
+<meta name="abhyas-version" content="2.64">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://*.supabase.co https://script.googleusercontent.com https://accounts.google.com https://*.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://fcm.googleapis.com https://fastly.jsdelivr.net https://gcore.jsdelivr.net https://raw.githubusercontent.com; frame-src https://accounts.google.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#080B14" media="(prefers-color-scheme: dark)">
@@ -117,7 +117,7 @@
         <button type="button" class="sb-item" id="sb-lang" data-on-click="I18N.toggleLang()" title="Change language">
           <span class="sb-ic"><i class="ph ph-translate"></i></span><span data-lang-label lang="ne">नेपाली</span>
         </button>
-        <div id="sb-version"></div><div class="t-cap" style="text-align:center;margin-top:.4rem"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="mailto:abhyasbymku@gmail.com">Help</a></div>
+        <div id="sb-version"></div><div class="t-cap" style="text-align:center"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="mailto:abhyasbymku@gmail.com">Help</a></div>
       </div>
     </nav>
 
@@ -138,7 +138,7 @@
             <i class="ph ph-envelope-simple" aria-hidden="true"></i>
             <div style="flex:1">
               <div>Your email address isn't confirmed yet. Confirm it so you can reset your password if you ever lose it.</div>
-              <button class="btn btn-sm btn-quiet" style="margin-top:var(--sp-2)" id="verify-resend" data-on-click="VERIFY.resend()">Send the link again</button>
+              <button class="btn btn-sm btn-quiet u-mt-2" id="verify-resend" data-on-click="VERIFY.resend()">Send the link again</button>
             </div>
             <button class="ib" data-on-click="VERIFY.dismiss()" aria-label="Hide this for now"><i class="ph ph-x"></i></button>
           </div>
@@ -203,6 +203,7 @@
       <!-- SPRINT -->
       <div class="view" id="view-sprint">
         <div class="sprint-page">
+          <div class="pg-head" data-head="sprint"></div>
           <button class="sprint-back" type="button" data-on-click="UI.go('home')"><i class="ph ph-arrow-left"></i> <span data-i18n>Home</span></button>
           <div class="phase-row">
             <span class="phase-chip"><span class="dot"></span><span id="sprint-phase-label">Learn phase</span></span>
@@ -348,11 +349,11 @@
         </div>
         <div class="card" id="hourly-subj-card">
           <div class="card-hd"><h3><i class="ph ph-pen-nib"></i> This hour's written question</h3><span class="ctag ta" id="hourly-subj-marks">—</span></div>
-          <div id="hourly-subj-body"><div class="card" style="padding:var(--sp-4)"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w80"></div></div></div>
+          <div id="hourly-subj-body"><div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w80"></div></div></div>
         </div>
         <div class="card" id="hourly-obj-card">
           <div class="card-hd"><h3><i class="ph ph-lightning"></i> This hour's 50-question sprint</h3><span class="ctag tp">50 Q · 60 min</span></div>
-          <div id="hourly-obj-body"><div class="card" style="padding:var(--sp-4)"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w40"></div></div></div>
+          <div id="hourly-obj-body"><div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w40"></div></div></div>
         </div>
       </div>
 
@@ -361,28 +362,28 @@
         <div class="pg-head" data-head="subj-qotd"></div>
         <div id="syllabus-mock-slot"></div>
         <div id="subj-qotd-body">
-          <div class="card" style="padding:var(--sp-4)"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w60"></div></div>
+          <div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w60"></div></div>
         </div>
       </div>
 
       <!-- SUBJ-MINE -->
       <div class="view" id="view-subj-mine">
         <div class="pg-head" data-head="subj-mine"></div>
-        <div class="card" style="margin-bottom:var(--sp-3)">
+        <div class="card u-mb-3">
           <div class="bg">
             <button class="btn btn-a" data-on-click="MY_SUBJ.load(true)"><i class="ph ph-arrow-clockwise"></i> Refresh</button>
             <button class="btn btn-quiet" data-on-click="UI.go('subj-qotd')"><i class="ph ph-sun-horizon"></i> Today's question</button>
           </div>
         </div>
         <div id="subj-mine-body">
-          <div class="card" style="padding:var(--sp-4)"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w80"></div></div>
+          <div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w80"></div></div>
         </div>
       </div>
 
       <!-- STUDY DOCS -->
       <div class="view" id="view-studydocs">
         <div class="pg-head" data-head="studydocs"></div>
-        <div class="card sd-bar" style="margin-bottom:var(--sp-3)">
+        <div class="card sd-bar u-mb-3">
           <div class="toolbar"><input type="search" id="sd-q" placeholder="Search by title or topic" autocomplete="off" data-on-input="STUDYDOCS.setQuery(this.value)" aria-label="Search study PDFs"></div>
           <div class="sd-chips" id="sd-chips" role="group" aria-label="Filter by type"></div>
         </div>
@@ -394,7 +395,7 @@
       <!-- QNA — one PDF per question, filed under the syllabus -->
       <div class="view" id="view-qna">
         <div class="pg-head" data-head="qna"></div>
-        <div class="card sd-bar" style="margin-bottom:var(--sp-3)">
+        <div class="card sd-bar u-mb-3">
           <div class="toolbar"><input type="search" id="qna-q" placeholder="Search a question, a topic or a key word" autocomplete="off" data-on-input="QNA.setQuery(this.value)" aria-label="Search questions"></div>
           <div class="sd-chips" id="qna-chips" role="group" aria-label="Filter by syllabus group"></div>
         </div>
@@ -407,23 +408,23 @@
       <div class="view" id="view-subj-exam">
         <div class="pg-head" data-head="subj-exam"></div>
         <div id="subj-exam-body">
-          <div class="card" style="padding:var(--sp-4)"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w80"></div></div>
+          <div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w80"></div></div>
         </div>
         <div class="card" id="exam-builder">
           <div class="card-hd"><h3><i class="ph ph-sliders-horizontal"></i> Build your own paper</h3><span class="ctag tp">Custom</span></div>
           <p class="t-callout mb3">Choose the chapters and a marks target. Questions are drawn at random from the bank each time.</p>
           <div class="field-label">Chapters</div>
-          <div id="exam-builder-chapters" class="stack2" style="max-height:220px;overflow-y:auto;padding:var(--sp-2);background:var(--surface-alt);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-input);margin-bottom:var(--sp-3)"></div>
+          <div id="exam-builder-chapters" class="stack2" style="max-height:220px;overflow-y:auto;padding:var(--sp-2);background:var(--surface-alt);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-input)"></div>
           <div class="bg mb3">
             <button class="btn btn-sm btn-quiet" data-on-click="SUBJ_BUILDER.selectAll()">Select all</button>
             <button class="btn btn-sm btn-quiet" data-on-click="SUBJ_BUILDER.clear()">Clear</button>
           </div>
           <div class="fld-row mb3">
-            <div class="sf" style="margin-bottom:0"><label for="exam-builder-marks">Total marks</label><input type="number" id="exam-builder-marks" value="100" min="20" max="150" step="5" inputmode="numeric"></div>
-            <div class="sf" style="margin-bottom:0"><label for="exam-builder-mode">Question size</label><select id="exam-builder-mode"><option value="both">Any size (2.5, 5 and 10)</option><option value="2.5">2.5 mark only</option><option value="5">5 mark only</option><option value="10">10 mark only</option></select></div>
+            <div class="sf u-mb-0"><label for="exam-builder-marks">Total marks</label><input type="number" id="exam-builder-marks" value="100" min="20" max="150" step="5" inputmode="numeric"></div>
+            <div class="sf u-mb-0"><label for="exam-builder-mode">Question size</label><select id="exam-builder-mode"><option value="both">Any size (2.5, 5 and 10)</option><option value="2.5">2.5 mark only</option><option value="5">5 mark only</option><option value="10">10 mark only</option></select></div>
           </div>
           <button class="btn btn-solid btn-lg btn-blk" id="exam-builder-go" data-on-click="SUBJ_BUILDER.generate()"><i class="ph ph-shuffle"></i> Build the paper</button>
-          <p class="t-cap text-center" id="exam-builder-note" style="margin-top:var(--sp-2)"></p>
+          <p class="t-cap text-center u-mt-2" id="exam-builder-note"></p>
         </div>
       </div>
 
@@ -446,7 +447,7 @@
             <option value="10">10 marks</option>
           </select>
         </div>
-        <div id="subj-list-body"><div class="card" style="padding:var(--sp-4)"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w80"></div><div class="skel w40"></div></div></div>
+        <div id="subj-list-body"><div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w80"></div><div class="skel w40"></div></div></div>
       </div>
 
       <!-- ONLINE -->
@@ -523,7 +524,7 @@
             </div>
           </div>
           <div id="psy-levels"></div>
-          <div id="psy-info" class="t-foot text-center" style="margin:var(--sp-2) 0"></div>
+          <div id="psy-info" class="t-foot text-center u-my-2"></div>
           <hr>
           <div class="g2-grid mb3">
             <button class="btn btn-p btn-lg" data-on-click="PSY.start('flashcard')"><i class="ph ph-cards"></i> Practise the mix</button>
@@ -536,43 +537,42 @@
       <!-- MY LIBRARY -->
       <div class="view" id="view-library">
         <div class="pg-head" data-head="library"></div>
-        <div class="card" style="margin-bottom:var(--sp-3)">
-          <div class="card-hd">
-            <h3><i class="ph ph-books"></i> My library</h3>
-            <div class="bg">
-              <button class="btn btn-sm btn-solid" data-on-click="LIBRARY.start()"><i class="ph ph-cards"></i> Review these</button>
-              <button class="btn btn-sm btn-quiet" data-on-click="LIBRARY.exportNotes()"><i class="ph ph-download-simple"></i> Export notes</button>
-            </div>
+        <div class="lib-head">
+          <div class="lib-actions">
+            <button class="btn btn-solid" data-on-click="LIBRARY.start()"><i class="ph ph-cards"></i> Review these</button>
+            <button class="btn btn-quiet" data-on-click="LIBRARY.exportNotes()"><i class="ph ph-download-simple"></i> Export notes</button>
           </div>
-          <div class="tabbar" id="lib-tabs" role="tablist">
-            <button class="active" data-tab="all" data-on-click="LIBRARY.setTab('all')" role="tab" aria-selected="true">All</button>
-            <button data-tab="notes" data-on-click="LIBRARY.setTab('notes')" role="tab" aria-selected="false">Notes</button>
-            <button data-tab="saved" data-on-click="LIBRARY.setTab('saved')" role="tab" aria-selected="false">Saved</button>
+        </div>
+        <div class="card lib-card">
+          <div class="tabbar" id="lib-tabs" role="group" aria-label="Filter your library">
+            <button class="active" data-tab="all" data-on-click="LIBRARY.setTab('all')" aria-pressed="true">All</button>
+            <button data-tab="notes" data-on-click="LIBRARY.setTab('notes')" aria-pressed="false">Notes</button>
+            <button data-tab="saved" data-on-click="LIBRARY.setTab('saved')" aria-pressed="false">Saved</button>
           </div>
-          <div class="toolbar" style="margin-bottom:var(--sp-2)">
+          <div class="toolbar lib-toolbar">
             <input type="search" id="lib-search" placeholder="Search notes, questions and options" data-on-input="LIBRARY.search(this.value)" aria-label="Search your library">
             <button class="btn btn-sm btn-quiet" data-on-click="LIBRARY.clearSearch()">Clear</button>
           </div>
-          <div id="lib-saved-bar" class="bg" style="margin-bottom:var(--sp-2)" hidden>
+          <div id="lib-saved-bar" class="bg u-mb-2" hidden>
             <button class="btn btn-sm btn-a" data-on-click="REV.start('bk','flashcard')"><i class="ph ph-cards"></i> Practise saved</button>
             <button class="btn btn-sm btn-quiet" data-on-click="REV.start('bk','exam')"><i class="ph ph-note-pencil"></i> Test</button>
             <button class="btn btn-sm btn-r" data-on-click="REV.clearAll('bk')" aria-label="Clear saved questions"><i class="ph ph-trash"></i></button>
           </div>
-          <div id="lib-summary" class="t-foot" style="margin-bottom:var(--sp-2)"></div>
+          <div id="lib-summary" class="t-foot u-mb-2"></div>
           <div id="lib-list" class="stack2"></div>
-          <button class="btn btn-quiet btn-blk" style="margin-top:var(--sp-3)" data-on-click="UI.go('wrong')"><i class="ph ph-target"></i> Missed questions are in Weak spots <span id="lib-weak-count" class="t-foot"></span></button>
         </div>
+        <button class="btn btn-quiet btn-blk lib-weak" data-on-click="UI.go('wrong')"><i class="ph ph-target"></i> Missed questions are in Weak spots <span id="lib-weak-count" class="t-foot"></span></button>
       </div>
 
       <!-- WRONG -->
       <div class="view" id="view-wrong">
         <div class="pg-head" data-head="wrong"></div>
-        <div class="tabbar" id="ws-tabs" role="tablist">
-          <button class="active" data-tab="due" data-on-click="WRONGBY.tab('due')" role="tab">Due now</button>
-          <button data-tab="all" data-on-click="WRONGBY.tab('all')" role="tab">All missed</button>
-          <button data-tab="misconceptions" data-on-click="WRONGBY.tab('misconceptions')" role="tab">Misconceptions</button>
-          <button data-tab="hardest" data-on-click="WRONGBY.tab('hardest')" role="tab">Hardest 20</button>
-          <button data-tab="reports" data-on-click="WRONGBY.tab('reports')" role="tab">My reports</button>
+        <div class="tabbar" id="ws-tabs" role="group" aria-label="Weak spot filters">
+          <button class="active" data-tab="due" data-on-click="WRONGBY.tab('due')" aria-pressed="true">Due now</button>
+          <button data-tab="all" data-on-click="WRONGBY.tab('all')" aria-pressed="false">All missed</button>
+          <button data-tab="misconceptions" data-on-click="WRONGBY.tab('misconceptions')" aria-pressed="false">Misconceptions</button>
+          <button data-tab="hardest" data-on-click="WRONGBY.tab('hardest')" aria-pressed="false">Hardest 20</button>
+          <button data-tab="reports" data-on-click="WRONGBY.tab('reports')" aria-pressed="false">My reports</button>
         </div>
         <div id="wr-weak-pane">
         <div class="card">
@@ -587,14 +587,14 @@
               <button class="btn btn-sm btn-r" data-on-click="REV.clearAll('wr')" aria-label="Clear the miss list"><i class="ph ph-trash"></i></button>
             </div>
           </div>
-          <div class="toolbar" style="margin-bottom:var(--sp-2)"><input type="search" id="wr-search" placeholder="Search your missed questions" data-on-input="REV.filterList('wr', this.value)" aria-label="Search missed questions"></div>
+          <div class="toolbar u-mb-2"><input type="search" id="wr-search" placeholder="Search your missed questions" data-on-input="REV.filterList('wr', this.value)" aria-label="Search missed questions"></div>
           <div id="wr-list"></div>
         </div>
         </div>
         <div id="wr-reports-pane" hidden>
-          <div class="card" style="margin-bottom:var(--sp-3)">
+          <div class="card u-mb-3">
             <div class="card-hd"><h3><i class="ph ph-flag"></i> Questions you reported</h3></div>
-            <p class="t-callout" style="margin:0">This is your copy, kept on this device. It shows whether each report is waiting to send or has reached the server. Reports sent from another phone do not appear here.</p>
+            <p class="t-callout u-m-0">This is your copy, kept on this device. It shows whether each report is waiting to send or has reached the server. Reports sent from another phone do not appear here.</p>
           </div>
           <div id="wr-reports-list" class="stack2"></div>
         </div>
@@ -603,14 +603,14 @@
       <!-- PROGRESS -->
       <div class="view" id="view-progress">
         <div class="pg-head" data-head="progress"></div>
-        <div class="tabbar" id="prog-tabs" role="tablist">
-          <button class="active" data-tab="accuracy" role="tab">Overview</button>
-          <button data-tab="heatmap" role="tab">Trends</button>
-          <button data-tab="coverage" role="tab">Chapters</button>
+        <div class="tabbar" id="prog-tabs" role="tablist" aria-label="Progress views">
+          <button class="active" id="prog-tab-btn-accuracy" data-tab="accuracy" role="tab" aria-controls="prog-tab-accuracy" aria-selected="true">Overview</button>
+          <button id="prog-tab-btn-heatmap" data-tab="heatmap" role="tab" aria-controls="prog-tab-heatmap" aria-selected="false">Trends</button>
+          <button id="prog-tab-btn-coverage" data-tab="coverage" role="tab" aria-controls="prog-tab-coverage" aria-selected="false">Chapters</button>
         </div>
-        <div id="prog-tab-accuracy">
-          <div class="g4" id="prog-stats" style="margin-bottom:var(--sp-4)"></div>
-          <div id="predict-card-2" style="margin-bottom:var(--sp-4)"></div>
+        <div id="prog-tab-accuracy" role="tabpanel" aria-labelledby="prog-tab-btn-accuracy">
+          <div class="g4 u-mb-4" id="prog-stats"></div>
+          <div class="u-mb-4" id="predict-card-2"></div>
           <div id="digest-slot-2"></div>
           <section class="streak-card" id="streak-card-2">
             <div class="streak-top"><h3><i class="ph ph-flame"></i> Your streak</h3><span class="stk-tag" id="stk-tag-2">0 days</span></div>
@@ -620,8 +620,8 @@
           <div id="badges-strip-2"></div>
           <div id="forecast-slot-2"></div>
         </div>
-        <div id="prog-tab-heatmap" hidden>
-          <section class="card" id="insights-card" style="margin-bottom:var(--sp-4)"></section>
+        <div id="prog-tab-heatmap" role="tabpanel" aria-labelledby="prog-tab-btn-heatmap" hidden>
+          <section class="card u-mb-4" id="insights-card"></section>
           <div id="heatmap-body"></div>
           <details class="grp" open>
             <summary><span>Recent sessions</span><small>Last few practice sessions</small></summary>
@@ -635,7 +635,7 @@
             </div>
           </div>
         </div>
-        <div id="prog-tab-coverage" hidden>
+        <div id="prog-tab-coverage" role="tabpanel" aria-labelledby="prog-tab-btn-coverage" hidden>
           <div class="card">
             <div class="card-hd"><h3>Accuracy by chapter</h3></div>
             <div id="chap-acc"></div>
@@ -647,7 +647,7 @@
             <label class="t-foot" style="display:flex;align-items:center;gap:.4rem;white-space:nowrap;font-weight:600"><input type="checkbox" id="srv-only-started" data-on-change="SERVER_PROG.render()"> Started only</label>
             <button class="btn btn-sm btn-quiet spacer" data-on-click="SERVER_PROG.toggleSort()"><i class="ph ph-sort-ascending"></i> <span id="srv-sort-label">Most done first</span></button>
           </div>
-          <div id="srv-summary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2);margin-bottom:var(--sp-3)"></div>
+          <div id="srv-summary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2)"></div>
           <div id="srv-list" class="stack2"></div>
         </div>
       </div>
@@ -659,8 +659,8 @@
           <div class="card-hd"><h3>What's on this device</h3><span class="ctag" id="cache-tag">Checking…</span></div>
           <div id="cache-txt" class="t-callout mb3"></div>
           <div class="cpb" id="cpb"><div class="cpf" id="cpf"></div></div>
-          <div id="cptxt" class="t-foot" style="margin:var(--sp-1) 0" aria-live="polite"></div>
-          <div id="dl-ctl" class="bg" style="display:none;margin:var(--sp-2) 0">
+          <div id="cptxt" class="t-foot u-my-1" aria-live="polite"></div>
+          <div id="dl-ctl" class="bg" style="display:none">
             <button class="btn btn-quiet btn-sm" id="dl-pause-btn" data-on-click="CACHE.togglePause()"><i class="ph ph-pause"></i> Pause</button>
             <button class="btn btn-r btn-sm" data-on-click="CACHE.stopDl()"><i class="ph ph-stop"></i> Stop</button>
           </div>
@@ -722,7 +722,7 @@
                   <button class="btn btn-quiet" type="button" data-on-click="APPLOCK.disable()"><i class="ph ph-lock-key-open"></i> Turn off PIN lock</button>
                 </div>
               </div>
-              <p class="t-foot" id="lock-msg" role="status" style="margin-top:var(--sp-2)"></p>
+              <p class="t-foot u-mt-2" id="lock-msg" role="status"></p>
             </div>
 
             <div class="card">
@@ -804,7 +804,7 @@
             <div id="recover-local" class="mb3"></div>
             <div class="t-foot mb2"><b>Earlier cloud copies</b></div>
             <div id="recover-cloud"><button class="btn btn-quiet btn-sm" data-on-click="RECOVER.loadCloud()"><i class="ph ph-cloud-arrow-down"></i> Check earlier cloud copies</button></div>
-            <div id="recover-msg" class="t-foot" style="margin-top:var(--sp-2)" aria-live="polite"></div>
+            <div id="recover-msg" class="t-foot u-mt-2" aria-live="polite"></div>
           </div>
           <div class="card">
             <div class="card-hd"><h3>Reset progress</h3><span class="ctag tr">Careful</span></div>
@@ -820,7 +820,7 @@
             <div class="card-hd"><h3>Your data on the server</h3><span class="ctag tr">Permanent</span></div>
             <p class="t-callout mb4">"Reset this device" only clears this browser — while you are logged in, your cloud backup is restored on the next visit. To really start over, reset it here.</p>
             <div class="bg"><button class="btn btn-r" data-on-click="DATA.resetCloud()"><i class="ph ph-arrow-counter-clockwise"></i> Reset my progress everywhere</button></div>
-            <p class="t-callout mb3" style="margin-top:var(--sp-5)"><b>Delete my account.</b> Removes your login, progress, payment record, weekly-set attempts and written answers, including uploaded files. It cannot be undone. Signed up with Google and never set a password? Use "Forgot password" on the login page first. A backup in your own Google Drive is not touched. <a href="privacy.html" target="_blank" rel="noopener">What we store</a>.</p>
+            <p class="t-callout mb3 u-mt-5"><b>Delete my account.</b> Removes your login, progress, payment record, weekly-set attempts and written answers, including uploaded files. It cannot be undone. Signed up with Google and never set a password? Use "Forgot password" on the login page first. A backup in your own Google Drive is not touched. <a href="privacy.html" target="_blank" rel="noopener">What we store</a>.</p>
             <label class="t-foot" for="del-pw">Password</label>
             <input class="input" type="password" id="del-pw" autocomplete="current-password" style="margin:var(--sp-1) 0 var(--sp-3)">
             <label class="t-foot" for="del-typed">Type DELETE to confirm</label>
@@ -863,7 +863,7 @@
                 <label for="tt-remind-lead" class="t-foot" style="white-space:nowrap">Minutes before</label>
                 <input type="number" id="tt-remind-lead" min="0" max="60" class="input" style="width:5rem;min-height:34px" data-on-change="TT.setLeadMinutes(this.value)">
               </div>
-              <p class="t-cap" style="margin-top:var(--sp-2)">These nudges only fire while Abhyas is open. For reminders that always work, use the calendar button in Today.</p>
+              <p class="t-cap u-mt-2">These nudges only fire while Abhyas is open. For reminders that always work, use the calendar button in Today.</p>
             </div>
             <div class="card">
               <div class="card-hd"><h3>Add a session</h3></div>
@@ -912,7 +912,7 @@
           <div class="qcard">
             <div class="qm"><span class="qn" id="fc-qn">Q1</span><span class="fc-run-chip" id="fc-run" role="status" aria-live="polite" hidden></span><div class="fc-acts" id="fc-acts"></div></div>
             <div class="qt" id="fc-q">Loading…</div>
-            <div id="fc-img-wrap" style="display:none;margin:var(--sp-3) 0">
+            <div id="fc-img-wrap" style="display:none">
               <img id="fc-img" alt="Question figure" loading="lazy" style="border-radius:var(--r-input);border:var(--hairline-w) solid var(--sep)" data-on-error="ACT.hideParent(this)" data-on-load="ACT.showParent(this)">
             </div>
             <div class="fc-tools" id="fc-tools"></div>
@@ -969,8 +969,8 @@
               <div class="rs" id="res-chap"></div>
               <div class="rg" id="res-grade"></div>
             </div>
-            <div class="g4" id="res-stats" style="margin:var(--sp-4) 0"></div>
-            <div class="bg" style="justify-content:center;margin-bottom:var(--sp-4)">
+            <div class="g4 u-my-4" id="res-stats"></div>
+            <div class="bg" style="justify-content:center">
               <button class="btn btn-p btn-lg" data-on-click="QUIZ.retryWrong()"><i class="ph ph-repeat"></i> Retry what I missed</button>
               <button class="btn btn-quiet btn-lg" id="res-skipped" data-on-click="QUIZ.retrySkipped()" hidden><i class="ph ph-arrow-down"></i> Practice skipped (<span id="res-skipped-n">0</span>)</button>
               <button class="btn btn-quiet btn-lg" id="res-missed" data-on-click="QUIZ.practiceWeeklyMissed()" hidden><i class="ph ph-target"></i> Practice missed (<span id="res-missed-n">0</span>)</button>
@@ -985,7 +985,7 @@
               <span id="res-chapter-note" class="t-foot" role="status" aria-live="polite"></span>
             </div>
             <div id="res-filters" class="chg-tabs" role="group" aria-label="Filter reviewed questions" hidden></div>
-            <p id="res-filter-empty" class="empty" style="padding:var(--sp-4)" hidden></p>
+            <p id="res-filter-empty" class="empty u-p-4" hidden></p>
             <div id="res-review"></div>
           </div>
         </div>
@@ -1031,7 +1031,7 @@
       </div>
       <div class="section-head"><h2>Cards</h2><span class="hint">Tap ↑ ↓ to reorder</span></div>
       <div class="home-customize-list" id="home-customize-list"></div>
-      <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-4)">
+      <div style="display:flex;gap:var(--sp-2)">
         <button class="btn btn-quiet" style="flex:1" type="button" data-on-click="HOME_LAYOUT.reset()">Reset</button>
         <button class="btn btn-solid" style="flex:1" type="button" data-on-click="HOME_LAYOUT.closeCustomize()">Done</button>
       </div>

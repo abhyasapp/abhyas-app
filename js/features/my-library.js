@@ -146,7 +146,7 @@ window.LIBRARY = {
     document.querySelectorAll('#lib-tabs button').forEach(b => {
       const on = b.getAttribute('data-tab') === this.TAB;
       b.classList.toggle('active', on);
-      b.setAttribute('aria-selected', String(on));
+      b.setAttribute('aria-pressed', String(on));
     });
   },
 
@@ -201,10 +201,10 @@ window.LIBRARY = {
     const sum = document.getElementById('lib-summary');
     if (sum) sum.textContent = list.length + ' saved question' + (list.length === 1 ? '' : 's');
     if (!list.length) {
-      box.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-star"></i></div>' +
-        '<p>' + (term ? 'Nothing matches' : 'No saved questions yet') + '</p>' +
-        '<p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">' +
-        (term ? 'Try a shorter word.' : 'Tap the star on any question while studying to save it here.') + '</p></div>';
+      box.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-star"></i></div>' +
+        '<div class="es-t">' + (term ? 'Nothing matches' : 'No saved questions yet') + '</div>' +
+        '<div class="es-s">' +
+        (term ? 'Try a shorter word.' : 'Tap the star on any question while studying to save it here.') + '</div></div>';
       return;
     }
     box.innerHTML = list.slice(0, 200).map((q, i) => REV._cardHtml('bk', q, i)).join('') +
@@ -231,13 +231,13 @@ window.LIBRARY = {
     }
     if (!rows.length) {
       const searching = String(this.TERM || '').trim();
-      box.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-books"></i></div>' +
-        '<p>' + (searching ? 'Nothing matches' : 'Your library is empty') + '</p>' +
-        '<p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">' +
+      box.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-books"></i></div>' +
+        '<div class="es-t">' + (searching ? 'Nothing matches' : 'Your library is empty') + '</div>' +
+        '<div class="es-s">' +
           (searching
             ? 'Try a shorter word, or switch back to All.'
             : 'Add a note, star a question or miss one in practice and it will appear here.') +
-        '</p></div>';
+        '</div></div>';
       return;
     }
     box.innerHTML = rows.map((e, i) => this._card(e, i)).join('');

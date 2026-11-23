@@ -4,7 +4,7 @@
    MUST load EXACTLY ONCE (do not reference from any shim or app.js).
    ═══════════════════════════════════════════════════════════════════════ */
 
-const APP_VERSION = '2.63';
+const APP_VERSION = '2.64';
 window.APP_VERSION = APP_VERSION;
 
 /* The page (HTML) and its scripts must come from the same deploy. On a slow

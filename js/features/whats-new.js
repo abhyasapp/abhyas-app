@@ -13,6 +13,11 @@ const WHATS_NEW = {
   SEEN_KEY: 'abhyas_seen_version',
 
   RELEASES: [
+    { version: '2.64', date: '2026-11-23', title: 'One portal, one system', items: [
+      { icon: 'ph-layout', title: 'Every screen on the same grid', text: 'Nineteen screens now share one page header, one card, one row and one set of controls — so a button, a label or a progress bar sits in the same place wherever you meet it.' },
+      { icon: 'ph-books', title: 'A library with one voice', text: 'My library no longer says its name three times: one header, its two actions, a segmented filter and one clear empty state.' },
+      { icon: 'ph-cards', title: 'A calmer question card', text: 'The quiz, the options and the explanation use the same surfaces as the rest of the app, with larger answer rows and a clearer right/wrong state.' }
+    ] },
     { version: '2.63', date: '2026-11-22', title: 'A calmer home, and data tools you can trust', items: [
       { icon: 'ph-house', title: 'Home greets you', text: 'Your name, the date, your streak and your accuracy at the top of Home, with one button that puts you back where you left off.' },
       { icon: 'ph-paint-brush', title: 'A quieter, clearer app', text: 'A calmer top bar, a floating tab bar, roomier cards and larger tap targets — the same screens, easier to read and to reach.' },

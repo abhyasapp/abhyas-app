@@ -295,7 +295,7 @@ window.WRONGBY = {
   _syncTabs(){
     document.querySelectorAll('#view-wrong .tabbar button').forEach(b => {
       const on = b.getAttribute('data-tab') === WRONGBY._tab;
-      b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on));
+      b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on));
     });
     const el = document.getElementById('wr-list'); if (el) el.setAttribute('role', 'tabpanel');
   },
