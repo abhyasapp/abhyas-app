@@ -2332,200 +2332,111 @@ body{
   .tool-row{flex-wrap:wrap}
   .tool-row .btn{width:100%}
 }
-/* ═══════════════════════════════════════════════════════════════════════
-   v2.64 — ONE PORTAL, ONE SYSTEM
-   Ten components, defined once and used by every view. Token-driven only:
-   no literal colours in this section, so light and dark cannot drift apart.
-   ─────────────────────────────────────────────────────────────────────── */
+/* ═══ v2.64 — ONE PORTAL, ONE SYSTEM ═══════════════════════════════════
+   Ten components for all 19 views, plus the Written PDF-item and status
+   grammar. Token colours only, so light and dark cannot drift. */
+.u-m-0{margin:0}.u-mb-0{margin-bottom:0}.u-mb-2{margin-bottom:var(--sp-2)}.u-mb-3{margin-bottom:var(--sp-3)}.u-mb-4{margin-bottom:var(--sp-4)}
+.u-mt-2{margin-top:var(--sp-2)}.u-mt-5{margin-top:var(--sp-5)}
+.u-my-1{margin:var(--sp-1) 0}.u-my-2{margin:var(--sp-2) 0}.u-my-4{margin:var(--sp-4) 0}
+.u-p-4{padding:var(--sp-4)}.u-measure{max-width:var(--content-measure)}
 
-/* ── 0. Layout utilities (replace inline layout styles in user.html) ──── */
-.u-stack{display:flex;flex-direction:column;gap:var(--card-gap)}
-.u-row{display:flex;align-items:center;gap:var(--sp-2)}
-.u-between{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2)}
-.u-wrap{flex-wrap:wrap}
-.u-grow{flex:1;min-width:0}
-.u-mb-2{margin-bottom:var(--sp-2)}
-.u-mb-3{margin-bottom:var(--sp-3)}
-.u-mb-4{margin-bottom:var(--sp-4)}
-.u-measure{max-width:var(--content-measure)}
-
-/* ── 1. Page header: icon, title, purpose, optional action ───────────── */
-.pg-head{display:flex;align-items:flex-start;gap:var(--sp-3);padding-left:0;margin-bottom:var(--sp-4);padding-bottom:var(--sp-3);border-bottom:var(--hairline-w) solid var(--sep)}
+.pg-head{display:block;padding-bottom:var(--sp-3);margin-bottom:var(--sp-4);border-bottom:var(--hairline-w) solid var(--sep)}
 .pg-head::before{display:none}
-.pg-head h2{font-size:var(--fs-t1);line-height:1.25;letter-spacing:-.022em;font-weight:750}
-.pg-head h2 i{color:var(--accent);opacity:.9;margin-right:.35rem}
-.pg-head p{font-size:var(--fs-callout);color:var(--ink-3);margin-top:3px;max-width:var(--content-measure);line-height:1.5}
-.pg-head .pg-ic{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-size:1.15rem;border:var(--hairline-w) solid var(--accent-line)}
-.pg-head .pg-text{flex:1;min-width:0}
-.pg-head .pg-act{flex:none;display:flex;gap:var(--sp-2);align-items:center}
+.pg-head h2{margin:0;font-size:var(--fs-t1);line-height:1.25;letter-spacing:-.022em;font-weight:750}
+.pg-head h2 i{color:var(--accent);margin-right:.35rem}
+.pg-head p{margin-top:2px;font-size:var(--fs-callout);color:var(--ink-3);line-height:1.5;max-width:var(--content-measure)}
 
-/* ── 2. Cards: one surface, one radius, one shadow, one rhythm ───────── */
-.card{background:var(--surface);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-card);padding:var(--card-pad);box-shadow:var(--sh-1);margin-bottom:var(--card-gap)}
+.card{border-radius:var(--r-card);padding:var(--card-pad);margin-bottom:var(--card-gap)}
 .card:last-child{margin-bottom:0}
-.card-hd{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding-bottom:var(--sp-2);margin-bottom:var(--sp-3);border-bottom:var(--hairline-w) solid var(--sep)}
-.card-hd h3,.card-hd h2{font-size:var(--fs-t2);font-weight:700;letter-spacing:-.015em;display:flex;align-items:center;gap:.4rem}
-.card-hd h3 i,.card-hd h2 i{color:var(--accent)}
-.card--flat{box-shadow:none;background:var(--surface-alt)}
-.card--action{padding:0;overflow:hidden}
+.card-hd{padding-bottom:var(--sp-2);margin-bottom:var(--sp-3);border-bottom:var(--hairline-w) solid var(--sep)}
+.card-hd h3,.card-hd h2{font-size:var(--fs-t2);display:flex;align-items:center;gap:.4rem;border-radius:0}
 
-/* ── 3. Rows: label / hint / trailing control, one tap floor ─────────── */
 .row{display:flex;align-items:center;gap:var(--sp-3);min-height:var(--tap-min);padding:var(--sp-2) 0;border-top:var(--hairline-w) solid var(--sep)}
-.row:first-child{border-top:0;padding-top:0}
-.row:last-child{padding-bottom:0}
-.row-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.row-label{font-size:var(--fs-callout);font-weight:650;color:var(--ink);line-height:1.3}
+.row:first-child{border-top:0;padding-top:0}.row:last-child{padding-bottom:0}
+.row-text{flex:1;min-width:0}.row-label{font-weight:650;line-height:1.3}
 .row-hint{font-size:var(--fs-foot);color:var(--ink-3);line-height:1.4}
 .row-ctl{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-2);min-width:6.5rem}
 .row .btn{min-height:var(--tap-min)}
-.tool-row{border-radius:var(--r-input);min-height:var(--tap-min);padding:var(--sp-2) var(--sp-3)}
+.tool-row{min-height:var(--tap-min)}
 .tool-row .btn{min-width:6.75rem;justify-content:center;white-space:nowrap}
-.tool-ic{width:32px;height:32px;border-radius:10px;font-size:.95rem}
-.set-row{min-height:var(--tap-min)}
-/* ── 4. Stats: one number style everywhere ───────────────────────────── */
+
 .stat{display:flex;flex-direction:column;gap:2px;padding:var(--sp-3);border-radius:var(--r-input);background:var(--surface-alt);border:var(--hairline-w) solid var(--sep)}
-.stat-n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:var(--fs-num-md);font-weight:750;color:var(--ink);line-height:1.1}
-.stat-l{font-size:var(--fs-cap);color:var(--ink-3);font-weight:650;letter-spacing:.02em}
-.stat-chip{display:inline-flex;align-items:baseline;gap:.3rem;padding:.28rem .6rem;border-radius:var(--r-full);background:var(--surface-alt);border:var(--hairline-w) solid var(--sep)}
-.stat-chip .n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:750;font-size:var(--fs-foot);color:var(--ink)}
-.stat-chip .l{font-size:var(--fs-cap);color:var(--ink-3);font-weight:600}
+.stat-n{font-family:var(--mono);font-size:var(--fs-num-md);font-weight:750;line-height:1.1}
+.stat-l{font-size:var(--fs-cap);color:var(--ink-3);font-weight:650}
 
-/* ── 5. List item: icon, two lines, meta, optional chevron ───────────── */
-.list-item{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:56px;padding:var(--sp-3);border-radius:var(--r-input);background:var(--surface);border:var(--hairline-w) solid var(--sep);text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+.list-item{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:56px;padding:var(--sp-3);border-radius:var(--r-input);background:var(--surface);border:var(--hairline-w) solid var(--sep);text-align:left;font:inherit;color:inherit;cursor:pointer}
 .list-item:hover{border-color:var(--sep-strong);box-shadow:var(--sh-1)}
-.list-item:active{background:var(--surface-alt)}
-.list-item .li-ic{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:1rem}
+.list-item .li-ic{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent)}
 .list-item .li-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.list-item .li-t{font-size:var(--fs-callout);font-weight:650;color:var(--ink);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.list-item .li-s{font-size:var(--fs-foot);color:var(--ink-3);line-height:1.4}
-.list-item .li-chev{flex:none;color:var(--ink-4);font-size:1rem}
+.list-item .li-t{font-weight:650;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-item .li-s{font-size:var(--fs-foot);color:var(--ink-3)}
+.list-item .li-chev{flex:none;color:var(--ink-4)}
 
-/* ── 6. Empty state: icon, cause, one action ─────────────────────────── */
 .empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--sp-2);padding:var(--sp-6) var(--sp-4)}
-.empty-state .es-ic{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--accent-soft);color:var(--accent);border:var(--hairline-w) solid var(--accent-line);font-size:1.4rem;margin-bottom:var(--sp-1)}
-.empty-state .es-t{font-size:var(--fs-t3);font-weight:700;color:var(--ink)}
+.empty-state .es-ic{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--accent-soft);color:var(--accent);border:var(--hairline-w) solid var(--accent-line);font-size:1.4rem}
+.empty-state .es-t{font-size:var(--fs-t3);font-weight:700}
 .empty-state .es-s{font-size:var(--fs-callout);color:var(--ink-3);max-width:34ch;line-height:1.5}
-.empty-state .btn{margin-top:var(--sp-2)}
 
-/* ── 7. Skeleton: three sizes, one shimmer ───────────────────────────── */
-.skeleton{position:relative;overflow:hidden;border-radius:8px;background:var(--bg-sunken);height:12px}
-.skeleton::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--surface) 55%,transparent),transparent);transform:translateX(-100%);animation:sk-shimmer 1.4s var(--ease) infinite}
+.skeleton{position:relative;overflow:hidden;height:12px;border-radius:8px;background:var(--bg-sunken)}
+.skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);animation:sk-shimmer 1.4s var(--ease) infinite;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--surface) 55%,transparent),transparent)}
 .skeleton.sk-80{width:80%}.skeleton.sk-60{width:60%}.skeleton.sk-40{width:40%}
-.skeleton.sk-line{height:12px}.skeleton.sk-title{height:18px;width:55%}.skeleton.sk-block{height:64px;border-radius:var(--r-input)}
 @keyframes sk-shimmer{to{transform:translateX(100%)}}
-/* ── 8. Segmented control (library, weak spots, progress, pickers) ───── */
+
 .tabbar{display:flex;gap:4px;padding:4px;background:var(--bg-sunken);border:var(--hairline-w) solid var(--sep);border-radius:12px;margin-bottom:var(--card-gap);overflow-x:auto;scrollbar-width:none}
 .tabbar::-webkit-scrollbar{display:none}
-.tabbar button{position:static;padding:.5rem .8rem;min-height:38px;border-radius:9px;font-size:var(--fs-callout);font-weight:650;color:var(--ink-3);background:transparent;border:0;white-space:nowrap;cursor:pointer;font-family:var(--font);transition:background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
-.tabbar button:hover{color:var(--ink-2)}
-.tabbar button.active,.tabbar button[aria-selected="true"]{color:var(--ink);background:var(--surface);box-shadow:var(--sh-1)}
+.tabbar button{position:static;padding:.5rem .8rem;min-height:38px;border:0;border-radius:9px;background:transparent;color:var(--ink-3);font-family:var(--font);font-size:var(--fs-callout);font-weight:650;white-space:nowrap;cursor:pointer}
+.tabbar button.active,.tabbar button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
 .tabbar button.active::after{display:none}
-.chg-tabs button.active{background:var(--surface);color:var(--accent);box-shadow:var(--sh-1)}
 
-/* ── 9. Banner: info / warn / offline ────────────────────────────────── */
-.banner{display:flex;align-items:flex-start;gap:var(--sp-2);padding:var(--sp-3);border-radius:var(--r-input);background:var(--info-soft);border:var(--hairline-w) solid var(--info-line);color:var(--ink);font-size:var(--fs-callout);line-height:1.45}
-.banner i{color:var(--info);font-size:1.05rem;margin-top:1px}
-.banner--warn{background:var(--warning-soft);border-color:var(--warning-line)}
-.banner--warn i{color:var(--warning)}
-.banner--danger{background:var(--danger-soft);border-color:var(--danger-line)}
-.banner--danger i{color:var(--danger)}
-.banner .b-act{margin-left:auto;flex:none}
-
-/* ── 10. Meter: labelled progress, one shape ─────────────────────────── */
+.banner{border-radius:var(--r-input);padding:var(--sp-3);font-size:var(--fs-callout);line-height:1.45}
 .meter{display:flex;flex-direction:column;gap:4px}
-.meter-hd{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);font-size:var(--fs-foot);color:var(--ink-3);font-weight:600}
-.meter-hd b{color:var(--ink);font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:var(--fs-foot)}
+.meter-hd{display:flex;align-items:baseline;justify-content:space-between;font-size:var(--fs-foot);color:var(--ink-3);font-weight:600}
 .meter-bar{height:6px;border-radius:var(--r-full);background:var(--bg-sunken);overflow:hidden}
-.meter-fill{height:100%;border-radius:inherit;background:var(--accent);transition:width var(--dur-base) var(--ease)}
-.meter-fill.is-warn{background:var(--warning)}
-.meter-fill.is-danger{background:var(--danger)}
-/* ── Shell polish ────────────────────────────────────────────────────── */
-#tb{background:color-mix(in srgb,var(--bg) 88%,transparent);box-shadow:0 1px 0 var(--hairline),0 4px 14px color-mix(in srgb,var(--ink) 6%,transparent)}
-.sb-lbl{font-size:var(--fs-cap);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
-.sb-item{min-height:var(--tap-min)}
-.sb-foot a{display:inline-flex;align-items:center;min-height:32px;padding:0 2px}
-#bnav{background:color-mix(in srgb,var(--surface) 94%,transparent);border-top:var(--hairline-w) solid var(--sep);box-shadow:0 -6px 20px color-mix(in srgb,var(--ink) 6%,transparent)}
-.bn-item{min-height:var(--tap-min)}
+.meter-fill{height:100%;border-radius:inherit;background:var(--accent)}
+.meter-fill.is-warn{background:var(--warning)}.meter-fill.is-danger{background:var(--danger)}
+
+.sb-item,.bn-item{min-height:var(--tap-min)}
+.sb-foot a{display:inline-flex;align-items:center;min-height:32px}
 .bn-item.active{color:var(--accent)}
 
-/* ── Library: one header, one action row, one empty state ────────────── */
-.lib-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap;margin-bottom:var(--card-gap)}
+.lib-head{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:var(--sp-3);margin-bottom:var(--card-gap)}
 .lib-actions{display:flex;gap:var(--sp-2);flex-wrap:wrap}
 .lib-card{padding:var(--sp-3) var(--card-pad)}
 .lib-toolbar{position:sticky;top:calc(var(--topbar-h) + 4px);z-index:var(--z-sticky);background:var(--surface);padding:var(--sp-2) 0;margin-bottom:var(--sp-2)}
 .lib-weak{margin-top:var(--card-gap)}
 
-/* ── Sprint: the page header the other 17 views already have ─────────── */
 .sprint-back{color:var(--ink-3);font-weight:650;font-size:var(--fs-foot);margin-bottom:var(--sp-2)}
 .sprint-back:hover{color:var(--accent)}
-.phase-row{margin-bottom:var(--sp-3)}
+.sprint-page>.pg-head,.sprint-page>.sprint-back{grid-column:1/-1;justify-self:start}
 .phase-chip{background:var(--accent-soft);color:var(--accent);border:var(--hairline-w) solid var(--accent-line);font-weight:700}
-.today-card{border-radius:var(--r-panel);border:var(--hairline-w) solid var(--accent-line);background:linear-gradient(180deg,var(--surface),color-mix(in srgb,var(--accent-soft) 55%,var(--surface)));box-shadow:var(--sh-1);padding:var(--card-pad);margin-bottom:var(--card-gap)}
+.today-card{border-radius:var(--r-panel);border:var(--hairline-w) solid var(--accent-line);background:var(--surface);padding:var(--card-pad);margin-bottom:var(--card-gap)}
+.up-buffer .up-date span{color:var(--ink-2)}
 .target{border-radius:var(--r-input);background:var(--surface-alt);border:var(--hairline-w) solid var(--sep);padding:var(--sp-2) var(--sp-3)}
-/* ── Quiz: the reading surface gets the same language as the portal ──── */
-#quiz-wrap .qbar{background:var(--surface);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-card);box-shadow:var(--sh-1);padding:var(--sp-3);gap:var(--sp-2);margin-bottom:var(--card-gap)}
-#quiz-wrap .qcard{border:var(--hairline-w) solid var(--sep);border-radius:var(--r-panel);box-shadow:var(--sh-2);padding:var(--sp-5);margin-bottom:var(--card-gap)}
-#quiz-wrap .qt{font-size:var(--fs-t3);line-height:1.7;color:var(--ink)}
-#quiz-wrap .qn{font-size:var(--fs-cap);letter-spacing:.05em;background:var(--accent-soft);color:var(--accent);border:var(--hairline-w) solid var(--accent-line);padding:.2rem .55rem;border-radius:var(--r-full);font-weight:750}
-#quiz-wrap .eo{display:flex;align-items:flex-start;gap:.6rem;min-height:52px;padding:.8rem .9rem;border-radius:14px;border:var(--hairline-w) solid var(--sep-strong);background:var(--surface);font-size:var(--fs-body);line-height:1.5;transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
+
+#quiz-wrap .qcard{padding:var(--sp-5);border-radius:var(--r-panel);box-shadow:var(--sh-2)}
+#quiz-wrap .eo{display:flex;align-items:flex-start;gap:.6rem;min-height:52px;padding:.8rem .9rem;border-radius:14px;border:var(--hairline-w) solid var(--sep-strong);background:var(--surface);font-size:var(--fs-body);line-height:1.5}
 #quiz-wrap .eo:hover{border-color:var(--accent-line);background:var(--surface-alt)}
-#quiz-wrap .eo.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 14%,transparent)}
+#quiz-wrap .eo.sel{border-color:var(--accent);background:var(--accent-soft)}
 #quiz-wrap .eo.ok2,#quiz-wrap .eo.shc{border-color:var(--success);background:var(--success-soft)}
 #quiz-wrap .eo.bad2{border-color:var(--danger);background:var(--danger-soft)}
-#quiz-wrap .expl{border-left:3px solid var(--info);border-radius:0 var(--r-input) var(--r-input) 0;background:color-mix(in srgb,var(--info-soft) 80%,var(--surface));padding:var(--sp-3);font-size:var(--fs-callout);line-height:1.55}
-#quiz-wrap .kbd-hint{color:var(--ink-3);font-size:var(--fs-cap)}
-#quiz-wrap .kbd-hint kbd{background:var(--surface-alt);border:var(--hairline-w) solid var(--sep-strong);border-radius:5px;padding:1px 5px;font-family:var(--mono);font-size:.95em}
-#quiz-wrap .fc-nav{background:var(--surface);border:var(--hairline-w) solid var(--sep);border-radius:var(--r-card);padding:var(--sp-2) var(--sp-3);box-shadow:var(--sh-1)}
-#quiz-wrap .qtile{border-radius:10px;border:var(--hairline-w) solid var(--sep);background:var(--surface-alt);padding:.25rem .55rem}
-#quiz-wrap .qtile.qt-ok{border-color:var(--success-line);background:var(--success-soft)}
-#quiz-wrap .qtile.qt-bad{border-color:var(--danger-line);background:var(--danger-soft)}
-#quiz-wrap .qprog{background:var(--bg-sunken);border-radius:var(--r-full);overflow:hidden}
-#quiz-wrap .qpf{background:var(--accent);border-radius:inherit}
+#quiz-wrap .expl{border-left:3px solid var(--info);background:color-mix(in srgb,var(--info-soft) 80%,var(--surface));padding:var(--sp-3);font-size:var(--fs-callout);line-height:1.55}
 
-/* ── Data tools: a fixed trailing column so the buttons line up ──────── */
 #data-tools-list,.tool-list{display:flex;flex-direction:column;gap:var(--sp-2)}
 .grp>summary{min-height:var(--tap-min);display:flex;align-items:center;gap:var(--sp-2);cursor:pointer}
-.grp>summary::marker{color:var(--ink-3)}
 
-/* ── Focus, motion, and dark parity ──────────────────────────────────── */
-:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-control)}
-.dark .card,.dark .list-item,.dark .tool-row{background:var(--surface)}
-.dark .tabbar{background:var(--bg-sunken)}
+/* Written: one PDF-item card and one status grammar (pending/marked/returned) */
+.pdf-item,.sd-card,.subm-card{border-radius:var(--r-input);padding:var(--sp-3) var(--card-pad);margin-bottom:var(--sp-2)}
+.pdf-item:hover,.sd-card:hover,.subm-card:hover{border-color:var(--sep-strong);box-shadow:var(--sh-2)}
+.badge{display:inline-flex;align-items:center;gap:.35rem;padding:.18rem .55rem;border-radius:var(--r-full);border:var(--hairline-w) solid transparent;font-size:var(--fs-cap);font-weight:700;white-space:nowrap}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge--pending{background:var(--warning-soft);border-color:var(--warning-line);color:var(--warning)}
+.badge--marked{background:var(--success-soft);border-color:var(--success-line);color:var(--success)}
+.badge--returned,.badge--failed{background:var(--danger-soft);border-color:var(--danger-line);color:var(--danger)}
+.badge--neutral{background:var(--bg-sunken);border-color:var(--sep);color:var(--ink-2)}
+
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.dark .card,.dark .list-item,.dark .pdf-item,.dark .sd-card,.dark .subm-card{background:var(--surface)}
 .dark .tabbar button.active,.dark .tabbar button[aria-selected="true"]{background:var(--surface-2)}
-.dark .today-card{background:linear-gradient(180deg,var(--surface-2),var(--surface))}
-@media (prefers-reduced-motion:reduce){
-  .skeleton::after{animation:none}
-  .list-item,.meter-fill,.tabbar button,.card{transition:none}
-}
+@media (prefers-reduced-motion:reduce){.skeleton::after{animation:none}.list-item,.meter-fill,.tabbar button{transition:none}}
 html.reduce-motion .skeleton::after{animation:none}
-html.reduce-motion *{transition-duration:1ms !important;animation-duration:1ms !important}
-
-/* ── Phone tuning ────────────────────────────────────────────────────── */
-@media (max-width:520px){
-  :root{--gutter:14px;--card-pad:var(--sp-3)}
-  .pg-head{gap:var(--sp-2)}
-  .pg-head .pg-ic{width:34px;height:34px;font-size:1rem}
-  .row-ctl{min-width:0}
-  .tool-row .btn{min-width:5.75rem}
-}
-
-/* v2.64 spacing utilities used by user.html (kept to the 4px scale) */
-.u-m-0{margin:0}
-.u-mb-0{margin-bottom:0}
-.u-mt-2{margin-top:var(--sp-2)}
-.u-mt-5{margin-top:var(--sp-5)}
-.u-my-1{margin:var(--sp-1) 0}
-.u-my-2{margin:var(--sp-2) 0}
-.u-my-4{margin:var(--sp-4) 0}
-.u-p-4{padding:var(--sp-4)}
-
-/* The upcoming-day buffer sits on the accent tint, where the quiet ink only
-   reached 4.37:1 in dark. One step stronger keeps it readable in both themes. */
-.up-buffer .up-date span{color:var(--ink-2)}
-
-/* Page header stacks: title above its one-line purpose. The header markup is
-   <h2><i/></h2><p></p>, so a flex row put the sentence beside the title. */
-.pg-head{display:block}
-.pg-head h2{margin:0}
-.pg-head p{margin-top:2px}
-.sprint-page > .pg-head{grid-column:1/-1}
-.sprint-page > .sprint-back{grid-column:1/-1;justify-self:start;margin-bottom:var(--sp-3)}
+@media (max-width:520px){:root{--gutter:14px;--card-pad:var(--sp-3)}.row-ctl{min-width:0}.tool-row .btn{min-width:5.75rem}.pdf-item,.sd-card,.subm-card{padding:var(--sp-3)}}

@@ -75,6 +75,21 @@ describe('tabs and toggle groups are announced correctly', () => {
   });
 });
 
+describe('the Written status grammar', () => {
+  const submissions = read('js/features/submissions.js');
+  it.each(['badge--pending{', 'badge--marked{', 'badge--returned', 'badge--failed'])('defines %s in css', (needle) => {
+    expect(system).toContain('.' + needle);
+  });
+  it('uses pending, marked and returned in the submissions card', () => {
+    for (const cls of ['badge--pending', 'badge--marked', 'badge--returned']) {
+      expect(submissions).toContain(cls);
+    }
+  });
+  it('keeps one PDF-item surface for the Written screens', () => {
+    expect(system).toContain('.pdf-item,.sd-card,.subm-card{');
+  });
+});
+
 describe('one header per screen', () => {
   it('every view has a page header or its own documented hero', () => {
     const views = [...html.matchAll(/<div class="view[^"]*" id="(view-[a-z-]+)">([\s\S]*?)(?=<div class="view|<\/main>)/g)];

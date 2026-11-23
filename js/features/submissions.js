@@ -105,7 +105,7 @@ window.MY_SUBJ = {
             '<div style="font-size:.66rem;color:var(--ink-3);margin-top:.25rem">Saved ' + esc(when) + ' · ' + (item.attempts || 0) + ' send attempt' + ((item.attempts || 0) === 1 ? '' : 's') + '</div>' +
             error +
           '</div>' +
-          '<span class="ctag ' + (item.failed ? 'tr' : 'tw') + '">' + (item.failed ? 'Not sent' : 'Waiting') + '</span>' +
+          '<span class="badge ' + (item.failed ? 'badge--failed' : 'badge--pending') + '">' + (item.failed ? 'Not sent' : 'Waiting') + '</span>' +
         '</div>' +
         '<div class="bg" style="margin-top:.55rem">' +
           '<button class="btn btn-sm btn-a" data-on-click="SUBJ_QUEUE.retry(\'' + escAttrJs(item.kind) + '\',\'' + escAttrJs(item.questionId) + '\')"><i class="ph ph-paper-plane-tilt"></i> Retry</button>' +
@@ -187,11 +187,12 @@ window.MY_SUBJ = {
         (marked ? '<span class="ctag tc"><i class="ph ph-highlighter-circle"></i> Marked by hand</span>' : '')
       : '<span class="t-cap">No PDF attached</span>';
 
+    /* One status grammar everywhere: pending · marked · returned. */
     const statusChip = graded
-      ? '<span class="ctag tg">Marked</span>'
+      ? '<span class="badge badge--marked">Marked</span>'
       : s.status === 'rejected'
-        ? '<span class="ctag tr">Returned</span>'
-        : '<span class="ctag tw">Awaiting marking</span>';
+        ? '<span class="badge badge--returned">Returned</span>'
+        : '<span class="badge badge--pending">Awaiting marking</span>';
 
     const gradeBlock = graded
       ? '<div class="subm-grade">' +
