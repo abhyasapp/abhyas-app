@@ -5,12 +5,12 @@
 // subj-list.js (_renderList).
 
 function _emptyCard(icon, title, subtitle, action){
-  return `<div class="card" style="text-align:center;padding:1.6rem 1rem">
-    <div class="empty-i" style="opacity:.6"><i class="ph ${icon}" style="font-size:2rem"></i></div>
-    <p style="font-weight:600;color:var(--t2);margin-top:.5rem">${esc(title)}</p>
-    ${subtitle ? `<p style="font-size:.72rem;color:var(--t3);margin-top:.2rem;line-height:1.55;max-width:38ch;margin-left:auto;margin-right:auto">${esc(subtitle)}</p>` : ''}
+  return `<div class="card"><div class="empty-state">
+    <div class="es-ic"><i class="ph ${icon}"></i></div>
+    <div class="es-t">${esc(title)}</div>
+    ${subtitle ? `<div class="es-s">${esc(subtitle)}</div>` : ''}
     ${action || ''}
-  </div>`;
+  </div></div>`;
 }
 const _retryBtn = '<button class="btn btn-a" style="margin-top:.9rem" data-on-click="SUBJ.refreshBank()"><i class="ph ph-arrow-clockwise"></i> Try again</button>';
 

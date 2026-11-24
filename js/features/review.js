@@ -411,10 +411,10 @@ const REV = {
         ? { i: '<i class="ph ph-flag"></i>', t: 'No flagged questions yet', s: 'Tap the flag on a question you want to come back to.' }
         : { i: '<i class="ph ph-x-circle"></i>', t: 'No wrong answers yet', s: 'Questions you miss land here automatically, ready for spaced review.' };
       
-      el.innerHTML = `<div class="empty">
-        <div class="empty-i">${copy.i}</div>
-        <p>${copy.t}</p>
-        <p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">${copy.s}</p>
+      el.innerHTML = `<div class="empty-state">
+        <div class="es-ic">${copy.i}</div>
+        <div class="es-t">${copy.t}</div>
+        <div class="es-s">${copy.s}</div>
       </div>`;
       return;
     }

@@ -83,7 +83,7 @@ const HOME = {
     const sessions = (S.prog.sessions||[]).slice(0,6);
     
     if(!sessions.length){
-      el.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-trend-up"></i></div><p>No sessions yet — start a quiz!</p></div>';
+      el.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-trend-up"></i></div><div class="es-t">No sessions yet — start a quiz!</div></div>';
       return;
     }
 

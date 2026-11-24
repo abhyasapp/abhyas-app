@@ -328,10 +328,10 @@
           <div id="weekly-sets-card" class="stack2"></div>
         </div>
         <div id="weekly-empty" class="card">
-          <div class="empty">
-            <div class="empty-i"><i class="ph ph-calendar-blank"></i></div>
-            <p>No weekly sets yet</p>
-            <p>New sets usually unlock on Wednesdays. You'll see one here the moment it does.</p>
+          <div class="empty-state">
+            <div class="es-ic"><i class="ph ph-calendar-blank"></i></div>
+            <div class="es-t">No weekly sets yet</div>
+            <div class="es-s">New sets usually unlock on Wednesdays. You'll see one here the moment it does.</div>
           </div>
         </div>
       </div>
@@ -349,11 +349,11 @@
         </div>
         <div class="card" id="hourly-subj-card">
           <div class="card-hd"><h3><i class="ph ph-pen-nib"></i> This hour's written question</h3><span class="ctag ta" id="hourly-subj-marks">—</span></div>
-          <div id="hourly-subj-body"><div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w80"></div></div></div>
+          <div id="hourly-subj-body"><div class="card u-p-4"><div class="skeleton sk-40"></div><div class="skeleton sk-100"></div><div class="skeleton sk-80"></div></div></div>
         </div>
         <div class="card" id="hourly-obj-card">
           <div class="card-hd"><h3><i class="ph ph-lightning"></i> This hour's 50-question sprint</h3><span class="ctag tp">50 Q · 60 min</span></div>
-          <div id="hourly-obj-body"><div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w40"></div></div></div>
+          <div id="hourly-obj-body"><div class="card u-p-4"><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div><div class="skeleton sk-100"></div><div class="skeleton sk-40"></div></div></div>
         </div>
       </div>
 
@@ -362,7 +362,7 @@
         <div class="pg-head" data-head="subj-qotd"></div>
         <div id="syllabus-mock-slot"></div>
         <div id="subj-qotd-body">
-          <div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w60"></div></div>
+          <div class="card u-p-4"><div class="skeleton sk-40"></div><div class="skeleton sk-100"></div><div class="skeleton sk-100"></div><div class="skeleton sk-60"></div></div>
         </div>
       </div>
 
@@ -376,7 +376,7 @@
           </div>
         </div>
         <div id="subj-mine-body">
-          <div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w80"></div></div>
+          <div class="card u-p-4"><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div><div class="skeleton sk-80"></div></div>
         </div>
       </div>
 
@@ -388,7 +388,7 @@
           <div class="sd-chips" id="sd-chips" role="group" aria-label="Filter by type"></div>
         </div>
         <div id="studydocs-body">
-          <div class="card"><div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div></div>
+          <div class="card"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>
         </div>
       </div>
 
@@ -400,7 +400,7 @@
           <div class="sd-chips" id="qna-chips" role="group" aria-label="Filter by syllabus group"></div>
         </div>
         <div id="qna-body">
-          <div class="card"><div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div></div>
+          <div class="card"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>
         </div>
       </div>
 
@@ -408,7 +408,7 @@
       <div class="view" id="view-subj-exam">
         <div class="pg-head" data-head="subj-exam"></div>
         <div id="subj-exam-body">
-          <div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w80"></div></div>
+          <div class="card u-p-4"><div class="skeleton sk-40"></div><div class="skeleton sk-100"></div><div class="skeleton sk-80"></div></div>
         </div>
         <div class="card" id="exam-builder">
           <div class="card-hd"><h3><i class="ph ph-sliders-horizontal"></i> Build your own paper</h3><span class="ctag tp">Custom</span></div>
@@ -447,7 +447,7 @@
             <option value="10">10 marks</option>
           </select>
         </div>
-        <div id="subj-list-body"><div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w80"></div><div class="skel w40"></div></div></div>
+        <div id="subj-list-body"><div class="card u-p-4"><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div><div class="skeleton sk-100"></div><div class="skeleton sk-80"></div><div class="skeleton sk-40"></div></div></div>
       </div>
 
       <!-- ONLINE -->
@@ -985,7 +985,7 @@
               <span id="res-chapter-note" class="t-foot" role="status" aria-live="polite"></span>
             </div>
             <div id="res-filters" class="chg-tabs" role="group" aria-label="Filter reviewed questions" hidden></div>
-            <p id="res-filter-empty" class="empty u-p-4" hidden></p>
+            <div id="res-filter-empty" class="empty-state" hidden><div class="es-t"></div></div>
             <div id="res-review"></div>
           </div>
         </div>

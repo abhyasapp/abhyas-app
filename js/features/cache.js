@@ -43,7 +43,7 @@ const CACHE = {
     if(el){
       const keys = await QDB.keys();
       if(!keys.length){
-        el.innerHTML = `<div class="empty"><div class="empty-i"><i class="ph ph-cloud-slash"></i></div><p>Nothing cached yet</p><p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">Open any chapter while online to cache it automatically, or use "Cache All" below.</p></div>`;
+        el.innerHTML = `<div class="empty-state"><div class="es-ic"><i class="ph ph-cloud-slash"></i></div><div class="es-t">Nothing cached yet</div><div class="es-s">Open any chapter while online to cache it automatically, or use "Cache All" below.</div></div>`;
       } else {
         requestAnimationFrame(() => {
           el.innerHTML = keys.map(k=>{

@@ -13,10 +13,10 @@
         ? USER_REPORT.history() : [];
 
       if (!list.length) {
-        body.innerHTML = '<div class="empty"><i class="ph ph-flag"></i>' +
-          '<div class="t">No reports yet</div>' +
-          '<div class="d">When you tap the flag on a question, it appears here with its send status.</div>' +
-          '<div class="a"><button class="btn btn-quiet" data-on-click="UI.go(\'online\')">Browse chapters</button></div></div>';
+        body.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-flag"></i></div>' +
+          '<div class="es-t">No reports yet</div>' +
+          '<div class="es-s">When you tap the flag on a question, it appears here with its send status.</div>' +
+          '<div class="es-a"><button class="btn btn-quiet" data-on-click="UI.go(\'online\')">Browse chapters</button></div></div>';
         return;
       }
 

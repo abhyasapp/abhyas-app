@@ -28,16 +28,16 @@ window.MY_SUBJ = {
     this._loading = true;
 
     box.innerHTML = this._queueCard() + `<div class="card">
-      <div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div>
+      <div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div>
     </div>`;
 
     const user = this._user();
 
     if (!user || !user.token) {
-      box.innerHTML = '<div class="card"><div class="empty">' +
-        '<div class="empty-i"><i class="ph ph-user"></i></div>' +
-        '<p>Not signed in</p>' +
-        '<p>Sign in to see your submissions.</p>' +
+      box.innerHTML = '<div class="card"><div class="empty-state">' +
+        '<div class="es-ic"><i class="ph ph-user"></i></div>' +
+        '<div class="es-t">Not signed in</div>' +
+        '<div class="es-s">Sign in to see your submissions.</div>' +
         '</div></div>';
       this._loading = false;
       return;
@@ -153,11 +153,11 @@ window.MY_SUBJ = {
     if (!box) return;
     const queue = this._queueCard();
     if (!this._items.length) {
-      box.innerHTML = queue + '<div class="card"><div class="empty">' +
-        '<div class="empty-i"><i class="ph ph-file-text"></i></div>' +
-        '<p>No submissions yet</p>' +
-        '<p>Send in a written answer and it will show up here with the PDF you uploaded.</p>' +
-        '<div class="bg" style="justify-content:center;margin-top:var(--sp-4)">' +
+      box.innerHTML = queue + '<div class="card"><div class="empty-state">' +
+        '<div class="es-ic"><i class="ph ph-file-text"></i></div>' +
+        '<div class="es-t">No submissions yet</div>' +
+        '<div class="es-s">Send in a written answer and it will show up here with the PDF you uploaded.</div>' +
+        '<div class="es-a">' +
           '<button class="btn btn-a" data-on-click="UI.go(\'subj-qotd\')"><i class="ph ph-sun-horizon"></i> Today\'s question</button>' +
         '</div>' +
         '</div></div>';

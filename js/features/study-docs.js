@@ -182,7 +182,7 @@ window.STUDYDOCS = {
       this.loading = true;
       if (!this.loaded) {
         box.innerHTML = `<div class="card">
-          <div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div>
+          <div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div>
         </div>`;
       }
       
@@ -301,7 +301,7 @@ window.STUDYDOCS = {
     const banner = chapBar + (note ? '<div class="banner banner-warning" style="margin-bottom:var(--sp-2)"><i class="ph ph-wifi-slash"></i><span>' + esc(note) + '</span></div>' : '');
     
     if (!this.docs.length) {
-      box.innerHTML = banner + '<div class="card"><div class="empty"><div class="empty-i"><i class="ph ph-file-pdf"></i></div><p>No PDFs yet</p><p>When your teacher adds model answers or notes, they will appear here.</p></div></div>';
+      box.innerHTML = banner + '<div class="card"><div class="empty-state"><div class="es-ic"><i class="ph ph-file-pdf"></i></div><div class="es-t">No PDFs yet</div><div class="es-s">When your teacher adds model answers or notes, they will appear here.</div></div></div>';
       return;
     }
     
@@ -309,7 +309,7 @@ window.STUDYDOCS = {
     if (this.chapter) list = list.filter(d => d.chapterId === this.chapter);
     
     if (!list.length) {
-      box.innerHTML = banner + '<div class="card"><div class="empty"><div class="empty-i"><i class="ph ph-magnifying-glass"></i></div><p>Nothing matches</p><p>Try a different word, or choose All.</p></div></div>';
+      box.innerHTML = banner + '<div class="card"><div class="empty-state"><div class="es-ic"><i class="ph ph-magnifying-glass"></i></div><div class="es-t">Nothing matches</div><div class="es-s">Try a different word, or choose All.</div></div></div>';
       return;
     }
     
