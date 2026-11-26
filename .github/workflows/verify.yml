@@ -61,3 +61,6 @@ jobs:
 
       - name: CDN fetching with the real service worker (stale cache, blocked mirror)
         run: python tools/e2e/cdn_fetch.py
+
+      - name: Refresh everything (real browser)
+        run: python tools/e2e/refresh.py

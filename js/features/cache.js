@@ -43,7 +43,7 @@ const CACHE = {
     if(el){
       const keys = await QDB.keys();
       if(!keys.length){
-        el.innerHTML = `<div class="empty-state"><div class="es-ic"><i class="ph ph-cloud-slash"></i></div><div class="es-t">Nothing cached yet</div><div class="es-s">Open any chapter while online to cache it automatically, or use "Cache All" below.</div></div>`;
+        el.innerHTML = `<div class="empty"><div class="empty-i"><i class="ph ph-cloud-slash"></i></div><p>Nothing cached yet</p><p style="font-size:.72rem;color:var(--t3);margin-top:.15rem">Open any chapter while online to cache it automatically, or use "Cache All" below.</p></div>`;
       } else {
         requestAnimationFrame(() => {
           el.innerHTML = keys.map(k=>{
@@ -395,31 +395,54 @@ const CACHE = {
     }
   },
 
+  /* What a downloaded file's key looks like. QDB also holds the written-answer bank
+     ('subj_<file>') and downloaded study documents ('studydoc:<id>'); they are not
+     chapters, so no chapter-list comparison may ever delete them. */
+  _isChapterKey(k) { return typeof k === 'string' && !/^(subj_|studydoc:)/.test(k); },
+
+  /* Downloads whose key is not in the chapter list. A broken or partial chapter list
+     (or keys that simply differ) would make EVERY download look like this, so a large
+     share is not trusted: `suspicious` tells the caller to delete nothing. */
+  orphanKeys(have, byKey) {
+    const chapterKeys = [...have].filter(k => this._isChapterKey(k));
+    const orphans = chapterKeys.filter(k => !byKey.has(k));
+    const limit = Math.max(5, Math.floor(chapterKeys.length * 0.25));
+    return { orphans, suspicious: orphans.length > limit };
+  },
+
+  /* opts.force = the student tapped Refresh. That is a request, not a background job: it
+     skips the 10-minute wait AND the weak-connection wait (cellular / 3G / data saver is
+     exactly when someone taps it), stays quiet (the caller reports) and returns what
+     happened: { skipped, added, updated, orphans, orphansKept, failed, total }. */
   async refreshFromUpdate(reason, opts) {
-    if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return;
-    if (typeof QUIZ === 'undefined' || !QUIZ._fetchFromCDN) return;
-    if (typeof S === 'undefined') return;
-    if (this._refreshing || this._running) return;
+    const force = !!(opts && opts.force);
+    const none = why => ({ skipped: why, added: 0, updated: 0, orphans: 0, orphansKept: 0, failed: 0, total: 0 });
+    if (typeof ChapterData === 'undefined' || !ChapterData.allFileRefs) return none('no-chapters');
+    if (typeof QUIZ === 'undefined' || !QUIZ._fetchFromCDN) return none('no-quiz');
+    if (typeof S === 'undefined') return none('no-state');
+    if (this._refreshing || this._running) return none(this._running ? 'download-running' : 'already-refreshing');
     /* A change event is throttled (it fires in the background); a tap on Refresh is not. */
-    if (!(opts && opts.force) && Date.now() - this._refreshLastAt < 10 * 60 * 1000) return;
-    if (!S.online || S.forcedOffline) { this._postponeRefresh(false); return; }
-    if (this._weakConnection()) { this._postponeRefresh(true); return; }
+    if (!force && Date.now() - this._refreshLastAt < 10 * 60 * 1000) return none('recent');
+    if (!S.online || S.forcedOffline) { if (!force) this._postponeRefresh(false); return none('offline'); }
+    if (!force && this._weakConnection()) { this._postponeRefresh(true); return none('weak-connection'); }
 
     this._refreshLastAt = Date.now();
     this._refreshing = true;
+    let summary;
     try {
       const refs = ChapterData.allFileRefs();
-      if (!refs.length) return;
+      if (!refs.length) return none('empty-chapter-list');
       const byKey = new Map(refs.map(r => [r.key, r]));
       const have = new Set(await QDB.keys());
       const picked = new Set(this._picked());
       const autosyncOn = !!_load('abhyas_autosync', false);
 
-      /* 1. Files deleted from the chapter data — drop their downloads. */
-      let orphans = 0;
-      for (const k of have) {
-        if (!byKey.has(k)) { await QDB.del(k); orphans++; }
-      }
+      /* 1. Files deleted from the chapter data — drop their downloads. Only chapter
+            files, and never when the list looks damaged (see orphanKeys). */
+      let orphans = 0, orphansKept = 0;
+      const od = this.orphanKeys(have, byKey);
+      if (od.suspicious) orphansKept = od.orphans.length;
+      else for (const k of od.orphans) { await QDB.del(k); orphans++; }
 
       /* 2. Reset the 24 h per-file revalidation stamps so the next time
             a changed chapter is OPENED online it rechecks immediately */
@@ -430,6 +453,7 @@ const CACHE = {
       const toUpdate = refs.filter(r => have.has(r.key));
       const targets = toAdd.concat(toUpdate);
       let added = 0, updated = 0, failed = 0, done = 0;
+      const total0 = targets.length;
       if (targets.length) {
         const total = targets.length;
         this._badge('Refreshing downloads · 0/' + total);
@@ -468,6 +492,8 @@ const CACHE = {
       }
       if (typeof UI !== 'undefined' && UI.cur === 'offline') this.render();
 
+      summary = { skipped: '', added, updated, orphans, orphansKept, failed, total: total0 };
+      if (force) return summary;                       // the Refresh button reports for itself
       const bits = [];
       if (added) bits.push(added + ' new question ' + (added === 1 ? 'set' : 'sets') + ' added to your downloads');
       if (updated) bits.push(updated + (updated === 1 ? ' set was' : ' sets were') + ' updated for offline use');
@@ -482,9 +508,12 @@ const CACHE = {
       this._refreshing = false;
       try { localStorage.removeItem(this.PENDING_KEY); } catch (e) { window.warnCaught && window.warnCaught('js/features/cache.js', e); }
     }
+    return summary;
   },
 
   _badge(msg){
+    /* While the Refresh button is working, its own list shows the progress. */
+    if (window.REFRESH && window.REFRESH.running) { window.REFRESH._onBadge(msg); return; }
     let el = document.getElementById('cache-autobadge');
     if(msg===null){ if(el) el.style.display = 'none'; return; }
     if(!el){

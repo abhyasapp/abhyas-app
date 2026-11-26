@@ -48,6 +48,7 @@ if(!localStorage.getItem('abhyas_session')){
   localStorage.setItem('abhyas_session',JSON.stringify({type:'user',username:'demo',name:'Demo Student',
     email:'d@x.np',token:'t',access:{level:'permanent',permanent:true,accessType:'permanent'},lastVerified:Date.now()}));
   localStorage.setItem('abhyas_tutorial_seen',JSON.stringify({demo:true}));
+  localStorage.setItem('abhyas_tut_seen',JSON.stringify({demo:true}));
 }
 window.__csp = [];
 document.addEventListener('securitypolicyviolation', function(e){

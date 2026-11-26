@@ -68,7 +68,7 @@ window.INSIGHTS = {
     
     if (!d.recent.length && !d.activeDays12w) {
       box.innerHTML = `<div class="card-hd"><h3><i class="ph ph-chart-line-up"></i> Insights</h3></div>` +
-        `<div class="empty-state"><div class="es-t">Finish a quiz and your daily activity, score trend and study streak will appear here.</div></div>`;
+        `<div class="empty"><p>Finish a quiz and your daily activity, score trend and study streak will appear here.</p></div>`;
       return;
     }
     
@@ -296,13 +296,13 @@ window.SERVER_PROG = {
     if (this._loading) return;
     this._loading = true;
 
-    listEl.innerHTML = '<div class="card"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>';
+    listEl.innerHTML = '<div class="sk-block"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>';
 
     let online = true;
     try { online = (typeof S !== 'undefined' && S.online && !S.forcedOffline); } catch (e) { window.warnCaught && window.warnCaught('js/features/insights.js', e); }
     if (!online) {
-      listEl.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-wifi-slash"></i></div>' +
-        '<div class="es-t">You are offline</div><div class="es-s">This screen reads from your account, so it needs a connection.</div></div>';
+      listEl.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-wifi-slash"></i></div>' +
+        '<p>You are offline</p><p>This screen reads from your account, so it needs a connection.</p></div>';
       this._loading = false;
       return;
     }
@@ -322,8 +322,8 @@ window.SERVER_PROG = {
       });
       const res = await r.json();
       if (!res || !res.success || !res.data) {
-        listEl.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-tray"></i></div>' +
-          '<div class="es-t">Nothing recorded yet</div><div class="es-s">Finish a quiz and your per-file coverage shows up here.</div></div>';
+        listEl.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-tray"></i></div>' +
+          '<p>Nothing recorded yet</p><p>Finish a quiz and your per-file coverage shows up here.</p></div>';
         this._loaded = true; this._loading = false;
         return;
       }
@@ -398,8 +398,8 @@ window.SERVER_PROG = {
     if (!listEl || !summaryEl) return;
 
     if (!this._rows.length) {
-      listEl.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-tray"></i></div>' +
-        '<div class="es-t">Nothing recorded yet</div><div class="es-s">Finish a quiz and your per-file coverage shows up here.</div></div>';
+      listEl.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-tray"></i></div>' +
+        '<p>Nothing recorded yet</p><p>Finish a quiz and your per-file coverage shows up here.</p></div>';
       summaryEl.innerHTML = '';
       return;
     }
@@ -434,8 +434,8 @@ window.SERVER_PROG = {
       '<div class="sc"><div class="sv tc2">' + done + '</div><div class="stat-lbl">Finished</div></div>';
 
     if (!rows.length) {
-      listEl.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-magnifying-glass"></i></div>' +
-        '<div class="es-t">Nothing matches</div><div class="es-s">Try a shorter search, or clear the level filter.</div></div>';
+      listEl.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-magnifying-glass"></i></div>' +
+        '<p>Nothing matches</p><p>Try a shorter search, or clear the level filter.</p></div>';
       return;
     }
 

@@ -121,7 +121,10 @@ window.HOME_HERO = (function () {
 
     box.innerHTML =
       '<section class="home-hero" aria-labelledby="hh-greet">' +
-        '<p class="hh-kicker">' + E(todayLine()) + '</p>' +
+        '<div class="hh-top"><p class="hh-kicker">' + E(todayLine()) + '</p>' +
+          '<button type="button" class="hh-refresh' + ((typeof REFRESH !== 'undefined' && REFRESH.running) ? ' is-busy' : '') + '" data-refresh-btn data-on-click="REFRESH.run()" ' +
+            'aria-label="' + E(T('Refresh chapters and questions')) + '" title="' + E(T('Refresh chapters and questions')) + '">' +
+            '<i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button></div>' +
         '<h2 class="hh-greet" id="hh-greet">' + E(greet) + '</h2>' +
         (sub ? '<p class="hh-sub">' + E(sub) + '</p>' : '') +
         (stats.length ? '<div class="hh-stats">' + stats.join('') + '</div>' : '') +

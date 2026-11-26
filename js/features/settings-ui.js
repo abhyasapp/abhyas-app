@@ -165,9 +165,9 @@ window.SETTINGS = (function () {
                 : T('Saves every question set on this device for offline study.'),
           '<button type="button" class="btn btn-sm btn-a" data-on-click="SETTINGS.downloadAll()"' + (total && sets >= total ? ' disabled' : '') + '>' +
             E(total && sets >= total ? T('All saved') : T('Download')) + '</button>') +
-        toolRow('ph-arrows-clockwise', T('Refresh questions'),
-          T('Fetches the newest copy of every question file. Not available during a quiz.'),
-          '<button type="button" class="btn btn-sm btn-quiet" data-on-click="SETTINGS.refreshQuestions()">' + E(T('Refresh')) + '</button>') +
+        toolRow('ph-arrows-clockwise', T('Refresh everything'),
+          T('Checks for new chapters and a new app version, fetches the newest question files, backs up your progress and clears broken files. Not available during a quiz.'),
+          '<button type="button" class="btn btn-sm btn-a" data-on-click="SETTINGS.refreshQuestions()">' + E(T('Refresh')) + '</button>') +
         toolRow('ph-broom', T('Clean up cache'),
           T('Removes broken and out-of-date cached files only. Progress and notes stay.'),
           '<button type="button" class="btn btn-sm btn-quiet" data-on-click="SETTINGS.cleanup()">' + E(T('Clean up')) + '</button>') +
@@ -175,9 +175,13 @@ window.SETTINGS = (function () {
           T('Frees space by removing saved question sets. They can be downloaded again.'),
           '<button type="button" class="btn btn-sm btn-quiet" data-on-click="SETTINGS.removeDownloads()"' + (anyCached ? '' : ' disabled') + '>' + E(T('Remove')) + '</button>') +
       '</div>' +
+      /* What Refresh everything did, step by step, in place (js/features/refresh.js). */
+      '<ul id="refresh-steps" aria-live="polite" style="list-style:none;margin:var(--sp-2) 0;padding:0"></ul>' +
       '<div class="bg set-actions">' +
         '<button type="button" class="btn btn-a btn-blk" data-on-click="DATA.exportAll()"><i class="ph ph-download-simple"></i> ' + E(T('Download backup')) + '</button>' +
       '</div>';
+    /* The card was just rebuilt: put the last Refresh result back into it. */
+    if (typeof REFRESH !== 'undefined' && REFRESH._paint) REFRESH._paint();
   }
 
   async function protect() {
@@ -200,10 +204,13 @@ window.SETTINGS = (function () {
     await CACHE.downloadAll();
     renderStorage();
   }
+  /* The Refresh button runs the whole refresh (chapters, app, questions, progress, tidy);
+     the questions-only refresh stays available as DATA.refreshQuestions(). */
   async function refreshQuestions() {
-    if (typeof DATA === 'undefined') return;
-    await DATA.refreshQuestions();
-    renderStorage();
+    if (typeof REFRESH !== 'undefined' && REFRESH.run) { await REFRESH.run(); }
+    else if (typeof DATA !== 'undefined') { await DATA.refreshQuestions(); }
+    await renderStorage();
+    if (typeof REFRESH !== 'undefined' && REFRESH._paint) REFRESH._paint();   // renderStorage rebuilt the card
   }
   async function cleanup() {
     if (typeof DATA === 'undefined') return;

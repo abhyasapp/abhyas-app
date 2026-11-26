@@ -49,7 +49,7 @@ const PSY = {
             <button class="btn btn-sm btn-r" style="font-size:.56rem;padding:.15rem .4rem" data-on-click="PSY.noneLv('${lv}')">✕</button>
           </span>
         </div>
-        <div class="ch-list" id="psy-lv-${lv}">${items || '<div class="empty-state"><div class="es-ic"><i class="ph ph-book-open"></i></div><div class="es-t">No chapters yet</div></div>'}</div>`;
+        <div class="ch-list" id="psy-lv-${lv}">${items || '<div class="empty"><div class="empty-i"><i class="ph ph-book-open"></i></div><p>No chapters yet</p></div>'}</div>`;
     }).join('');
     PSY._info();
   },

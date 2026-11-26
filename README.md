@@ -79,10 +79,23 @@ Run it locally: `python3 tools/e2e/smoke_browser.py --scenario bad-commit`.
 - **Admin permissions are explained.** A button the admin may not use shows as a locked button naming the permission
   (`ADMIN.lockedBtn`), instead of silently disappearing.
 
-## What's new (v2.58 to v2.62)
+## What's new (v2.58 to v2.65)
 
 The same list is in the app: Settings -> What's new (`js/features/whats-new.js`, edit `RELEASES`; a test fails if the newest
 entry is not the running version). After an update the app shows a one-time bar pointing to it.
+
+**v2.65 - One Refresh for everything**
+- **Refresh everything** (`js/features/refresh.js`, `REFRESH.run()`): from the Home header, the More menu and Settings -> Data tools. One tap
+  checks chapters, the app version, the question files saved on the device and the progress backup, then clears broken files, reporting each
+  step in place (`#refresh-steps`) with no blocking loading screen. Not available during a quiz. It reuses the Data tools that already existed
+  (`DATA.refreshQuestions`, `DATA.cleanupCache`) rather than carrying copies. It sits in the toolbar's More menu, not as a seventh toolbar
+  button: the bar is already full at 320-390 px.
+- Fixed: a forced refresh (`CACHE.refreshFromUpdate(reason, { force: true })`) still skipped itself on a weak connection (mobile data,
+  data saver, 2G/3G), which is exactly when someone taps Refresh. Force now skips that wait too, and returns a summary of what it did.
+- Fixed: the chapter-list refresh deleted every saved item that is not a chapter, including downloaded study documents (`studydoc:`) and the
+  written-answer bank (`subj_`). Only chapter files are ever swept (`CACHE._isChapterKey`), and a list that makes more than a quarter of the
+  downloads look orphaned is treated as damaged and left alone (`CACHE.orphanKeys`).
+- Tests: `tests/refresh.test.js`, `python3 tools/e2e/refresh.py`.
 
 **v2.62 - Notes you can read, and a What's new section**
 - Exported notes name their question: the QN number, the id and the question text (when this device has it); a plain-text
@@ -100,27 +113,6 @@ content repo; Settings shows where the chapters came from with a "Check now" but
 
 **v2.59 - Updates without a hard reload.** **v2.58 - Every question tracked by its id** (non-public id, public number, position),
 PIN app lock, backup status in words.
-
-## What's new
-
-The newest release is also shown inside the app (Settings, "What's new"), and once after each update a bar says what changed.
-The list lives in `js/features/whats-new.js` (`WHATS_NEW.RELEASES`, newest first); `tests/whats-new.test.js` fails if the top
-entry is not the running version, so it cannot be forgotten when you ship.
-
-**2.62 - Notes you can read, and a What's new section**
-- Exported notes name the question: the QN number, the id and the question text (JSON), plus a plain-text export to print or show a teacher.
-- My library cards carry the same QN chip as the quiz, review cards, print sheets and search.
-- The What's new section itself (Settings card + one-time update bar).
-- Offline downloads (`QUIZ._fetchBatch`) now have tests; the v2.61 zip had dropped that method by mistake while replacing the CDN fetch.
-- Built on top of the repo's own changes since v2.60: the chapters file runs in its own scope (so a live re-run cannot redeclare `CH_NAMES`),
-  the QN chip on every screen that prints a question, and the accessibility fixes.
-
-**2.61 - Chapters load faster and more reliably**: the service worker no longer caches the content repo (it served a stale
-`chapters-data.js` forever); mirrors are raced instead of queued; the retry screen names the failing source and why; Settings shows where
-the chapters came from, with "Check for new chapters now".
-
-**2.60 - Always the latest questions** (online: the current file is fetched, offline: the saved copy) and a built, bundled site.
-**2.59 - Updates without a hard reload.** **2.58 - Every question tracked by id** (non-public id, then public number, then position).
 
 ## Fetching from the content CDN: what can go wrong and how it is handled
 

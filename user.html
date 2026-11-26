@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="abhyas-version" content="2.64">
+<meta name="abhyas-version" content="2.65">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://*.supabase.co https://script.googleusercontent.com https://accounts.google.com https://*.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://fcm.googleapis.com https://fastly.jsdelivr.net https://gcore.jsdelivr.net https://raw.githubusercontent.com; frame-src https://accounts.google.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#080B14" media="(prefers-color-scheme: dark)">
@@ -79,6 +79,7 @@
       <div class="tb-more">
         <button class="tb-btn" id="tb-more-btn" type="button" data-on-click="HEADERMENU.toggle()" aria-haspopup="menu" aria-expanded="false" aria-controls="tb-menu-pop" aria-label="More options" title="More"><i class="ph ph-dots-three-vertical"></i></button>
         <div class="tb-pop" id="tb-menu-pop" role="menu" aria-label="More options" hidden>
+          <button class="tb-menu-item" role="menuitem" type="button" data-refresh-btn data-on-click="REFRESH.run()" aria-busy="false"><i class="ph ph-arrows-clockwise"></i><span>Refresh everything</span></button>
           <button class="tb-menu-item" role="menuitem" type="button" data-on-click="QUICK.open()" aria-keyshortcuts="Control+K" title="Quick switch (Ctrl+K)"><i class="ph ph-command"></i><span>Quick switch</span><kbd class="tb-kbd">Ctrl K</kbd></button>
           <button class="tb-menu-item" role="menuitem" type="button" data-keep-open data-on-click="FONT.cycle()"><i class="ph ph-text-aa"></i><span>Text size</span></button>
           <button class="tb-menu-item" role="menuitem" type="button" data-keep-open data-on-click="UI.theme()"><i class="ph ph-circle-half"></i><span>Light or dark</span></button>
@@ -328,10 +329,10 @@
           <div id="weekly-sets-card" class="stack2"></div>
         </div>
         <div id="weekly-empty" class="card">
-          <div class="empty-state">
-            <div class="es-ic"><i class="ph ph-calendar-blank"></i></div>
-            <div class="es-t">No weekly sets yet</div>
-            <div class="es-s">New sets usually unlock on Wednesdays. You'll see one here the moment it does.</div>
+          <div class="empty">
+            <div class="empty-i"><i class="ph ph-calendar-blank"></i></div>
+            <p>No weekly sets yet</p>
+            <p>New sets usually unlock on Wednesdays. You'll see one here the moment it does.</p>
           </div>
         </div>
       </div>
@@ -349,11 +350,11 @@
         </div>
         <div class="card" id="hourly-subj-card">
           <div class="card-hd"><h3><i class="ph ph-pen-nib"></i> This hour's written question</h3><span class="ctag ta" id="hourly-subj-marks">—</span></div>
-          <div id="hourly-subj-body"><div class="card u-p-4"><div class="skeleton sk-40"></div><div class="skeleton sk-100"></div><div class="skeleton sk-80"></div></div></div>
+          <div id="hourly-subj-body"><div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w80"></div></div></div>
         </div>
         <div class="card" id="hourly-obj-card">
           <div class="card-hd"><h3><i class="ph ph-lightning"></i> This hour's 50-question sprint</h3><span class="ctag tp">50 Q · 60 min</span></div>
-          <div id="hourly-obj-body"><div class="card u-p-4"><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div><div class="skeleton sk-100"></div><div class="skeleton sk-40"></div></div></div>
+          <div id="hourly-obj-body"><div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w40"></div></div></div>
         </div>
       </div>
 
@@ -362,7 +363,7 @@
         <div class="pg-head" data-head="subj-qotd"></div>
         <div id="syllabus-mock-slot"></div>
         <div id="subj-qotd-body">
-          <div class="card u-p-4"><div class="skeleton sk-40"></div><div class="skeleton sk-100"></div><div class="skeleton sk-100"></div><div class="skeleton sk-60"></div></div>
+          <div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w60"></div></div>
         </div>
       </div>
 
@@ -376,7 +377,7 @@
           </div>
         </div>
         <div id="subj-mine-body">
-          <div class="card u-p-4"><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div><div class="skeleton sk-80"></div></div>
+          <div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w80"></div></div>
         </div>
       </div>
 
@@ -388,7 +389,7 @@
           <div class="sd-chips" id="sd-chips" role="group" aria-label="Filter by type"></div>
         </div>
         <div id="studydocs-body">
-          <div class="card"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>
+          <div class="card"><div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div></div>
         </div>
       </div>
 
@@ -400,7 +401,7 @@
           <div class="sd-chips" id="qna-chips" role="group" aria-label="Filter by syllabus group"></div>
         </div>
         <div id="qna-body">
-          <div class="card"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>
+          <div class="card"><div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div></div>
         </div>
       </div>
 
@@ -408,7 +409,7 @@
       <div class="view" id="view-subj-exam">
         <div class="pg-head" data-head="subj-exam"></div>
         <div id="subj-exam-body">
-          <div class="card u-p-4"><div class="skeleton sk-40"></div><div class="skeleton sk-100"></div><div class="skeleton sk-80"></div></div>
+          <div class="card u-p-4"><div class="skel w40"></div><div class="skel w100"></div><div class="skel w80"></div></div>
         </div>
         <div class="card" id="exam-builder">
           <div class="card-hd"><h3><i class="ph ph-sliders-horizontal"></i> Build your own paper</h3><span class="ctag tp">Custom</span></div>
@@ -447,7 +448,7 @@
             <option value="10">10 marks</option>
           </select>
         </div>
-        <div id="subj-list-body"><div class="card u-p-4"><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div><div class="skeleton sk-100"></div><div class="skeleton sk-80"></div><div class="skeleton sk-40"></div></div></div>
+        <div id="subj-list-body"><div class="card u-p-4"><div class="skel w60"></div><div class="skel w100"></div><div class="skel w100"></div><div class="skel w80"></div><div class="skel w40"></div></div></div>
       </div>
 
       <!-- ONLINE -->
@@ -985,7 +986,7 @@
               <span id="res-chapter-note" class="t-foot" role="status" aria-live="polite"></span>
             </div>
             <div id="res-filters" class="chg-tabs" role="group" aria-label="Filter reviewed questions" hidden></div>
-            <div id="res-filter-empty" class="empty-state" hidden><div class="es-t"></div></div>
+            <p id="res-filter-empty" class="empty u-p-4" hidden></p>
             <div id="res-review"></div>
           </div>
         </div>
@@ -1101,6 +1102,7 @@
 <script defer src="js/features/pdf-viewer.js"></script>
 <!-- features -->
 <script defer src="js/features/app-lock.js"></script>
+<script defer src="js/features/refresh.js"></script>
 <script defer src="js/features/whats-new.js"></script>
 <script defer src="js/features/pwa.js"></script>
 <script defer src="js/features/net-toggle.js"></script>

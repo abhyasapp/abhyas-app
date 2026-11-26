@@ -169,9 +169,13 @@ const DATA = {
   /* Fetch the newest copy of the question files, outside a quiz. The file the student
      was last in is refreshed even when it was never downloaded; every downloaded set is
      then rechecked against the CDN. Refuses mid-quiz so answers cannot move under them. */
-  async refreshQuestions(){
-    if (typeof S !== 'undefined' && S.quiz && S.quiz.active){ toast('Finish the quiz first, then refresh.'); return false; }
-    if (typeof S !== 'undefined' && (!S.online || S.forcedOffline)){ toast('Connect to the internet to fetch the latest questions.'); return false; }
+  /* opts.quiet: the caller reports for itself (the Refresh everything list). What the
+     refresh found is left in DATA._lastRefresh for it to read. */
+  async refreshQuestions(opts){
+    const quiet = !!(opts && opts.quiet);
+    this._lastRefresh = null;
+    if (typeof S !== 'undefined' && S.quiz && S.quiz.active){ if (!quiet) toast('Finish the quiz first, then refresh.'); return false; }
+    if (typeof S !== 'undefined' && (!S.online || S.forcedOffline)){ if (!quiet) toast('Connect to the internet to fetch the latest questions.'); return false; }
     try { localStorage.removeItem('abhyas_qts'); } catch (e) { /* no stamps stored */ }
     let ref = null;
     try {
@@ -182,9 +186,9 @@ const DATA = {
       try { await QDB.del(ref.key); await QUIZ._fetch(ref.fid, ref.key, 1, 'bg'); } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
     }
     if (typeof CACHE !== 'undefined' && CACHE.refreshFromUpdate){
-      try { await CACHE.refreshFromUpdate('manual', { force: true }); } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
+      try { this._lastRefresh = await CACHE.refreshFromUpdate('manual', { force: true }); } catch (e) { window.warnCaught && window.warnCaught('js/features/data.js', e); }
     }
-    toast('Questions refreshed from the server.');
+    if (!quiet) toast('Questions refreshed from the server.');
     return true;
   },
 

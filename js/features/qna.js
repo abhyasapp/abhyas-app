@@ -45,7 +45,7 @@ window.QNA = {
 
     this.loading = true;
     if (!this.loaded) {
-      box.innerHTML = '<div class="card"><div class="skeleton sk-80"></div><div class="skeleton sk-60"></div><div class="skeleton sk-100"></div></div>';
+      box.innerHTML = '<div class="card"><div class="skel w80"></div><div class="skel w60"></div><div class="skel w100"></div></div>';
       this._skeletonChips();
     }
     try {
@@ -119,23 +119,23 @@ window.QNA = {
     }
 
     if (!entries.length) {
-      box.innerHTML = '<div class="card"><div class="empty-state">' +
-        '<div class="es-ic"><i class="ph ph-text-columns"></i></div>' +
-        '<div class="es-t">No question PDFs yet</div>' +
-        '<div class="es-s">Your teacher can split a question paper into one PDF per question, each with its worked solution. ' +
-        'Until then, whole-chapter model answers are under <b>Model answers &amp; notes</b>.</div>' +
-        '<div class="es-a"><button class="btn btn-solid" data-on-click="UI.go(\'studydocs\')"><i class="ph ph-file-pdf"></i> Open notes &amp; model answers</button></div>' +
+      box.innerHTML = '<div class="card"><div class="empty">' +
+        '<div class="empty-i"><i class="ph ph-text-columns"></i></div>' +
+        '<p>No question PDFs yet</p>' +
+        '<p>Your teacher can split a question paper into one PDF per question, each with its worked solution. ' +
+        'Until then, whole-chapter model answers are under <b>Model answers &amp; notes</b>.</p>' +
+        '<div class="a"><button class="btn btn-solid" data-on-click="UI.go(\'studydocs\')"><i class="ph ph-file-pdf"></i> Open notes &amp; model answers</button></div>' +
         '</div></div>';
       return;
     }
 
     const tree = qnaTree(this.docs, { q: this.q, group: this.group, entries: entries });
     if (!tree.length) {
-      box.innerHTML = '<div class="card"><div class="empty-state">' +
-        '<div class="es-ic"><i class="ph ph-magnifying-glass"></i></div>' +
-        '<div class="es-t">Nothing matches' + (this.q ? ' “' + esc(this.q) + '”' : '') + '</div>' +
-        '<div class="es-s">Try a word from the question, or pick another group.</div>' +
-        '<div class="es-a"><button class="btn btn-solid" data-on-click="QNA.clearFilters()">Show everything</button></div>' +
+      box.innerHTML = '<div class="card"><div class="empty">' +
+        '<div class="empty-i"><i class="ph ph-magnifying-glass"></i></div>' +
+        '<p>Nothing matches' + (this.q ? ' “' + esc(this.q) + '”' : '') + '</p>' +
+        '<p>Try a word from the question, or pick another group.</p>' +
+        '<div class="a"><button class="btn btn-solid" data-on-click="QNA.clearFilters()">Show everything</button></div>' +
         '</div></div>';
       return;
     }

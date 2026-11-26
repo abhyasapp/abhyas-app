@@ -47,7 +47,7 @@ describe('exam question grid filters', () => {
 
     await p.ev(`S.quiz.marked = new Set(); QUIZ.palFilter('marked')`);
     expect(await p.ev(`document.querySelectorAll('#pal-grid button').length`)).toBe(0);
-    expect(await p.ev(`document.querySelector('#mbody .empty-state').textContent`)).toContain('No marked questions yet');
+    expect(await p.ev(`document.querySelector('#mbody .empty').textContent`)).toContain('No marked questions yet');
 
     await p.ev(`
       if (typeof closeMod === 'function') closeMod();

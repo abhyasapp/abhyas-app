@@ -169,7 +169,7 @@ const TT = {
             <div class="tt-na">${isNow?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:.35rem;animation:npulse 2s infinite"></span>':''}${esc(sessionName(s))}</div>
             <button class="ib" data-on-click='TT.remove(${JSON.stringify(String(s.id))})' title="Remove this slot" aria-label="Remove this slot"><i class="ph ph-trash"></i></button>
           </div>`;
-        }).join('') : '<div class="empty-state"><div class="es-ic"><i class="ph ph-calendar-blank"></i></div><div class="es-t">Nothing scheduled today</div></div>';
+        }).join('') : '<div class="empty"><div class="empty-i"><i class="ph ph-calendar-blank"></i></div><p>Nothing scheduled today</p></div>';
       });
     }
 

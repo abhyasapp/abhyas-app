@@ -325,12 +325,12 @@ const ONPROG = {
     };
 
     if (known.unknown === 0){ paint(known); return; }
-    bodyEl.innerHTML = `<div class="empty-state" style="padding:var(--sp-2) 0"><div class="es-ic">⏳</div><div class="es-t">Counting questions…</div></div>`;
+    bodyEl.innerHTML = `<div class="empty" style="padding:.8rem 0"><div class="empty-i">⏳</div><p>Counting questions…</p></div>`;
     const info = await CNT.totalFor(lv, ch, book, sub, {
       force,
       onTick:(done, files)=>{
         if (mySeq !== ONPROG._seq) return;
-        const p = bodyEl.querySelector('.es-t');
+        const p = bodyEl.querySelector('p');
         if (p && files > 1) p.textContent = `Counting questions… ${done}/${files} files`;
       }
     });

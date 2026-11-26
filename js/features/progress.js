@@ -122,7 +122,7 @@ const PROG = {
     let html;
     if(!p){
       html = `<div class="card"><div class="card-hd"><h3><i class="ph ph-target"></i> Predicted Exam Score</h3></div>
-        <div class="empty-state"><div class="es-ic"><i class="ph ph-target"></i></div><div class="es-t">Complete at least 3 quizzes (exam mode helps most) to unlock a prediction</div></div></div>`;
+        <div class="empty"><div class="empty-i"><i class="ph ph-target"></i></div><p>Complete at least 3 quizzes (exam mode helps most) to unlock a prediction</p></div></div>`;
     } else {
       const barColor = p.predicted>=70?'var(--grn)':p.predicted>=50?'var(--amb)':'var(--ros)';
       const confColor = p.confidence==='High'?'tg':p.confidence==='Medium'?'ta':'tr';
@@ -178,7 +178,7 @@ const PROG = {
       }
 
       if(!entries.length){
-        chapEl.innerHTML = '<div class="empty-state"><div class="es-ic"><i class="ph ph-chart-bar"></i></div><div class="es-t">Complete a quiz to see chapter breakdowns</div></div>';
+        chapEl.innerHTML = '<div class="empty"><div class="empty-i"><i class="ph ph-chart-bar"></i></div><p>Complete a quiz to see chapter breakdowns</p></div>';
       } else {
         const weak = entries.filter(e=> e.attempted>=5 && e.accuracy<60);
         const weakHtml = weak.length ? `

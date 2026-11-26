@@ -13,6 +13,11 @@ const WHATS_NEW = {
   SEEN_KEY: 'abhyas_seen_version',
 
   RELEASES: [
+    { version: '2.65', date: '2026-11-23', title: 'One Refresh for everything', items: [
+      { icon: 'ph-arrows-clockwise', title: 'Refresh everything, from the Home screen or the More menu', text: 'One tap checks for new chapters and a new app version, fetches the newest question files, backs up your progress and clears broken files. Each step is shown in place, with no loading screen, and it is not available during a quiz.' },
+      { icon: 'ph-cell-signal-low', title: 'Works on a slow connection too', text: 'A Refresh you tap yourself no longer skips itself on mobile data, data saver or a slow network.' },
+      { icon: 'ph-shield-check', title: 'Safer downloads', text: 'Refreshing can no longer remove downloaded study documents or the written-answer bank, and a damaged chapter list can no longer wipe your saved question sets.' }
+    ] },
     { version: '2.64', date: '2026-11-23', title: 'One portal, one system', items: [
       { icon: 'ph-layout', title: 'Every screen on the same grid', text: 'Nineteen screens now share one page header, one card, one row and one set of controls — so a button, a label or a progress bar sits in the same place wherever you meet it.' },
       { icon: 'ph-books', title: 'A library with one voice', text: 'My library no longer says its name three times: one header, its two actions, a segmented filter and one clear empty state.' },

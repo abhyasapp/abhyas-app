@@ -667,10 +667,10 @@ const QUIZ = {
     }).join('');
     const tab = (key, label) =>
       `<button type="button" data-pal-filter="${key}" data-on-click="QUIZ.palFilter('${key}')" aria-pressed="${filter === key}" class="${filter === key ? 'active' : ''}">${label} <span class="n">${counts[key]}</span></button>`;
-    const empty = visible.length ? '' : '<div class="empty-state" style="padding:var(--sp-3)"><div class="es-t">' +
+    const empty = visible.length ? '' : '<p class="empty" style="padding:var(--sp-3)">' +
       (filter === 'marked' ? 'No marked questions yet — flag a question on the paper to review it here.' :
        filter === 'unanswered' ? 'Everything is answered. Submit when you are ready.' :
-       filter === 'answered' ? 'No answers yet. Tap an option on the paper to begin.' : 'No questions to show.') + '</div></div>';
+       filter === 'answered' ? 'No answers yet. Tap an option on the paper to begin.' : 'No questions to show.') + '</p>';
     const html =
       `<div class="chg-tabs" role="group" aria-label="Filter the question grid" style="margin-bottom:var(--sp-3)">` +
         tab('all', 'All') + tab('unanswered', 'Unanswered') + tab('marked', 'Marked') + tab('answered', 'Answered') +
@@ -1152,7 +1152,7 @@ const QUIZ = {
         : filter === 'skipped' ? 'skipped questions'
         : 'questions';
       const chapterName = chapter && QUIZ._reviewChapterNames && QUIZ._reviewChapterNames.get(chapter);
-      empty.firstElementChild.textContent = chapterName
+      empty.textContent = chapterName
         ? 'No ' + wanted + ' in ' + chapterName.label + '.'
         : filter === 'confident'
           ? 'No confident misses in this set — your “sure” answers held up.'

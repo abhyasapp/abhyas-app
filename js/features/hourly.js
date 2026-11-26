@@ -231,11 +231,11 @@ window.HOURLY = {
     const bank = await this._ensureBank();
     if (!bank.length){
       box.innerHTML =
-        '<div class="empty-state">' +
-          '<div class="es-ic"><i class="ph ph-cloud-slash"></i></div>' +
-          '<div class="es-t">Written bank not available</div>' +
-          '<div class="es-s">Connect to the internet once so this device can save the questions.</div>' +
-          '<div class="es-a">' +
+        '<div class="empty" style="padding:var(--sp-6) 0">' +
+          '<div class="empty-i"><i class="ph ph-cloud-slash"></i></div>' +
+          '<p>Written bank not available</p>' +
+          '<p>Connect to the internet once so this device can save the questions.</p>' +
+          '<div class="bg" style="justify-content:center;margin-top:var(--sp-3)">' +
             '<button class="btn btn-a" data-on-click="HOURLY.render()"><i class="ph ph-arrow-clockwise"></i> Try again</button>' +
           '</div>' +
         '</div>';
