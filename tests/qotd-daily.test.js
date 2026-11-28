@@ -46,6 +46,7 @@ describe('the day\'s question from the question bank', () => {
         allFileRefs: () => ${JSON.stringify(REFS)}
       };
       S.online = true; S.forcedOffline = false;
+      S.wr = []; S.prog.sessions = []; S.prog.total = 0; S.prog.correct = 0;   // a clean slate per test
       localStorage.removeItem('abhyas_qotd_daily_v1');
       document.getElementById('qotd-daily-slot').innerHTML = '';
       window.__asked = [];
@@ -178,5 +179,52 @@ describe('the day\'s question from the question bank', () => {
     expect(out.picked).toContain('#');
     expect(out.afterMove).toBe(false);
     expect(out.stillStored).toBe(true);
+  });
+
+  it('a wrong answer joins the miss list and the practice history, like any other answer', async () => {
+    const out = await p.ev(`(async () => {
+      await QOTD_DAILY.render();
+      const q = QOTD_DAILY.current().q, ref = QOTD_DAILY.current().ref;
+      const before = { wr: S.wr.length, total: S.prog.total || 0, sessions: (S.prog.sessions || []).length };
+      const wrong = q.correct === 0 ? 1 : 0;
+      document.querySelector('[data-on-click="QOTD_DAILY.answer(' + wrong + ')"]').click();
+      await new Promise(r => setTimeout(r, 80));
+      const miss = S.wr.find(x => x && x.uid === q.uid);
+      const sess = S.prog.sessions[0];
+      return { fid: ref.fid, uid: q.uid,
+               dWr: S.wr.length - before.wr, dTotal: (S.prog.total || 0) - before.total,
+               dSessions: (S.prog.sessions || []).length - before.sessions,
+               miss: !!miss, dueNow: !!(miss && (miss._nextDue || 0) <= Date.now() + 1000),
+               sess: sess && { total: sess.total, correct: sess.correct, wrong: sess.wrong, fid: sess.fid },
+               row: sess && sess.qres && sess.qres[0] };
+    })()`);
+    expect(out.miss).toBe(true);                    // in the miss list
+    expect(out.dueNow).toBe(true);                  // and due, not waiting for a later date
+    expect(out.dWr).toBe(1);
+    expect(out.dTotal).toBe(1);                     // counts in the totals
+    expect(out.dSessions).toBe(1);                  // and in the practice history
+    expect(out.sess).toMatchObject({ total: 1, correct: 0, wrong: 1 });
+    expect(out.sess.fid).toBe(out.fid);
+    expect(out.row).toMatchObject({ uid: out.uid, ok: false });
+  });
+
+  it('a right answer counts in the history and does not add to the miss list', async () => {
+    const out = await p.ev(`(async () => {
+      await QOTD_DAILY.render();
+      const q = QOTD_DAILY.current().q;
+      const before = { wr: S.wr.length, total: S.prog.total || 0, correct: S.prog.correct || 0 };
+      document.querySelector('[data-on-click="QOTD_DAILY.answer(' + q.correct + ')"]').click();
+      await new Promise(r => setTimeout(r, 80));
+      const sess = S.prog.sessions[0];
+      return { dWr: S.wr.length - before.wr, dTotal: (S.prog.total || 0) - before.total,
+               dCorrect: (S.prog.correct || 0) - before.correct,
+               sess: sess && { total: sess.total, correct: sess.correct, wrong: sess.wrong },
+               row: sess && sess.qres && sess.qres[0] };
+    })()`);
+    expect(out.dWr).toBe(0);
+    expect(out.dTotal).toBe(1);
+    expect(out.dCorrect).toBe(1);
+    expect(out.sess).toMatchObject({ total: 1, correct: 1, wrong: 0 });
+    expect(out.row.ok).toBe(true);
   });
 });

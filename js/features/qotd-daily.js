@@ -113,6 +113,34 @@ window.QOTD_DAILY = (function () {
     try { return ChapterData.chapterName(ref.lv, ref.ch); } catch (e) { return 'Chapter ' + ref.ch; }
   }
 
+  /* The daily answer is an answer like any other: it moves the totals, the per-question stats,
+     the coverage bits, the practice history and the miss list, through the same functions the
+     quiz uses. A wrong one lands in the wrong bank (due now); a right one on a missed question
+     counts toward mastery exactly as it does inside a quiz. */
+  function recordAnswer(got, ok) {
+    const q = got.q, ref = got.ref;
+    const row = { uid: q.uid, ok: !!ok };
+    if (q.qid !== undefined && q.qid !== null && q.qid !== '') row.qid = q.qid;
+    if (q.nid !== undefined && q.nid !== null && q.nid !== '') row.nid = q.nid;
+    if (q.pqn) row.pqn = q.pqn;
+    const qres = [row];
+    const chapter = chapterOf(ref);
+
+    try { if (typeof PROG !== 'undefined' && PROG.track) PROG.track(!!ok); } catch (e) { warn(e); }
+    try { if (typeof QSTATS !== 'undefined' && QSTATS.recordSession) QSTATS.recordSession(qres); } catch (e) { warn(e); }
+    try { if (typeof COV !== 'undefined' && COV.record) COV.record(qres); } catch (e) { warn(e); }
+    try { if (typeof REV !== 'undefined' && REV.trackAnswer) REV.trackAnswer(q, !!ok); } catch (e) { warn(e); }
+    const sess = {
+      chapter, chapterKey: chapter, mode: 'flashcard',
+      total: 1, correct: ok ? 1 : 0, wrong: ok ? 0 : 1, skipped: 0, pct: ok ? 100 : 0,
+      at: Date.now(), durationSec: 0, sessionKind: 'new',
+      lv: ref.lv, ch: ref.ch, book: ref.book, sub: ref.subtopic, fid: ref.fid,
+      weeklyId: '', weeklyTitle: '', sprintKind: '', qres, calibration: null
+    };
+    try { if (typeof PROG !== 'undefined' && PROG.recordSession) PROG.recordSession(sess); } catch (e) { warn(e); }
+    try { if (typeof CHAPSTATS !== 'undefined' && CHAPSTATS.record) CHAPSTATS.record(sess); } catch (e) { warn(e); }
+  }
+
   function optHtml(text, i, state, locked) {
     const color = state === 'right' ? 'var(--grn)' : state === 'wrong' ? 'var(--ros)' : 'var(--sep)';
     const mark = state === 'right' ? ' ✓' : state === 'wrong' ? ' ✗' : '';
@@ -186,14 +214,15 @@ window.QOTD_DAILY = (function () {
     if (!got || !got.q) { toast('Today\'s question is not ready yet'); return; }
     if (recordFor(got)) return;
     const correct = (typeof got.q.correct === 'number') ? got.q.correct : null;
+    const ok = correct === null ? null : Number(i) === correct;
     const prev = stored();
     const count = (prev && prev.date === yesterdayKey()) ? (Number(prev.count) || 0) + 1 : 1;
     try {
       localStorage.setItem(KEY, JSON.stringify({
-        user: me(), date: dateKey(), picked: idOf(got), chosen: Number(i),
-        ok: correct === null ? null : Number(i) === correct, count
+        user: me(), date: dateKey(), picked: idOf(got), chosen: Number(i), ok, count
       }));
     } catch (e) { warn(e); }
+    if (ok !== null) recordAnswer(got, ok);      // no answer key in the file: nothing to record as right or wrong
     render().catch(warn);
   }
 
