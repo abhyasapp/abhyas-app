@@ -518,6 +518,20 @@
             <button class="btn btn-a btn-lg grow" id="loc-ex" disabled data-on-click="LOC.start('exam')"><i class="ph ph-note-pencil"></i> Timed test</button>
           </div>
         </div>
+
+        <!-- Every file the app's own question bank holds (all levels, chapters, books and
+             subtopics), opened here read-only by js/features/local-file.js. -->
+        <div class="card" id="loc-bank-card">
+          <div class="card-hd"><h3><i class="ph ph-database"></i> From the question bank</h3></div>
+          <p class="t-foot mb3">Every question file the app already navigates — all levels, chapters, books and subtopics. Opening one here does not download it, so your chapters, downloads and progress stay exactly as they are.</p>
+          <div class="toolbar">
+            <input type="search" id="loc-bank-q" placeholder="Search a chapter, a book or a subtopic" autocomplete="off" data-on-input="LOC.fillBank(this.value)" aria-label="Search the question bank">
+            <select id="loc-bank-file" aria-label="Choose a question bank file"><option value="">Choose a file…</option></select>
+          </div>
+          <div class="bg">
+            <button class="btn btn-solid" type="button" data-on-click="LOC.openBank()"><i class="ph ph-folder-open"></i> Open the set</button>
+          </div>
+        </div>
       </div>
 
       <!-- PSYCHO -->
