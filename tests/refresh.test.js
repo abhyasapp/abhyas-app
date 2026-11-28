@@ -25,6 +25,11 @@ describe('wiring', () => {
     expect(s).toMatch(/id="refresh-steps" aria-live="polite"/);
     expect(s).toMatch(/REFRESH\.run\(\)/);
   });
+  it('the page carries a report panel for the two controls that are not in Settings', () => {
+    expect(html).toContain('id="refresh-status"');
+    expect(html).toMatch(/<ul id="refresh-status-list" data-refresh-steps aria-live="polite"/);
+    expect(html).toContain('data-on-click="REFRESH.hide()"');
+  });
   it('shows progress in place: no loading screen is ever raised', () => {
     expect(read('js/features/refresh.js')).not.toMatch(/_showLoader\(/);
   });
@@ -155,6 +160,55 @@ describe('Refresh everything', () => {
       return { during, after };
     })()`);
     expect(out).toEqual({ during: true, after: true });
+  });
+  it('tapped from the Home header or the More menu, every step is visible on screen', async () => {
+    const out = await p.ev(`(async () => {
+      window.ChapterDataStatus = { checkNow: async () => {}, status: () => ({ lastCheck: { result: 'up to date' }, source: {}, tried: [] }) };
+      const orq = DATA.refreshQuestions, occ = DATA.cleanupCache, op = PSYNC.pushNow;
+      DATA.refreshQuestions = async () => { DATA._lastRefresh = { skipped: '', added: 1, updated: 0, orphans: 0, failed: 0, total: 4 }; return true; };
+      DATA.cleanupCache = async () => ({ stale: 0, stamps: 0, buckets: 0, bytes: 0 });
+      PSYNC.pushNow = async () => {};
+      S.user = Object.assign({}, S.user, { token: 't' });
+      const waitDone = async () => { for (let i = 0; i < 400 && REFRESH.running; i++) await new Promise(r => setTimeout(r, 20)); };
+      UI.go('home');                                        // home hero and More menu both live here
+      const onHome = !!document.querySelector('#view-home.on');
+      const panel = document.getElementById('refresh-status');
+      const hiddenAtStart = panel.hidden;
+
+      document.querySelector('#tb-menu-pop [data-refresh-btn]').click();
+      const started = REFRESH.running;
+      await waitDone();
+      const menuItems = [...document.querySelectorAll('#refresh-status-list li')].map(li => li.textContent);
+      const shownFromMenu = !panel.hidden;
+
+      REFRESH.hide(); REFRESH._lines = [];                  // same run again, this time from the hero
+      const heroBtn = document.querySelector('#home-hero [data-refresh-btn]');
+      if (heroBtn) heroBtn.click();
+      await waitDone();
+      const heroItems = [...document.querySelectorAll('#refresh-status-list li')].map(li => li.textContent);
+      const shownFromHero = !panel.hidden;
+
+      UI.go('data');                                        // the card carries the same list there
+      const hiddenInSettings = panel.hidden;
+      await new Promise(r => setTimeout(r, 400));
+      const settingsLi = document.querySelectorAll('#refresh-steps li').length;
+      DATA.refreshQuestions = orq; DATA.cleanupCache = occ; PSYNC.pushNow = op;
+      return { onHome, started, hiddenAtStart, shownFromMenu, menuItems,
+               hasHeroBtn: !!heroBtn, shownFromHero, heroItems, hiddenInSettings, settingsLi, running: REFRESH.running };
+    })()`);
+    expect(out.onHome).toBe(true);
+    expect(out.started).toBe(true);
+    expect(out.hiddenAtStart).toBe(true);
+    expect(out.running).toBe(false);
+    expect(out.shownFromMenu).toBe(true);
+    expect(out.menuItems.length).toBe(5);
+    expect(out.menuItems.join(' | ')).toMatch(/Chapters: Up to date/);
+    expect(out.menuItems.join(' | ')).toMatch(/Tidy: Nothing to clear/);
+    expect(out.hasHeroBtn).toBe(true);
+    expect(out.shownFromHero).toBe(true);
+    expect(out.heroItems.length).toBe(5);
+    expect(out.hiddenInSettings).toBe(true);                 // no duplicate list over the card
+    expect(out.settingsLi).toBe(5);
   });
   it('it never changes progress, notes or saved questions', async () => {
     const out = await p.ev(`(async () => {

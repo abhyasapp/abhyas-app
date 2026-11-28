@@ -1,7 +1,8 @@
 // js/features/refresh.js — "Refresh everything".
 //
-// One tap, outside a quiz, does every useful refresh and reports each step in words, IN PLACE
-// (a list in Settings -> Data tools, a spinning button on the toolbar): there is no blocking
+// One tap, outside a quiz, does every useful refresh and reports each step in words, IN PLACE:
+// the list lives in Settings -> Data tools and, for the Home header and the More menu (which
+// are not on that screen), in the page-level #refresh-status panel. There is no blocking
 // loading screen and the student can keep using the app while it works.
 //
 //   Chapters   is chapters-data.js current?                      (ChapterDataStatus.checkNow)
@@ -27,9 +28,13 @@ const REFRESH = {
     if (i < 0) this._lines.push(line); else this._lines[i] = line;
     this._paint();
   },
+  /* Every [data-refresh-steps] list is painted, so the report is never written somewhere that
+     is not on screen: the Settings card has one, and #refresh-status has one for the two
+     controls that live outside Settings. */
   _paint() {
-    const ul = document.getElementById('refresh-steps');
-    if (!ul) return;
+    document.querySelectorAll('[data-refresh-steps]').forEach(ul => this._paintInto(ul));
+  },
+  _paintInto(ul) {
     ul.textContent = '';
     this._lines.forEach(l => {
       const li = document.createElement('li');
@@ -45,6 +50,17 @@ const REFRESH = {
       li.append(ic, t);
       ul.appendChild(li);
     });
+  },
+  /* The page-level report. In Settings the same list is already in the card, so the panel is
+     not shown there; it is also cleared when the student leaves the screen. */
+  _panel(on) {
+    const p = document.getElementById('refresh-status');
+    if (p) p.hidden = !on;
+  },
+  hide() { this._panel(false); },
+  _onDataScreen() {
+    const v = document.getElementById('view-data');
+    return !!(v && v.classList.contains('on'));
   },
   _busy(on) {
     this.running = on;
@@ -63,6 +79,8 @@ const REFRESH = {
     if (this.running) return false;
     if (this.inQuiz()) { toast('Finish or leave your quiz first, then refresh.'); return false; }
     this._lines = [];
+    this._paint();
+    this._panel(!this._onDataScreen());
     if (!this.online()) {
       this._set('net', 'Connection', 'warn', 'You are offline. Refresh needs the internet; your saved questions still work.');
       toast('You are offline. Nothing to refresh right now.');
@@ -146,4 +164,8 @@ const REFRESH = {
     }
   }
 };
+/* Leaving the screen takes the report with it: it describes what just happened here, and
+   Settings keeps its own copy in the card. */
+if (typeof UI !== 'undefined' && UI.onEnterAny) UI.onEnterAny(() => REFRESH.hide());
+
 window.REFRESH = REFRESH;

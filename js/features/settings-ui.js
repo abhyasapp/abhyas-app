@@ -176,7 +176,7 @@ window.SETTINGS = (function () {
           '<button type="button" class="btn btn-sm btn-quiet" data-on-click="SETTINGS.removeDownloads()"' + (anyCached ? '' : ' disabled') + '>' + E(T('Remove')) + '</button>') +
       '</div>' +
       /* What Refresh everything did, step by step, in place (js/features/refresh.js). */
-      '<ul id="refresh-steps" aria-live="polite" style="list-style:none;margin:var(--sp-2) 0;padding:0"></ul>' +
+      '<ul id="refresh-steps" aria-live="polite" data-refresh-steps style="list-style:none;margin:var(--sp-2) 0;padding:0"></ul>' +
       '<div class="bg set-actions">' +
         '<button type="button" class="btn btn-a btn-blk" data-on-click="DATA.exportAll()"><i class="ph ph-download-simple"></i> ' + E(T('Download backup')) + '</button>' +
       '</div>';

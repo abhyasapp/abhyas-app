@@ -2445,4 +2445,10 @@ html.reduce-motion .skeleton::after{animation:none}
 .hh-refresh{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-6px -8px -6px 0;border:0;border-radius:var(--r-full,999px);background:transparent;color:var(--ink-2);font-size:1.15rem;cursor:pointer}
 .hh-refresh:hover{background:var(--surface-alt)}
 .hh-refresh.is-busy{opacity:.85}
+/* The step report when Refresh starts from the Home header or the More menu: it sticks under
+   the toolbar, so the result stays readable while the page scrolls. */
+.refresh-status{position:sticky;top:0;z-index:40;margin-bottom:var(--sp-3)}
+.refresh-status[hidden]{display:none}
+.refresh-status .card-hd{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin-bottom:var(--sp-2);padding-bottom:var(--sp-2)}
+.refresh-status .refresh-status-title{display:flex;align-items:center;gap:.4rem;margin:0;font-size:var(--fs-callout);font-weight:700}
 @media (prefers-reduced-motion:reduce){.is-busy>i,.refresh-spin{animation:none}}

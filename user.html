@@ -126,6 +126,17 @@
     <div class="inner">
       <h1 id="view-title" class="sr-only" hidden></h1>
 
+      <!-- What "Refresh everything" did, step by step, when it was started from the Home header
+           or the More menu: the Settings card is not on screen then, so the same live list is
+           shown here. js/features/refresh.js paints every [data-refresh-steps] list. -->
+      <section id="refresh-status" class="refresh-status card" aria-labelledby="refresh-status-h" hidden>
+        <div class="card-hd">
+          <p class="refresh-status-title" id="refresh-status-h"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Refresh everything</p>
+          <button class="ib" type="button" data-on-click="REFRESH.hide()" aria-label="Hide the refresh report"><i class="ph ph-x" aria-hidden="true"></i></button>
+        </div>
+        <ul id="refresh-status-list" data-refresh-steps aria-live="polite" style="list-style:none;margin:0;padding:0"></ul>
+      </section>
+
       <!-- HOME -->
       <div class="view on" id="view-home">
         <div id="home-hero"></div>
