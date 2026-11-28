@@ -19,11 +19,16 @@ const LOC = {
     const r = new FileReader();
     r.onload = e => {
       try {
-        const qs2 = normQ(JSON.parse(e.target.result), 'local');
+        const raw = JSON.parse(e.target.result);
+        const qs2 = normQ(raw, 'local');
         if (!qs2.length){ toast('❌ No valid questions found in file'); return; }
         S.localQs = qs2;
+        /* A question-bank export names its own chapter; use that name so the
+           set is not just "file (537).json" while you practise it. */
+        const named = raw && typeof raw === 'object' ? String(raw.chapter || raw.chapter_title || '').trim() : '';
+        LOC._label = named || f.name;
         const info = document.getElementById('loc-info');
-        info.style.display = ''; info.style.color = ''; info.textContent = `✅ ${pluralize(qs2.length,'question')} loaded from "${f.name}"`;
+        info.style.display = ''; info.style.color = ''; info.textContent = `✅ ${pluralize(qs2.length,'question')} loaded from "${LOC._label}"`;
         document.getElementById('loc-pr').disabled = false;
         document.getElementById('loc-ex').disabled = false;
         toast(`✅ ${pluralize(qs2.length,'question')} ready`);
@@ -117,13 +122,14 @@ const LOC = {
     if (fileEl) fileEl.value = '';
     document.getElementById('loc-pr').disabled = false;
     document.getElementById('loc-ex').disabled = false;
+    LOC._label = label;
     say(`✅ ${pluralize(qs.length,'question')} loaded from ${from}: ${label}. Nothing was saved or changed.`);
     toast(`✅ ${pluralize(qs.length,'question')} ready`);
   },
 
   start(mode){
     if (!S.localQs){ toast('Open a set first'); return; }
-    QUIZ.startWith([...S.localQs], mode, 'Local File');
+    QUIZ.startWith([...S.localQs], mode, LOC._label || 'Local File');
   }
 };
 

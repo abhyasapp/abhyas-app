@@ -138,6 +138,32 @@ const NORM_CACHE = typeof WeakMap === 'function' ? new WeakMap() : null;
    carry the internal numeric id there.) A public id is a string, so it must not
    be gated on Number.isFinite, which once discarded every public id and left
    the app keyed on position. */
+/* Some banks export their text as rich text ("<p>The difference …</p>"), and the
+   app prints question text with esc(), so the tags would reach the screen as
+   literal <p>. Plain text is what every renderer expects; the maths delimiters
+   (\(…\), \[…\], $…$) are left alone because KaTeX renders them. Strings with
+   no tag in them come back untouched, so this cannot rewrite normal content. */
+const HTML_TAG_RE = /<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/g;
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', hellip: '…', rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”' };
+function _plainText(s) {
+  const v = String(s == null ? '' : s);
+  if (v.indexOf('<') === -1 && v.indexOf('&') === -1) return v;
+  return v
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, ' ')
+    .replace(HTML_TAG_RE, '')
+    .replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (m, name) => {
+      if (name[0] === '#') {
+        const code = name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+        return isFinite(code) && code > 0 && code < 0x110000 ? String.fromCodePoint(code) : m;
+      }
+      const hit = ENTITIES[name.toLowerCase()];
+      return hit === undefined ? m : hit;
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const QID_DIGITS_RE = /^\d+$/;
 const QID_PUBLIC_RE = /^[A-Za-z0-9][A-Za-z0-9._]{3,63}$/;
 
@@ -182,9 +208,22 @@ function normQ(raw, fid) {
   let skipped = 0;
   a.forEach((q, i) => {
     if (!q || typeof q !== 'object') { skipped++; return; }
-    const text = q.q || q.question || q.Question || q.stem || q.ques || q.text || '';
+    const text = _plainText(q.q || q.question || q.Question || q.stem || q.ques || q.text || '');
     if (!text) { skipped++; return; }
     let options = q.options || q.opts || q.choices || q.Options;
+    /* The offline question-bank export (one file per chapter) publishes its
+       options as an object keyed by letter: {"A": "…", "B": "…"}. Read them in
+       letter order so the option a student taps is the one the key names. */
+    if (options && !Array.isArray(options) && typeof options === 'object') {
+      const keys = Object.keys(options)
+        .filter(k => options[k] !== undefined && options[k] !== null && options[k] !== '');
+      keys.sort((x, y) => {
+        const nx = Number(x), ny = Number(y);
+        if (isFinite(nx) && isFinite(ny)) return nx - ny;
+        return String(x).localeCompare(String(y), undefined, { sensitivity: 'base' });
+      });
+      if (keys.length >= 2) options = keys.map(k => options[k]);
+    }
     if (!Array.isArray(options)) {
       const lettered = [q.a || q.A, q.b || q.B, q.c || q.C, q.d || q.D, q.e || q.E]
         .filter(x => x !== undefined && x !== null && x !== '');
@@ -194,16 +233,22 @@ function normQ(raw, fid) {
     let correct = q.correct !== undefined ? q.correct
                 : q.answer !== undefined ? q.answer
                 : q.ans !== undefined ? q.ans
-                : q.Answer !== undefined ? q.Answer : undefined;
-    if (typeof correct === 'string' && /^[a-eA-E]$/.test(correct.trim())) {
-      correct = 'abcde'.indexOf(correct.trim().toLowerCase());
+                : q.Answer !== undefined ? q.Answer
+                : q.correct_answer !== undefined ? q.correct_answer      // offline bank export
+                : q.correctAnswer !== undefined ? q.correctAnswer
+                : q.answer_key !== undefined ? q.answer_key
+                : q.correct_option !== undefined ? q.correct_option : undefined;
+    if (typeof correct === 'string') {
+      const t = correct.trim();
+      if (/^[a-eA-E]$/.test(t)) correct = 'abcde'.indexOf(t.toLowerCase());
+      else if (/^[a-eA-E][).:]/.test(t)) correct = 'abcde'.indexOf(t[0].toLowerCase());
     }
     result.push({
-      q: String(text).trim(),
-      options: options.map(String),
+      q: text,
+      options: options.map(o => _plainText(o)),
       correct,
-      explanation: q.explanation || q.explain || q.exp || q.solution || q.hint || '',
-      img: _resolveQImg(q.img || q.image || q.Image || q.figure || q.diagram || ''),
+      explanation: _plainText(q.explanation || q.explain || q.exp || q.solution || q.hint || ''),
+      img: _resolveQImg(q.img || q.image || q.Image || q.question_image || q.questionImage || q.image_url || q.img_url || q.figure || q.diagram || ''),
       imgCaption: String(q.imgCaption || q.imgAlt || q.figureCaption || q.caption || '').trim(),
       fileId: fid || 'local',
       uid: `${fid || 'local'}_${i}`,
