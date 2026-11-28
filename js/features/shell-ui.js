@@ -26,9 +26,7 @@ window.BN = {
     } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); }
 
     const row = it => {
-      const go = it.special === 'tutorial'
-        ? "BN.close();setTimeout(function(){TUTORIAL.open()},140)"
-        : "BN.close();setTimeout(function(){UI.go('" + it.view + "')},100)";
+      const go = it.special === 'tutorial' ? 'BN.tour()' : "BN.go('" + it.view + "')";
       return '<button class="bn-sheet-item" data-on-click="' + go + '">' +
         '<span class="bn-sheet-ic"><i class="ph ' + it.icon + '"></i></span>' +
         '<span class="bn-sheet-info"><span class="bn-sheet-name">' + esc(it.label) + '</span>' +
@@ -48,6 +46,19 @@ window.BN = {
     setTimeout(() => { const f = $('bn-sheet-grid').querySelector('button'); if (f) f.focus(); }, 60);
     /* Tab-trap the sheet; Escape is handled by shell-hooks.js. */
     DIALOG.open($('bn-sheet'));
+  },
+  /* Leave the sheet, then move. The delay lets the sheet's slide-out finish.
+     Both helpers exist because the handler language in js/core/actions.js has
+     no function expressions: the old `BN.close();setTimeout(function(){…},100)`
+     rows were dropped by the parser with "Unsupported handler", so every row
+     of the phone bottom bar did nothing when tapped. */
+  go(view){
+    BN.close();
+    setTimeout(() => { try { if (typeof UI !== 'undefined' && UI.go) UI.go(view); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); } }, 100);
+  },
+  tour(){
+    BN.close();
+    setTimeout(() => { try { if (typeof TUTORIAL !== 'undefined' && TUTORIAL.open) TUTORIAL.open(); } catch (e) { window.warnCaught && window.warnCaught('js/features/shell-ui.js', e); } }, 140);
   },
   close(){
     const sheet = $('bn-sheet');
