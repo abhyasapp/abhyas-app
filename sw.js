@@ -148,7 +148,8 @@ const SHELL = [
   './js/core/no-autofill.js',
   './js/features/app-lock.js',
   './js/features/whats-new.js',
-  './js/features/refresh.js'
+  './js/features/refresh.js',
+  './js/features/qotd-daily.js'
 ];
 
 function offlinePage() {
